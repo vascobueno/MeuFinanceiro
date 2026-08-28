@@ -151,7 +151,12 @@ public class AuthService : IAuthService
             householdId = (await _db.HouseholdMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.HouseholdId;
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var frontendBaseUrl = _configuration["App:FrontendBaseUrl"] ?? "http://localhost:4200";
+            // "??" só cobre valor ausente — appsettings.json comitado tem App:FrontendBaseUrl
+            // como string vazia (placeholder pra produção), que "??" não substitui, gerando
+            // um link relativo quebrado sempre que não há um appsettings.Development.json
+            // preenchendo por cima (exatamente o caso de uma checkout limpa, ex.: CI).
+            var configuredFrontendBaseUrl = _configuration["App:FrontendBaseUrl"];
+            var frontendBaseUrl = string.IsNullOrWhiteSpace(configuredFrontendBaseUrl) ? "http://localhost:4200" : configuredFrontendBaseUrl;
             var link = $"{frontendBaseUrl}/redefinir-senha?email={WebUtility.UrlEncode(user.Email)}&token={WebUtility.UrlEncode(token)}";
 
             var body = $"""

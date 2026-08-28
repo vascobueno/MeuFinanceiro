@@ -62,6 +62,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:Key"] = "chave-de-teste-somente-para-integration-tests-0123456789",
                 ["Jwt:Issuer"] = "MeuFinanceiro.Api.Tests",
                 ["Jwt:Audience"] = "MeuFinanceiro.Frontend.Tests",
+                // Explícito pra não depender de um appsettings.Development.json local (gitignored,
+                // ausente num checkout limpo como o do CI) — sem isso, PasswordResetEndpointTests
+                // pegava o "" comitado em appsettings.json e gerava um link relativo quebrado.
+                ["App:FrontendBaseUrl"] = "http://localhost:4200",
             });
         });
     }
