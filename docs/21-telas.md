@@ -53,6 +53,8 @@ nível clicável do breadcrumb) — ver `app.routes.ts`.
 | `/configuracoes` | `SettingsComponent` | Configurações |
 | `/membros` | `HouseholdMembersComponent` | Membros da família |
 | `/registrar` | `RegisterComponent` | Criar conta (fora do shell, sem autenticação) |
+| `/esqueci-senha` | `ForgotPasswordComponent` | Pedir link de redefinição de senha (fora do shell, sem autenticação) |
+| `/redefinir-senha` | `ResetPasswordComponent` | Definir nova senha a partir do link recebido por e-mail (fora do shell, sem autenticação) |
 | `/admin/households` | `AdminHouseholdsComponent` | Households (Administrator) |
 | `/admin/perfis-acesso` | `AdminAccessProfilesComponent` | Perfis de acesso (Administrator) |
 | `/admin/households/:id/membros` | `HouseholdMembersComponent` (reaproveitado) | Membros do household (Administrator) |

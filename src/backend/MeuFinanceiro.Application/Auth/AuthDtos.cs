@@ -5,6 +5,8 @@ namespace MeuFinanceiro.Application.Auth;
 public record RegisterRequest(string Name, string Email, string Password);
 public record LoginRequest(string Email, string Password);
 public record RefreshTokenRequest(string RefreshToken);
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Email, string Token, string NewPassword);
 
 /// <summary>
 /// Access token de vida curta (15 min) + refresh token (7 dias) — decisão de

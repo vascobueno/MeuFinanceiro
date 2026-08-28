@@ -47,6 +47,14 @@
    npm start --prefix src/frontend/meu-financeiro
    ```
 
+## E-mail (recuperação de senha)
+
+A seção `Smtp` do `appsettings.Development.json` é opcional. Sem `Smtp:Host` configurado, o
+link de redefinição de senha (`POST /auth/forgot-password`) não é enviado por e-mail — só é
+logado no console do `dotnet run`, o que já é suficiente pra testar o fluxo inteiro
+localmente. Pra testar o envio de verdade, configure `Smtp:Host`/`Port`/`User`/`Password`
+com um provedor real (Gmail, Outlook, SendGrid, etc.).
+
 ## Observações
 
 - Em produção **não** se usa Docker local nem Azurite — ver `docs/19-deploy-azure.md` para Azure Database for PostgreSQL Flexible Server e Azure Blob Storage reais, com Key Vault e Managed Identity (ver `docs/12-seguranca.md`).

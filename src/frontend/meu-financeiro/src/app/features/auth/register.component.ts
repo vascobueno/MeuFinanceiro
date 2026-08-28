@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
@@ -10,6 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ProblemDetails } from '../../core/models/paged-result.model';
+import { passwordValidators, passwordsMatchValidator } from '../../shared/validators/password.validators';
 
 /**
  * Cadastro de novo usuário (RF001) — cria a identidade e, na mesma chamada, o household
@@ -38,14 +39,11 @@ export class RegisterComponent {
 
   private readonly fb = inject(FormBuilder);
 
-  // Mesma política de senha do backend (Identity): mínimo 8 caracteres, com maiúscula,
-  // minúscula, número e símbolo — validar aqui evita ir e voltar pra ver um erro em inglês
-  // vindo direto do Identity (não localizado nesta versão).
   readonly form = this.fb.nonNullable.group(
     {
       name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/)]],
+      password: ['', passwordValidators],
       confirmPassword: ['', [Validators.required]],
     },
     { validators: [passwordsMatchValidator] },
@@ -78,10 +76,4 @@ export class RegisterComponent {
       },
     });
   }
-}
-
-function passwordsMatchValidator(control: AbstractControl): ValidationErrors | null {
-  const password = control.get('password')?.value;
-  const confirmPassword = control.get('confirmPassword')?.value;
-  return password && confirmPassword && password !== confirmPassword ? { passwordMismatch: true } : null;
 }

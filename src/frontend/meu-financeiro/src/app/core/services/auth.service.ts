@@ -2,7 +2,16 @@ import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthResponse, HouseholdAccessProfile, HouseholdRole, LoginRequest, RegisterRequest, UserResponse } from '../models/auth.model';
+import {
+  AuthResponse,
+  ForgotPasswordRequest,
+  HouseholdAccessProfile,
+  HouseholdRole,
+  LoginRequest,
+  RegisterRequest,
+  ResetPasswordRequest,
+  UserResponse,
+} from '../models/auth.model';
 
 const ACCESS_TOKEN_KEY = 'mf_access_token';
 const REFRESH_TOKEN_KEY = 'mf_refresh_token';
@@ -59,6 +68,14 @@ export class AuthService {
     return this.http
       .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken: this.refreshToken })
       .pipe(tap((response) => this.storeSession(response)));
+  }
+
+  forgotPassword(request: ForgotPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/forgot-password`, request);
+  }
+
+  resetPassword(request: ResetPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/reset-password`, request);
   }
 
   logout(): void {

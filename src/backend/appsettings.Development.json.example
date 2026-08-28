@@ -22,6 +22,20 @@
     "AllowedOrigins": [ "http://localhost:4200", "https://localhost:4200" ]
   },
 
+  "App": {
+    "FrontendBaseUrl": "http://localhost:4200"
+  },
+
+  "_comment_smtp": "Opcional — sem Smtp:Host, o link de redefinição de senha só é logado no console (docs/23-configuracao-local.md).",
+  "Smtp": {
+    "Host": "",
+    "Port": 587,
+    "User": "",
+    "Password": "",
+    "FromEmail": "",
+    "FromName": "MeuFinanceiro"
+  },
+
   "Logging": {
     "LogLevel": {
       "Default": "Information",

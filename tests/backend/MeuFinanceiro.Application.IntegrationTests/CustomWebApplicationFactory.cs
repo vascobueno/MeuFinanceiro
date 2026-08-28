@@ -1,3 +1,4 @@
+using MeuFinanceiro.Application.Common.Interfaces;
 using MeuFinanceiro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -5,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MeuFinanceiro.Application.IntegrationTests;
 
@@ -21,6 +23,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     // scope/requisição HTTP), então um Guid.NewGuid() ali dentro criava um banco InMemory
     // novo e vazio por requisição — dados gravados numa chamada nunca apareciam na próxima.
     private readonly string _databaseName = $"MeuFinanceiro.Tests.{Guid.NewGuid()}";
+
+    public TestEmailSender EmailSender => Services.GetRequiredService<TestEmailSender>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -42,6 +46,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             foreach (var descriptor in descriptors) services.Remove(descriptor);
 
             services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(_databaseName));
+
+            // Substitui o SmtpEmailSender por um fake em memória — os testes de reset de senha
+            // (PasswordResetEndpointTests) leem o token direto de TestEmailSender.LastEmail em
+            // vez de precisar de um SMTP de verdade.
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<TestEmailSender>();
+            services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<TestEmailSender>());
         });
 
         builder.ConfigureAppConfiguration((_, configBuilder) =>

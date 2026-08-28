@@ -52,13 +52,16 @@
   margin-bottom: 0;
 }
 
-.mf-login-row-center a {
+.mf-login-row a {
   color: var(--mf-primary);
-  font-weight: 700;
   text-decoration: none;
 }
-.mf-login-row-center a:hover {
+.mf-login-row a:hover {
   text-decoration: underline;
+}
+
+.mf-login-row-center a {
+  font-weight: 700;
 }
 
 .mf-login-error {

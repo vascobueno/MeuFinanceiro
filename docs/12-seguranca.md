@@ -18,6 +18,12 @@
   é ortogonal ao household pessoal do administrador — administra todos os households via
   `AdminController` (`adminGuard` no frontend), semeada só por configuração
   (`AdminSeed:Email`), sem auto-promoção.
+- Recuperação de senha: token gerado pelo `DataProtectorTokenProvider` padrão do ASP.NET
+  Identity (via `SecurityStamp`, sem tabela própria), validade de 1h, uso único. `POST
+  /auth/forgot-password` sempre responde 204 e manda a mesma auditoria
+  (`ForgotPasswordRequested`) exista ou não o e-mail — nunca revela se uma conta existe.
+  Envio por SMTP configurável (`Smtp:*`); sem `Smtp:Host` configurado, o link só é logado
+  (nunca exposto na resposta da API).
 - Key Vault.
 - Managed Identity.
 - GitHub Actions com OIDC.

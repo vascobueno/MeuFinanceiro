@@ -20,3 +20,4 @@
 - RF018 Perfis de acesso por membro (Completo/Editor/Visualizador)
 - RF019 Relatórios imprimíveis/PDF (projeção de receitas, gastos recorrentes, auditoria)
 - RF020 Skins de cores (7 temas visuais selecionáveis)
+- RF021 Recuperação de senha (link por e-mail, sem revelar se a conta existe)

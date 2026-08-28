@@ -1,3 +1,4 @@
+using System.Net;
 using MeuFinanceiro.Application.Auth;
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
@@ -8,6 +9,7 @@ using MeuFinanceiro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace MeuFinanceiro.Infrastructure.Services;
 
@@ -19,6 +21,8 @@ public class AuthService : IAuthService
     private readonly IAuditService _auditService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AppDbContext _db;
+    private readonly IEmailSender _emailSender;
+    private readonly IConfiguration _configuration;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -26,7 +30,9 @@ public class AuthService : IAuthService
         IHouseholdService householdService,
         IAuditService auditService,
         IHttpContextAccessor httpContextAccessor,
-        AppDbContext db)
+        AppDbContext db,
+        IEmailSender emailSender,
+        IConfiguration configuration)
     {
         _userManager = userManager;
         _tokenService = tokenService;
@@ -34,6 +40,8 @@ public class AuthService : IAuthService
         _auditService = auditService;
         _httpContextAccessor = httpContextAccessor;
         _db = db;
+        _emailSender = emailSender;
+        _configuration = configuration;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
@@ -129,6 +137,63 @@ public class AuthService : IAuthService
             stored.RevokedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
         }
+    }
+
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        // Household só é conhecido se o usuário existir — mesmo padrão de LoginAsync pra
+        // e-mail inexistente. Sempre audita a tentativa, exista ou não a conta.
+        Guid? householdId = null;
+        if (user is not null)
+        {
+            householdId = (await _db.HouseholdMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.HouseholdId;
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var frontendBaseUrl = _configuration["App:FrontendBaseUrl"] ?? "http://localhost:4200";
+            var link = $"{frontendBaseUrl}/redefinir-senha?email={WebUtility.UrlEncode(user.Email)}&token={WebUtility.UrlEncode(token)}";
+
+            var body = $"""
+                <p>Olá, {user.Name}.</p>
+                <p>Recebemos um pedido para redefinir sua senha no MeuFinanceiro. Clique no link abaixo pra escolher uma nova senha (válido por 1 hora):</p>
+                <p><a href="{link}">{link}</a></p>
+                <p>Se você não pediu isso, pode ignorar este e-mail.</p>
+                """;
+            await _emailSender.SendAsync(user.Email!, "Redefinir senha — MeuFinanceiro", body, ct);
+        }
+
+        // Sempre a mesma ação/resposta, exista ou não o e-mail — evita enumeração de contas
+        // (docs/12-seguranca.md).
+        await _auditService.LogAccessAsync("ForgotPasswordRequested", user?.Id, householdId, GetClientIp(), GetUserAgent(), ct);
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        var result = user is null ? null : await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+
+        if (user is null || !result!.Succeeded)
+        {
+            // Mesma mensagem tanto pra "e-mail não existe" quanto pra "token inválido/expirado"
+            // — não dá pra saber qual dos dois aconteceu (evita enumeração de contas). Falha de
+            // política de senha (senha nova fraca) tem sua própria mensagem, vinda do Identity,
+            // que não vaza nada sobre a conta.
+            var isWeakPassword = result?.Errors.Any(e => e.Code is not ("InvalidToken")) ?? false;
+            if (isWeakPassword)
+                throw new BusinessRuleException("senha-invalida", string.Join(" ", result!.Errors.Select(e => e.Description)));
+
+            throw new BusinessRuleException("token-invalido", "Link de redefinição inválido ou expirado.");
+        }
+
+        var activeTokens = await _db.RefreshTokens.Where(rt => rt.UserId == user.Id && rt.RevokedAt == null).ToListAsync(ct);
+        foreach (var token in activeTokens)
+            token.RevokedAt = DateTime.UtcNow;
+
+        var householdId = (await _db.HouseholdMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.HouseholdId;
+        await _auditService.LogAccessAsync("PasswordResetCompleted", user.Id, householdId, GetClientIp(), GetUserAgent(), ct);
+
+        await _db.SaveChangesAsync(ct);
     }
 
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken ct)

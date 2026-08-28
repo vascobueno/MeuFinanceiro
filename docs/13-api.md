@@ -8,6 +8,10 @@ POST `/api/v1/auth/register`
 POST `/api/v1/auth/login`
 POST `/api/v1/auth/refresh`
 POST `/api/v1/auth/logout`
+POST `/api/v1/auth/forgot-password` (sem autenticação; sempre 204, exista ou não o e-mail —
+evita enumeração de contas)
+POST `/api/v1/auth/reset-password` (sem autenticação; token do Identity, 1h de validade,
+revoga todos os refresh tokens do usuário ao concluir)
 
 ## Transactions (Lançamentos)
 GET `/api/v1/transactions` (paginação, filtros, ordenação)
