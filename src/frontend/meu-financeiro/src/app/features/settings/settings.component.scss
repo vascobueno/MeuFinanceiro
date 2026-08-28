@@ -1,0 +1,154 @@
+.mf-list-header {
+  margin-bottom: 1rem;
+}
+
+.mf-panel {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--mf-shadow);
+}
+
+.mf-categories-card {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mf-import-hint {
+  margin-bottom: 1rem;
+}
+
+.mf-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.mf-inline-spinner {
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.mf-alert {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.mf-alert-danger {
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--mf-red);
+}
+
+.mf-alert-success {
+  background: rgba(18, 150, 111, 0.1);
+  color: var(--mf-green);
+}
+
+.mf-alert-warning {
+  background: rgba(197, 138, 0, 0.1);
+  color: var(--mf-yellow);
+}
+
+.mf-alert-warning button {
+  margin-left: 0.5rem;
+}
+
+.mf-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.mf-preview-stat {
+  background: var(--mf-bg);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mf-fw-semibold {
+  font-weight: 600;
+}
+
+.mf-text-success {
+  color: var(--mf-green);
+}
+
+.mf-text-danger {
+  color: var(--mf-red);
+}
+
+.mf-text-warning {
+  color: var(--mf-yellow);
+}
+
+.mf-preview-table-scroll {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.mf-preview-table,
+.mf-history-table {
+  width: 100%;
+}
+
+.mf-col-end {
+  text-align: right;
+}
+
+.mf-row-error {
+  font-size: 0.75rem;
+  color: var(--mf-red);
+}
+
+.mf-confirm-button {
+  margin-top: 0.75rem;
+}
+
+.mf-skin-picker {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mf-skin-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mf-skin-swatch-active {
+  border-color: var(--mf-text);
+}
+
+.mf-skin-swatch mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 700px) {
+  .mf-preview-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .mf-categories-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}

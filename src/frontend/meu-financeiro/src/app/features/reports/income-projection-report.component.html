@@ -1,0 +1,51 @@
+<div class="mf-report-actions no-print">
+  <button mat-stroked-button color="primary" type="button" (click)="print()">
+    <mat-icon>print</mat-icon>
+    Imprimir / Salvar PDF
+  </button>
+</div>
+
+<mf-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="!loading() && !error() && entries().length === 0"
+  emptyMessage="Nenhuma receita prevista para os próximos 90 dias."
+  [onRetry]="load.bind(this)"
+></mf-list-state>
+
+@if (!loading() && !error()) {
+  <div class="mf-panel">
+    <div class="mf-report-head">
+      <span class="mf-report-brand"><mat-icon>savings</mat-icon>MeuFinanceiro</span>
+      <span class="mf-report-meta">Gerado em {{ generatedAt | date: 'dd/MM/yyyy \'às\' HH:mm' }}</span>
+    </div>
+
+    <div class="mf-report-title">Projeção de receitas — próximos 90 dias</div>
+
+    @if (entries().length > 0) {
+      <table class="mf-report-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th class="mf-col-end">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of entries(); track entry.date + entry.description) {
+            <tr>
+              <td>{{ entry.date | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ entry.description }}</td>
+              <td class="mf-col-end">{{ entry.amount | currency: 'BRL' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="mf-report-total">
+        <span>Total projetado</span>
+        <span>{{ total() | currency: 'BRL' }}</span>
+      </div>
+    }
+  </div>
+}

@@ -1,0 +1,110 @@
+// MeuFinanceiro — tema Angular Material M3 (docs/14-angular.md).
+// O Sass do Material não gera paleta M3 a partir de um hex arbitrário — só oferece
+// paletas nomeadas predefinidas. Por skin, a paleta predefinida mais próxima dá a base
+// estrutural (contraste, estados de hover/foco/disabled corretos) e os tokens de sistema
+// mais visíveis são sobrescritos com o hex exato da marca logo em seguida — customização
+// documentada pelo próprio Material, sem precisar reescrever a paleta inteira.
+//
+// Parte 6 do plano (7 skins de cores): um mat.theme() por skin, escopado por seletor
+// [data-theme="X"] — é a forma documentada do próprio Angular Material de ter múltiplos temas
+// na mesma página. Só trocar a variável --mf-primary em runtime NÃO re-tema os componentes
+// Material de verdade (muitos tokens internos, ex. --mat-sys-primary-container, são gerados
+// em build time a partir da paleta escolhida aqui, não seguem --mf-primary sozinhos).
+@use '@angular/material' as mat;
+@use 'tokens';
+
+html {
+  height: 100%;
+}
+
+html:not([data-theme]), html[data-theme="laranja"] {
+  @include mat.theme((
+    color: (primary: mat.$orange-palette, tertiary: mat.$violet-palette),
+    typography: Roboto,
+    density: -5,
+  ));
+  --mat-sys-primary: var(--mf-primary);
+  --mat-sys-error: var(--mf-red);
+}
+
+html[data-theme="azul"] {
+  @include mat.theme((
+    color: (primary: mat.$blue-palette, tertiary: mat.$orange-palette),
+    typography: Roboto,
+    density: -5,
+  ));
+  --mat-sys-primary: var(--mf-primary);
+  --mat-sys-error: var(--mf-red);
+}
+
+html[data-theme="verde"] {
+  @include mat.theme((
+    color: (primary: mat.$green-palette, tertiary: mat.$orange-palette),
+    typography: Roboto,
+    density: -5,
+  ));
+  --mat-sys-primary: var(--mf-primary);
+  --mat-sys-error: var(--mf-red);
+}
+
+html[data-theme="roxo"] {
+  @include mat.theme((
+    color: (primary: mat.$violet-palette, tertiary: mat.$orange-palette),
+    typography: Roboto,
+    density: -5,
+  ));
+  --mat-sys-primary: var(--mf-primary);
+  --mat-sys-error: var(--mf-red);
+}
+
+// Cinza e Preto não têm paleta cromática equivalente no Material — reaproveita blue-palette
+// só pela estrutura de contraste/estados, o hex visível vem do token (ver _tokens.scss).
+html[data-theme="cinza"] {
+  @include mat.theme((
+    color: (primary: mat.$blue-palette, tertiary: mat.$orange-palette),
+    typography: Roboto,
+    density: -5,
+  ));
+  --mat-sys-primary: var(--mf-primary);
+  --mat-sys-error: var(--mf-red);
+}
+
+html[data-theme="preto"] {
+  @include mat.theme((
+    color: (primary: mat.$blue-palette, tertiary: mat.$orange-palette),
+    typography: Roboto,
+    density: -5,
+  ));
+  --mat-sys-primary: var(--mf-primary);
+  --mat-sys-error: var(--mf-red);
+}
+
+html[data-theme="amarelo"] {
+  @include mat.theme((
+    color: (primary: mat.$yellow-palette, tertiary: mat.$violet-palette),
+    typography: Roboto,
+    density: -5,
+  ));
+  --mat-sys-primary: var(--mf-primary);
+  --mat-sys-error: var(--mf-red);
+}
+
+// subscriptSizing: 'dynamic' (ver providers dos componentes de formulário) já remove o
+// espaço reservado para hint/erro quando vazio; sem essa borda mínima os campos empilhados
+// (fora de um .mf-form-grid, que já tem gap próprio) ficam com as bordas se tocando.
+.mat-mdc-form-field-subscript-wrapper {
+  min-height: 8px;
+  margin-bottom: 4px;
+}
+
+body {
+  // Tema claro (docs/screens/*/mockup.html não define modo escuro nesta versão).
+  color-scheme: light;
+
+  background-color: var(--mf-bg);
+  color: var(--mf-text);
+  font: var(--mat-sys-body-medium);
+
+  margin: 0;
+  height: 100%;
+}

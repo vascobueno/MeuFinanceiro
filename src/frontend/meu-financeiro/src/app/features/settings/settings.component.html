@@ -1,0 +1,198 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mat-icon svgIcon="mf-settings" class="mf-page-title-icon"></mat-icon>Configurações</h2>
+  <div class="mf-sub">Categorias e migração inicial de dados.</div>
+</div>
+
+<mat-card appearance="outlined" class="mf-panel mf-categories-card">
+  <div>
+    <h5>Categorias</h5>
+    <p class="mf-sub">Gerencie categorias e subcategorias usadas nos lançamentos.</p>
+  </div>
+  <a mat-stroked-button color="primary" routerLink="/categorias">Gerenciar categorias</a>
+</mat-card>
+
+<mat-card appearance="outlined" class="mf-panel mf-categories-card">
+  <div>
+    <h5>Membros da família</h5>
+    <p class="mf-sub">Quem mais tem acesso a estes dados financeiros, e com qual papel.</p>
+  </div>
+  <a mat-stroked-button color="primary" routerLink="/membros">Gerenciar membros</a>
+</mat-card>
+
+<mat-card appearance="outlined" class="mf-panel">
+  <h5>Aparência</h5>
+  <p class="mf-sub">Escolha a cor de destaque do sistema.</p>
+  <div class="mf-skin-picker">
+    @for (skin of themeService.skins; track skin) {
+      <button
+        type="button"
+        class="mf-skin-swatch"
+        [class.mf-skin-swatch-active]="themeService.theme() === skin"
+        [style.background]="themeService.swatchColor(skin)"
+        [attr.aria-label]="skin"
+        [title]="skin"
+        (click)="themeService.theme.set(skin)"
+      >
+        @if (themeService.theme() === skin) {
+          <mat-icon [style.color]="themeService.swatchCheckColor(skin)">check</mat-icon>
+        }
+      </button>
+    }
+  </div>
+</mat-card>
+
+<mat-card appearance="outlined" class="mf-panel">
+  <h5>Importação inicial (Excel)</h5>
+  <p class="mf-sub mf-import-hint">
+    Use esta importação apenas uma vez, para migrar seu controle antigo em Excel. Depois da
+    migração, novos lançamentos devem ser cadastrados diretamente pelo sistema. A planilha deve
+    ter cabeçalho na primeira linha com as colunas: <code>Data, Descrição, Tipo, Conta, Cartão,
+    Categoria, Valor, Parcela, Recorrência, Observação</code> (Tipo = Receita ou Despesa; informe
+    Conta OU Cartão).
+  </p>
+
+  <div class="mf-upload-row">
+    <input #fileInput type="file" accept=".xlsx" (change)="onFileSelected($event)" hidden />
+    <button mat-stroked-button type="button" (click)="fileInput.click()">Escolher arquivo</button>
+    <span class="mf-sub">{{ selectedFile?.name ?? 'Nenhum arquivo selecionado' }}</span>
+    <button mat-flat-button color="primary" type="button" [disabled]="!selectedFile || uploading()" (click)="upload(false)">
+      @if (uploading()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" class="mf-inline-spinner"></mat-progress-spinner>
+      }
+      Validar planilha
+    </button>
+  </div>
+
+  @if (uploadError()) {
+    <div class="mf-alert mf-alert-danger">{{ uploadError() }}</div>
+  }
+
+  @if (confirmResult()) {
+    <div class="mf-alert mf-alert-success">{{ confirmResult()?.resultSummary }}</div>
+  }
+
+  @if (preview(); as p) {
+    @if (p.alreadyImportedBefore) {
+      <div class="mf-alert mf-alert-warning">
+        Este arquivo (mesmo conteúdo) já foi importado anteriormente. Se você realmente deseja
+        reimportá-lo, confirme abaixo.
+        <button mat-stroked-button type="button" (click)="upload(true)">Reimportar mesmo assim</button>
+      </div>
+    }
+
+    <div class="mf-preview-stats">
+      <div class="mf-preview-stat">
+        <span class="mf-sub">Total de linhas</span>
+        <span class="mf-fw-semibold">{{ p.rowsTotal }}</span>
+      </div>
+      <div class="mf-preview-stat">
+        <span class="mf-sub">Válidas</span>
+        <span class="mf-fw-semibold mf-text-success">{{ p.rowsValid }}</span>
+      </div>
+      <div class="mf-preview-stat">
+        <span class="mf-sub">Com erro</span>
+        <span class="mf-fw-semibold mf-text-danger">{{ p.rowsInvalid }}</span>
+      </div>
+      <div class="mf-preview-stat">
+        <span class="mf-sub">Possíveis duplicidades</span>
+        <span class="mf-fw-semibold mf-text-warning">{{ p.rowsPossibleDuplicate }}</span>
+      </div>
+    </div>
+
+    <div class="mf-preview-table-scroll">
+      <table mat-table [dataSource]="p.rows" class="mf-preview-table">
+        <ng-container matColumnDef="rowNumber">
+          <th mat-header-cell *matHeaderCellDef>#</th>
+          <td mat-cell *matCellDef="let row">{{ row.rowNumber }}</td>
+        </ng-container>
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef>Data</th>
+          <td mat-cell *matCellDef="let row">{{ row.date | date: 'dd/MM/yyyy' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef>Descrição</th>
+          <td mat-cell *matCellDef="let row">{{ row.description }}</td>
+        </ng-container>
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef>Tipo</th>
+          <td mat-cell *matCellDef="let row">{{ row.typeRaw }}</td>
+        </ng-container>
+        <ng-container matColumnDef="origin">
+          <th mat-header-cell *matHeaderCellDef>Origem</th>
+          <td mat-cell *matCellDef="let row">{{ row.accountOrCardRaw }}</td>
+        </ng-container>
+        <ng-container matColumnDef="category">
+          <th mat-header-cell *matHeaderCellDef>Categoria</th>
+          <td mat-cell *matCellDef="let row">{{ row.categoryRaw || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef class="mf-col-end">Valor</th>
+          <td mat-cell *matCellDef="let row" class="mf-col-end">{{ row.amount != null ? (row.amount | currency: 'BRL') : '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Situação</th>
+          <td mat-cell *matCellDef="let row">
+            @if (!row.isValid) {
+              <span class="mf-badge mf-badge-bad" [title]="row.errors.join('; ')">Erro</span>
+              <div class="mf-row-error">{{ row.errors.join('; ') }}</div>
+            } @else if (row.isPossibleDuplicate) {
+              <span class="mf-badge mf-badge-warn">Possível duplicidade</span>
+            } @else {
+              <span class="mf-badge mf-badge-ok">OK</span>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="previewColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: previewColumns"></tr>
+      </table>
+    </div>
+
+    <button
+      mat-flat-button
+      color="primary"
+      class="mf-confirm-button"
+      type="button"
+      [disabled]="confirming() || p.rowsValid === 0 || p.importFileId === '00000000-0000-0000-0000-000000000000'"
+      (click)="confirmImport()"
+    >
+      @if (confirming()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" class="mf-inline-spinner"></mat-progress-spinner>
+      }
+      Confirmar importação ({{ p.rowsValid }} linha(s) válida(s))
+    </button>
+  }
+</mat-card>
+
+<mat-card appearance="outlined" class="mf-panel">
+  <h6>Histórico de importações</h6>
+  <mf-list-state [loading]="loadingHistory()" [error]="null" [empty]="!loadingHistory() && history().length === 0" emptyMessage="Nenhuma importação realizada ainda."></mf-list-state>
+
+  @if (!loadingHistory() && history().length > 0) {
+    <table mat-table [dataSource]="history()" class="mf-history-table">
+      <ng-container matColumnDef="fileName">
+        <th mat-header-cell *matHeaderCellDef>Arquivo</th>
+        <td mat-cell *matCellDef="let item">{{ item.originalFileName }}</td>
+      </ng-container>
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let item">{{ statusLabel(item.status) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="date">
+        <th mat-header-cell *matHeaderCellDef>Data</th>
+        <td mat-cell *matCellDef="let item">{{ item.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="imported">
+        <th mat-header-cell *matHeaderCellDef class="mf-col-end">Importados</th>
+        <td mat-cell *matCellDef="let item" class="mf-col-end">{{ item.rowsImported ?? '—' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="rejected">
+        <th mat-header-cell *matHeaderCellDef class="mf-col-end">Rejeitados</th>
+        <td mat-cell *matCellDef="let item" class="mf-col-end">{{ item.rowsRejected ?? '—' }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: historyColumns"></tr>
+    </table>
+  }
+</mat-card>

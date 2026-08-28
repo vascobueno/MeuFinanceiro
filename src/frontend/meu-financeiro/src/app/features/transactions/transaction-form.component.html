@@ -1,0 +1,193 @@
+<div class="mf-form-header">
+  <div>
+    <h2 class="mf-page-title"><mat-icon svgIcon="mf-transactions" class="mf-page-title-icon"></mat-icon>{{ editingId() ? 'Editar lançamento' : 'Novo lançamento' }}</h2>
+    <div class="mf-sub">Registre uma movimentação com sugestões inteligentes.</div>
+  </div>
+  <a mat-stroked-button routerLink="/lancamentos">Voltar</a>
+</div>
+
+@if (!loading()) {
+  <mat-card appearance="outlined" class="mf-form-card">
+    @if (error()) {
+      <div class="mf-form-error" role="alert">{{ error() }}</div>
+    }
+
+    @if (!editingId()) {
+      <mat-button-toggle-group class="mf-mode-toggle" [(ngModel)]="mode" name="mode">
+        <mat-button-toggle value="simple">Simples</mat-button-toggle>
+        <mat-button-toggle value="installment">Parcelamento</mat-button-toggle>
+        <mat-button-toggle value="recurring">Recorrência</mat-button-toggle>
+      </mat-button-toggle-group>
+    }
+
+    <mf-description-autocomplete [(value)]="description" (suggestionSelected)="onSuggestionSelected($event)"></mf-description-autocomplete>
+
+    <div class="mf-form-grid mf-grid-2">
+      <mat-form-field appearance="outline">
+        <mat-label>Data</mat-label>
+        <input matInput [matDatepicker]="datePicker" [(ngModel)]="transactionDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="datePicker"></mat-datepicker-toggle>
+        <mat-datepicker #datePicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select [(ngModel)]="type" [disabled]="!!editingId()">
+          <mat-option [value]="TransactionType.Expense">Despesa</mat-option>
+          <mat-option [value]="TransactionType.Income">Receita</mat-option>
+          <mat-option [value]="TransactionType.Transfer">Transferência entre contas</mat-option>
+          <mat-option [value]="TransactionType.InvestmentApplication">Aplicação (investimento)</mat-option>
+          <mat-option [value]="TransactionType.InvestmentRedemption">Resgate (investimento)</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Transferência: apenas contas próprias, não é receita/despesa (regra 9) -->
+    @if (type === TransactionType.Transfer) {
+      <div class="mf-form-grid mf-grid-2">
+        <mat-form-field appearance="outline">
+          <mat-label>Conta de origem</mat-label>
+          <mat-select [(ngModel)]="accountId">
+            <mat-option [value]="null">Selecione...</mat-option>
+            @for (account of accounts(); track account.id) {
+              <mat-option [value]="account.id">{{ account.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Conta de destino</mat-label>
+          <mat-select [(ngModel)]="destinationAccountId">
+            <mat-option [value]="null">Selecione...</mat-option>
+            @for (account of accounts(); track account.id) {
+              <mat-option [value]="account.id">{{ account.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    }
+
+    <!-- Origem conta/cartão para lançamentos que não são transferência -->
+    @if (type !== TransactionType.Transfer) {
+      <div class="mf-form-grid mf-grid-3">
+        <mat-form-field appearance="outline">
+          <mat-label>Origem</mat-label>
+          <mat-select [(ngModel)]="originKind">
+            <mat-option value="account">Conta</mat-option>
+            <mat-option value="card">Cartão</mat-option>
+          </mat-select>
+        </mat-form-field>
+        @if (originKind === 'account') {
+          <mat-form-field appearance="outline">
+            <mat-label>Conta</mat-label>
+            <mat-select [(ngModel)]="accountId">
+              <mat-option [value]="null">Selecione...</mat-option>
+              @for (account of accounts(); track account.id) {
+                <mat-option [value]="account.id">{{ account.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+        @if (originKind === 'card') {
+          <mat-form-field appearance="outline">
+            <mat-label>Cartão</mat-label>
+            <mat-select [(ngModel)]="creditCardId">
+              <mat-option [value]="null">Selecione...</mat-option>
+              @for (card of cards(); track card.id) {
+                <mat-option [value]="card.id">{{ card.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+        <mat-form-field appearance="outline">
+          <mat-label>Categoria</mat-label>
+          <mat-select [(ngModel)]="categoryId">
+            <mat-option [value]="null">Sem categoria</mat-option>
+            @for (category of categories(); track category.id) {
+              <mat-option [value]="category.id">{{ category.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    }
+
+    <div class="mf-form-grid mf-grid-2">
+      <mf-money-input [(ngModel)]="amount" name="amount"></mf-money-input>
+
+      @if (editingId()) {
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select [(ngModel)]="status">
+            <mat-option [value]="0">Pendente</mat-option>
+            <mat-option [value]="1">Confirmado</mat-option>
+            <mat-option [value]="2">Conciliado</mat-option>
+          </mat-select>
+        </mat-form-field>
+      }
+    </div>
+
+    <!-- Parcelamento (Modo A: valor total / Modo B: valor da parcela) — regras 15/16/17 -->
+    @if (mode === 'installment' && !editingId()) {
+      <mat-card appearance="outlined" class="mf-form-subsection">
+        <h6>Parcelamento</h6>
+        <div class="mf-form-grid mf-grid-3">
+          <mat-form-field appearance="outline">
+            <mat-label>Modo</mat-label>
+            <mat-select [(ngModel)]="installmentMode">
+              <mat-option [value]="InstallmentMode.TotalAmount">Valor total ÷ parcelas</mat-option>
+              <mat-option [value]="InstallmentMode.InstallmentAmount">Valor por parcela × quantidade</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Quantidade</mat-label>
+            <input matInput type="number" min="1" [(ngModel)]="installmentCount" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>1ª parcela em</mat-label>
+            <input matInput [matDatepicker]="firstDuePicker" [(ngModel)]="firstDueDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="firstDuePicker"></mat-datepicker-toggle>
+            <mat-datepicker #firstDuePicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+        <p class="mf-sub mf-form-hint">
+          O valor acima é interpretado como {{ installmentMode === InstallmentMode.TotalAmount ? 'o valor total do parcelamento' : 'o valor de cada parcela' }}.
+          A soma das parcelas sempre fecha exatamente o valor principal; eventual arredondamento fica na última parcela.
+        </p>
+      </mat-card>
+    }
+
+    <!-- Recorrência: alteração futura cria nova versão a partir da data de vigência (regra 13) -->
+    @if (mode === 'recurring' && !editingId()) {
+      <mat-card appearance="outlined" class="mf-form-subsection">
+        <h6>Recorrência</h6>
+        <div class="mf-form-grid mf-grid-2">
+          <mat-form-field appearance="outline">
+            <mat-label>Frequência</mat-label>
+            <mat-select [(ngModel)]="recurrenceFrequency">
+              <mat-option [value]="RecurrenceFrequency.Weekly">Semanal</mat-option>
+              <mat-option [value]="RecurrenceFrequency.Monthly">Mensal</mat-option>
+              <mat-option [value]="RecurrenceFrequency.Yearly">Anual</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Data final (opcional)</mat-label>
+            <input matInput [matDatepicker]="endDatePicker" [(ngModel)]="recurrenceEndDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="endDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #endDatePicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+      </mat-card>
+    }
+
+    <mat-form-field appearance="outline" class="mf-form-full">
+      <mat-label>Observação</mat-label>
+      <textarea matInput rows="2" [(ngModel)]="notes"></textarea>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="submit()">
+      @if (saving()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" class="mf-form-spinner"></mat-progress-spinner>
+      }
+      Salvar
+    </button>
+  </mat-card>
+}

@@ -1,0 +1,68 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mat-icon svgIcon="mf-admin" class="mf-page-title-icon"></mat-icon>Perfis de acesso</h2>
+  <div class="mf-sub">Todos os membros de todos os households — ajuste o perfil de acesso sem entrar household por household.</div>
+</div>
+
+<div class="mf-filters-card">
+  <mat-form-field appearance="outline">
+    <mat-label>Buscar</mat-label>
+    <input matInput [(ngModel)]="search" (ngModelChange)="applyFilter()" placeholder="Nome, e-mail ou household" />
+  </mat-form-field>
+</div>
+
+@if (actionError()) {
+  <div class="mf-form-error" role="alert">{{ actionError() }}</div>
+}
+
+<div class="mf-panel">
+  <mf-list-state
+    [loading]="loading()"
+    [error]="error()"
+    [empty]="!loading() && !error() && members().length === 0"
+    emptyMessage="Nenhum membro cadastrado ainda."
+    [onRetry]="load.bind(this)"
+  ></mf-list-state>
+
+  @if (!loading() && !error() && members().length > 0) {
+    <table mat-table [dataSource]="dataSource" matSort class="mf-members-table">
+      <ng-container matColumnDef="household">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Household</th>
+        <td mat-cell *matCellDef="let m">{{ m.householdName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Membro</th>
+        <td mat-cell *matCellDef="let m">{{ m.name }} ({{ m.email }})</td>
+      </ng-container>
+
+      <ng-container matColumnDef="role">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Papel</th>
+        <td mat-cell *matCellDef="let m">
+          <span class="mf-badge" [ngClass]="m.role === HouseholdRole.Owner ? 'mf-badge-ok' : 'mf-badge-neutral'">
+            {{ m.role === HouseholdRole.Owner ? 'Owner' : 'Member' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="accessProfile">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Acesso</th>
+        <td mat-cell *matCellDef="let m">
+          <mat-form-field appearance="outline" class="mf-access-select">
+            <mat-select
+              [value]="m.accessProfile"
+              [disabled]="m.role === HouseholdRole.Owner"
+              (selectionChange)="updateAccessProfile(m, $event.value)"
+            >
+              <mat-option [value]="HouseholdAccessProfile.Completo">Completo</mat-option>
+              <mat-option [value]="HouseholdAccessProfile.Editor">Editor</mat-option>
+              <mat-option [value]="HouseholdAccessProfile.Visualizador">Visualizador</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+  }
+</div>

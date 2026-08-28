@@ -1,0 +1,74 @@
+.mf-form-header {
+  margin-bottom: 1rem;
+}
+
+.mf-loading-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.mf-form-card {
+  max-width: 760px;
+  padding: 1.5rem;
+  box-shadow: var(--mf-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mf-form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.mf-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.mf-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mf-form-info {
+  background: rgba(223, 88, 48, 0.08);
+  color: var(--mf-primary);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.mf-form-error {
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--mf-red);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.mf-form-success {
+  background: rgba(18, 150, 111, 0.1);
+  color: var(--mf-green);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.mf-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mf-form-spinner {
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+@media (max-width: 700px) {
+  .mf-grid-2,
+  .mf-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}

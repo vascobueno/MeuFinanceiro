@@ -1,0 +1,111 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mat-icon svgIcon="mf-invoices" class="mf-page-title-icon"></mat-icon>Faturas</h2>
+  <div class="mf-sub">Listar e acompanhar faturas de cartão.</div>
+</div>
+
+<div class="mf-filters-card">
+  <div class="mf-filters-grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Cartão</mat-label>
+      <mat-select [(ngModel)]="filter.creditCardId" (selectionChange)="applyFilters()">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (card of cards(); track card.id) {
+          <mat-option [value]="card.id">{{ card.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mf-date-range [range]="period" (rangeChange)="onPeriodChange($event)"></mf-date-range>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="filter.status" (selectionChange)="applyFilters()">
+        <mat-option [value]="null">Todos</mat-option>
+        <mat-option [value]="CardInvoiceStatus.Aberta">Aberta</mat-option>
+        <mat-option [value]="CardInvoiceStatus.Vencida">Vencida</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor mín.</mat-label>
+      <input matInput type="number" step="0.01" [(ngModel)]="filter.minAmount" (change)="applyFilters()" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor máx.</mat-label>
+      <input matInput type="number" step="0.01" [(ngModel)]="filter.maxAmount" (change)="applyFilters()" />
+    </mat-form-field>
+  </div>
+</div>
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && invoices().length === 0"
+      emptyMessage="Nenhuma fatura encontrada para os filtros selecionados."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && invoices().length > 0) {
+      <table
+        mat-table
+        [dataSource]="invoices()"
+        matSort
+        [matSortActive]="filter.sortBy ?? 'fechamento'"
+        [matSortDirection]="filter.sortDir ?? 'desc'"
+        [matSortDisableClear]="true"
+        (matSortChange)="onSortChange($event)"
+        class="mf-invoices-table"
+      >
+        <ng-container matColumnDef="cartao">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Cartão</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.creditCardName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="periodo">
+          <th mat-header-cell *matHeaderCellDef>Período</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.closingDate | date: 'MM/yyyy' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="fechamento">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Fechamento</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.closingDate | date: 'dd/MM' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="vencimento">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Vencimento</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.dueDate | date: 'dd/MM' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="total">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="mf-col-end">Total</th>
+          <td mat-cell *matCellDef="let invoice" class="mf-col-end">{{ invoice.totalAmount | currency: 'BRL' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let invoice">
+            <span class="mf-badge" [ngClass]="invoice.status === CardInvoiceStatus.Aberta ? 'mf-badge-neutral' : 'mf-badge-bad'">
+              {{ invoice.status === CardInvoiceStatus.Aberta ? 'Aberta' : 'Vencida' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    }
+
+    @if (!loading() && !error() && invoices().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="filter.page"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>

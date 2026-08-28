@@ -1,0 +1,211 @@
+<mat-sidenav-container class="mf-shell-container">
+  <mat-sidenav
+    #drawer
+    class="mf-sidenav"
+    [class.mf-collapsed]="isCollapsedDesktop()"
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="!isMobile()"
+    [fixedInViewport]="isMobile()"
+  >
+    <div class="mf-brand">
+      <img src="logo-icon.png" alt="" class="mf-brand-icon" />
+      <span>MeuFinanceiro</span>
+      <button
+        mat-icon-button
+        *ngIf="!isMobile()"
+        class="mf-sidebar-toggle"
+        (click)="toggleCollapsed()"
+        [attr.aria-label]="collapsed() ? 'Expandir menu' : 'Recolher menu'"
+        [matTooltip]="collapsed() ? 'Expandir menu' : 'Recolher menu'"
+        matTooltipPosition="right"
+      >
+        <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="mf-nav-section">Principal</div>
+    <mat-nav-list>
+      <a mat-list-item routerLink="/dashboard" routerLinkActive="mf-active" [matTooltip]="'Dashboard'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-dashboard" matListItemIcon></mat-icon>
+        <span matListItemTitle>Dashboard</span>
+      </a>
+      <a mat-list-item routerLink="/ajuda" routerLinkActive="mf-active" [matTooltip]="'Ajuda'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-help" matListItemIcon></mat-icon>
+        <span matListItemTitle>Ajuda</span>
+      </a>
+    </mat-nav-list>
+
+    <button
+      type="button"
+      class="mf-nav-section-toggle"
+      (click)="toggleSection('Financeiro')"
+      [attr.aria-expanded]="isSectionExpanded('Financeiro')"
+    >
+      <span>Financeiro</span>
+      <mat-icon class="mf-nav-chevron" [class.mf-open]="isSectionExpanded('Financeiro')">chevron_right</mat-icon>
+    </button>
+    <mat-nav-list [class.mf-nav-collapsed]="!isSectionExpanded('Financeiro') && !isCollapsedDesktop()">
+      <a mat-list-item routerLink="/lancamentos" routerLinkActive="mf-active" [matTooltip]="'Lançamentos'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-transactions" matListItemIcon></mat-icon>
+        <span matListItemTitle>Lançamentos</span>
+      </a>
+      <a mat-list-item routerLink="/recorrencia" routerLinkActive="mf-active" [matTooltip]="'Recorrências'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-recurring" matListItemIcon></mat-icon>
+        <span matListItemTitle>Recorrências</span>
+      </a>
+      <a mat-list-item routerLink="/parcelamento" routerLinkActive="mf-active" [matTooltip]="'Parcelamentos'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-installments" matListItemIcon></mat-icon>
+        <span matListItemTitle>Parcelamentos</span>
+      </a>
+      <a mat-list-item routerLink="/contas" routerLinkActive="mf-active" [matTooltip]="'Contas'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-accounts" matListItemIcon></mat-icon>
+        <span matListItemTitle>Contas</span>
+      </a>
+      <a mat-list-item routerLink="/cartoes" routerLinkActive="mf-active" [matTooltip]="'Cartões'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-cards" matListItemIcon></mat-icon>
+        <span matListItemTitle>Cartões</span>
+      </a>
+      <a mat-list-item routerLink="/faturas" routerLinkActive="mf-active" [matTooltip]="'Faturas'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-invoices" matListItemIcon></mat-icon>
+        <span matListItemTitle>Faturas</span>
+      </a>
+    </mat-nav-list>
+
+    <button
+      type="button"
+      class="mf-nav-section-toggle"
+      (click)="toggleSection('Conciliação')"
+      [attr.aria-expanded]="isSectionExpanded('Conciliação')"
+    >
+      <span>Conciliação</span>
+      <mat-icon class="mf-nav-chevron" [class.mf-open]="isSectionExpanded('Conciliação')">chevron_right</mat-icon>
+    </button>
+    <mat-nav-list [class.mf-nav-collapsed]="!isSectionExpanded('Conciliação') && !isCollapsedDesktop()">
+      <a mat-list-item routerLink="/conciliacao-conta" routerLinkActive="mf-active" [matTooltip]="'Conta corrente'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-reconciliation-account" matListItemIcon></mat-icon>
+        <span matListItemTitle>Conta corrente</span>
+      </a>
+      <a mat-list-item routerLink="/conciliacao-cartao" routerLinkActive="mf-active" [matTooltip]="'Cartão'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-reconciliation-card" matListItemIcon></mat-icon>
+        <span matListItemTitle>Cartão</span>
+      </a>
+    </mat-nav-list>
+
+    <button
+      type="button"
+      class="mf-nav-section-toggle"
+      (click)="toggleSection('Patrimônio')"
+      [attr.aria-expanded]="isSectionExpanded('Patrimônio')"
+    >
+      <span>Patrimônio</span>
+      <mat-icon class="mf-nav-chevron" [class.mf-open]="isSectionExpanded('Patrimônio')">chevron_right</mat-icon>
+    </button>
+    <mat-nav-list [class.mf-nav-collapsed]="!isSectionExpanded('Patrimônio') && !isCollapsedDesktop()">
+      <a mat-list-item routerLink="/investimentos" routerLinkActive="mf-active" [matTooltip]="'Investimentos'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-investments" matListItemIcon></mat-icon>
+        <span matListItemTitle>Investimentos</span>
+      </a>
+      <a mat-list-item routerLink="/projecao" routerLinkActive="mf-active" [matTooltip]="'Projeção'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-projection" matListItemIcon></mat-icon>
+        <span matListItemTitle>Projeção</span>
+      </a>
+    </mat-nav-list>
+
+    <button
+      type="button"
+      class="mf-nav-section-toggle"
+      (click)="toggleSection('Relatórios')"
+      [attr.aria-expanded]="isSectionExpanded('Relatórios')"
+    >
+      <span>Relatórios</span>
+      <mat-icon class="mf-nav-chevron" [class.mf-open]="isSectionExpanded('Relatórios')">chevron_right</mat-icon>
+    </button>
+    <mat-nav-list [class.mf-nav-collapsed]="!isSectionExpanded('Relatórios') && !isCollapsedDesktop()">
+      <a mat-list-item routerLink="/relatorios/projecao-receitas" routerLinkActive="mf-active" [matTooltip]="'Projeção de receitas'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-projection" matListItemIcon></mat-icon>
+        <span matListItemTitle>Projeção de receitas</span>
+      </a>
+      <a mat-list-item routerLink="/relatorios/gastos-recorrentes" routerLinkActive="mf-active" [matTooltip]="'Gastos recorrentes'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-recurring" matListItemIcon></mat-icon>
+        <span matListItemTitle>Gastos recorrentes</span>
+      </a>
+      <a mat-list-item routerLink="/relatorios/auditoria" routerLinkActive="mf-active" [matTooltip]="'Auditoria'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <mat-icon svgIcon="mf-audit" matListItemIcon></mat-icon>
+        <span matListItemTitle>Auditoria</span>
+      </a>
+    </mat-nav-list>
+
+    <ng-container *ngIf="authService.hasFullAccess()">
+      <button
+        type="button"
+        class="mf-nav-section-toggle"
+        (click)="toggleSection('Sistema')"
+        [attr.aria-expanded]="isSectionExpanded('Sistema')"
+      >
+        <span>Sistema</span>
+        <mat-icon class="mf-nav-chevron" [class.mf-open]="isSectionExpanded('Sistema')">chevron_right</mat-icon>
+      </button>
+      <mat-nav-list [class.mf-nav-collapsed]="!isSectionExpanded('Sistema') && !isCollapsedDesktop()">
+        <a mat-list-item routerLink="/configuracoes" routerLinkActive="mf-active" [matTooltip]="'Configurações'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+          <mat-icon svgIcon="mf-settings" matListItemIcon></mat-icon>
+          <span matListItemTitle>Configurações</span>
+        </a>
+      </mat-nav-list>
+    </ng-container>
+
+    <ng-container *ngIf="authService.currentUser()?.isAdministrator">
+      <button
+        type="button"
+        class="mf-nav-section-toggle"
+        (click)="toggleSection('Administração')"
+        [attr.aria-expanded]="isSectionExpanded('Administração')"
+      >
+        <span>Administração</span>
+        <mat-icon class="mf-nav-chevron" [class.mf-open]="isSectionExpanded('Administração')">chevron_right</mat-icon>
+      </button>
+      <mat-nav-list [class.mf-nav-collapsed]="!isSectionExpanded('Administração') && !isCollapsedDesktop()">
+        <a mat-list-item routerLink="/admin/households" routerLinkActive="mf-active" [matTooltip]="'Households'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+          <mat-icon svgIcon="mf-admin" matListItemIcon></mat-icon>
+          <span matListItemTitle>Households</span>
+        </a>
+        <a mat-list-item routerLink="/admin/perfis-acesso" routerLinkActive="mf-active" [matTooltip]="'Perfis de acesso'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+          <mat-icon svgIcon="mf-admin" matListItemIcon></mat-icon>
+          <span matListItemTitle>Perfis de acesso</span>
+        </a>
+      </mat-nav-list>
+    </ng-container>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar class="mf-toolbar">
+      <button mat-icon-button *ngIf="isMobile()" (click)="drawer.toggle()" aria-label="Abrir menu">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="mf-breadcrumb">
+        <a routerLink="/dashboard">MeuFinanceiro</a>
+        <ng-container *ngIf="breadcrumbParent() as parent"> / <a [routerLink]="parent.path">{{ parent.title }}</a></ng-container>
+        / <b>{{ pageTitle() }}</b>
+      </span>
+      <button
+        mat-icon-button
+        class="mf-help-button"
+        (click)="openHelp()"
+        [attr.aria-label]="'Ajuda: ' + pageTitle()"
+        [title]="'Ajuda: ' + pageTitle()"
+      >
+        <mat-icon>help_outline</mat-icon>
+      </button>
+      <span class="mf-toolbar-spacer"></span>
+      <div class="mf-search" *ngIf="!isMobile()">
+        <mat-icon>search</mat-icon>
+        <input type="text" placeholder="Pesquisar..." disabled />
+      </div>
+      <span class="mf-user" *ngIf="authService.currentUser() as user">{{ user.name }}</span>
+      <button mat-stroked-button (click)="logout()">Sair</button>
+    </mat-toolbar>
+
+    <main class="mf-content">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -1,0 +1,50 @@
+# Ambiente de desenvolvimento local do MeuFinanceiro.
+# Não usar em produção. Produção segue docs/19-deploy-azure.md
+# (Azure Database for PostgreSQL Flexible Server + Azure Blob Storage reais).
+#
+# Uso:
+#   docker compose up -d
+#   docker compose down          # para os containers
+#   docker compose down -v       # para e apaga os dados locais
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: meufinanceiro-postgres
+    environment:
+      POSTGRES_DB: "MeuFinanceiro"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-DevPassword!2026}"
+    ports:
+      - "5432:5432"
+    volumes:
+      # A partir da imagem oficial 18+, o mount recomendado é /var/lib/postgresql (não mais
+      # .../data) — o entrypoint agora organiza os dados em subpastas por major version, ver
+      # https://github.com/docker-library/postgres/pull/1259.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d MeuFinanceiro"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Emulador local do Azure Blob Storage (evita depender de uma conta Azure real em dev)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.36.0
+    container_name: meufinanceiro-azurite
+    command: "azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data --debug /data/debug.log"
+    ports:
+      - "10000:10000"
+    volumes:
+      - ./docker-data/azurite:/data
+
+volumes:
+  postgres-data:
+
+# Observações:
+# - Connection string local do PostgreSQL (dev):
+#     Host=localhost;Port=5432;Database=MeuFinanceiro;Username=postgres;Password=DevPassword!2026
+# - Connection string local do Azurite (Blob Storage):
+#     UseDevelopmentStorage=true
+# - Key Vault não tem emulador oficial: em dev, usar User Secrets do .NET
+#   (dotnet user-secrets) em vez de Key Vault. Ver docs/12-seguranca.md.

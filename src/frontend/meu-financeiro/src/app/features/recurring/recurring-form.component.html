@@ -1,0 +1,68 @@
+<div class="mf-form-header">
+  <h2 class="mf-page-title"><mat-icon svgIcon="mf-recurring" class="mf-page-title-icon"></mat-icon>Recorrência</h2>
+  <div class="mf-sub">Altere o valor a partir de uma data sem afetar o histórico.</div>
+</div>
+
+@if (loading()) {
+  <div class="mf-loading-spinner">
+    <mat-progress-spinner diameter="40" mode="indeterminate"></mat-progress-spinner>
+  </div>
+}
+
+@if (!loading() && error() && !recurring()) {
+  <div class="mf-form-error" role="alert">{{ error() }}</div>
+}
+
+@if (!loading() && recurring(); as r) {
+  <mat-card appearance="outlined" class="mf-form-card">
+    <form (ngSubmit)="submit()">
+      <div class="mf-form-grid mf-grid-3">
+        <mat-form-field appearance="outline">
+          <mat-label>Descrição</mat-label>
+          <input matInput [value]="r.description" disabled />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Valor atual</mat-label>
+          <input matInput [value]="r.currentAmount | currency: 'BRL'" disabled />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Periodicidade</mat-label>
+          <mat-select [ngModel]="r.frequency" name="frequency" disabled>
+            <mat-option [value]="RecurrenceFrequency.Weekly">Semanal</mat-option>
+            <mat-option [value]="RecurrenceFrequency.Monthly">Mensal</mat-option>
+            <mat-option [value]="RecurrenceFrequency.Yearly">Anual</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="mf-form-grid mf-grid-2">
+        <mf-money-input [(ngModel)]="newAmount" name="newAmount" label="Novo valor"></mf-money-input>
+        <mat-form-field appearance="outline">
+          <mat-label>A partir de</mat-label>
+          <input matInput [matDatepicker]="effectiveFromPicker" [(ngModel)]="effectiveFrom" name="effectiveFrom" />
+          <mat-datepicker-toggle matIconSuffix [for]="effectiveFromPicker"></mat-datepicker-toggle>
+          <mat-datepicker #effectiveFromPicker></mat-datepicker>
+        </mat-form-field>
+      </div>
+
+      <div class="mf-form-info">Ocorrências anteriores e conciliadas permanecem inalteradas.</div>
+
+      @if (error()) {
+        <div class="mf-form-error" role="alert">{{ error() }}</div>
+      }
+      @if (success()) {
+        <div class="mf-form-success" role="status">{{ success() }}</div>
+      }
+
+      <div class="mf-form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+          @if (saving()) {
+            <mat-progress-spinner diameter="18" mode="indeterminate" class="mf-form-spinner"></mat-progress-spinner>
+          }
+          Salvar nova versão
+        </button>
+        <button mat-button type="button" (click)="back()">Voltar</button>
+      </div>
+    </form>
+  </mat-card>
+}

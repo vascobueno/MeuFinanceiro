@@ -1,0 +1,208 @@
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title"><mat-icon svgIcon="mf-transactions" class="mf-page-title-icon"></mat-icon>Lançamentos</h2>
+    <div class="mf-sub">Conta corrente e cartão, com filtros e conciliação.</div>
+  </div>
+  @if (authService.canWrite()) {
+    <div class="mf-list-header-actions">
+      <a mat-stroked-button routerLink="/parcelamento">Parcelamento</a>
+      <a mat-flat-button color="primary" routerLink="/lancamentos/novo">+ Novo lançamento</a>
+    </div>
+  }
+</div>
+
+<div class="mf-filters-card">
+  <div class="mf-filters-grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Descrição</mat-label>
+      <input matInput [(ngModel)]="filter.search" (change)="applyFilters()" />
+    </mat-form-field>
+
+    <mf-date-range [range]="dateRange" (rangeChange)="onDateRangeChange($event)"></mf-date-range>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Categoria</mat-label>
+      <mat-select [(ngModel)]="filter.categoryId" (selectionChange)="applyFilters()">
+        <mat-option [value]="null">Todas</mat-option>
+        @for (category of categories(); track category.id) {
+          <mat-option [value]="category.id">{{ category.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Conta</mat-label>
+      <mat-select [(ngModel)]="filter.accountId" (selectionChange)="applyFilters()">
+        <mat-option [value]="null">Todas</mat-option>
+        @for (account of accounts(); track account.id) {
+          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Cartão</mat-label>
+      <mat-select [(ngModel)]="filter.creditCardId" (selectionChange)="applyFilters()">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (card of cards(); track card.id) {
+          <mat-option [value]="card.id">{{ card.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Tipo</mat-label>
+      <mat-select [(ngModel)]="filter.type" (selectionChange)="applyFilters()">
+        <mat-option [value]="null">Todos</mat-option>
+        <mat-option [value]="TransactionType.Income">Receita</mat-option>
+        <mat-option [value]="TransactionType.Expense">Despesa</mat-option>
+        <mat-option [value]="TransactionType.Transfer">Transferência</mat-option>
+        <mat-option [value]="TransactionType.InvestmentApplication">Aplicação</mat-option>
+        <mat-option [value]="TransactionType.InvestmentRedemption">Resgate</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="filter.status" (selectionChange)="applyFilters()">
+        <mat-option [value]="null">Todos</mat-option>
+        <mat-option [value]="TransactionStatus.Pending">Pendente</mat-option>
+        <mat-option [value]="TransactionStatus.Confirmed">Confirmado</mat-option>
+        <mat-option [value]="TransactionStatus.Reconciled">Conciliado</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor mínimo</mat-label>
+      <input matInput type="number" step="0.01" [(ngModel)]="filter.minAmount" (change)="applyFilters()" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor máximo</mat-label>
+      <input matInput type="number" step="0.01" [(ngModel)]="filter.maxAmount" (change)="applyFilters()" />
+    </mat-form-field>
+  </div>
+</div>
+
+<div class="mf-panel">
+  @if (!loading() && !error() && transactions().length > 0) {
+    <div class="mf-panel-header">
+      <div>
+        <b>{{ totalItems() }} lançamento{{ totalItems() === 1 ? '' : 's' }}</b>
+        <div class="mf-sub">Ordenação e paginação server-side</div>
+      </div>
+    </div>
+  }
+
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && transactions().length === 0"
+      emptyMessage="Nenhum lançamento encontrado para os filtros selecionados."
+      [onRetry]="load.bind(this)"
+    >
+      @if (authService.canWrite()) {
+        <a mat-flat-button color="primary" routerLink="/lancamentos/novo">Criar lançamento</a>
+      }
+    </mf-list-state>
+
+    @if (!loading() && !error() && transactions().length > 0) {
+      <table
+        mat-table
+        [dataSource]="transactions()"
+        matSort
+        [matSortActive]="filter.sortBy ?? 'transactionDate'"
+        [matSortDirection]="filter.sortDir ?? 'desc'"
+        [matSortDisableClear]="true"
+        (matSortChange)="onSortChange($event)"
+        class="mf-transactions-table"
+      >
+        <ng-container matColumnDef="transactionDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Data</th>
+          <td mat-cell *matCellDef="let transaction">{{ transaction.transactionDate | date: 'dd/MM/yyyy' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Descrição</th>
+          <td mat-cell *matCellDef="let transaction">
+            {{ transaction.description }}
+            @if (transaction.installmentNumber) {
+              <span class="mf-sub">({{ transaction.installmentNumber }}/{{ transaction.installmentCount }})</span>
+            }
+            @if (transaction.notes) {
+              <span
+                class="mf-sub"
+                style="cursor: help"
+                [title]="transaction.notes"
+                (click)="$event.stopPropagation()"
+                role="img"
+                aria-label="Observação"
+              >
+                📝
+              </span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="categoryName">
+          <th mat-header-cell *matHeaderCellDef>Categoria</th>
+          <td mat-cell *matCellDef="let transaction">{{ transaction.categoryName || '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="origin">
+          <th mat-header-cell *matHeaderCellDef>Origem</th>
+          <td mat-cell *matCellDef="let transaction">{{ transaction.accountName || transaction.creditCardName || '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="mf-col-end">Valor</th>
+          <td mat-cell *matCellDef="let transaction" class="mf-col-end">{{ transaction.amount | currency: 'BRL' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let transaction"><mf-status-badge [status]="transaction.status"></mf-status-badge></td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let transaction" class="mf-col-end">
+            @if (authService.canWrite()) {
+              @if (transaction.recurringTransactionId) {
+                <a
+                  mat-stroked-button
+                  [routerLink]="['/recorrencia', transaction.recurringTransactionId]"
+                  (click)="$event.stopPropagation()"
+                >
+                  Editar recorrência
+                </a>
+              }
+              <button mat-stroked-button color="warn" type="button" (click)="$event.stopPropagation(); confirmDelete(transaction)">
+                Excluir
+              </button>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let transaction; columns: displayedColumns"
+          [routerLink]="['/lancamentos', transaction.id]"
+          class="mf-clickable-row"
+        ></tr>
+      </table>
+    }
+
+    @if (!loading() && !error() && transactions().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="filter.page"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>

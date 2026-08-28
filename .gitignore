@@ -1,0 +1,73 @@
+## ===== .NET / C# =====
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rtifacts/
+*.pdb
+*.dll
+*.exe
+
+## appsettings locais nunca vão para o repositório
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+secrets.json
+*.pfx
+
+## ===== Visual Studio / Rider / VS Code =====
+.vs/
+.idea/
+*.DotSettings.user
+.vscode/*
+!.vscode/extensions.json
+
+## ===== Angular / Node =====
+src/frontend/**/node_modules/
+src/frontend/**/dist/
+src/frontend/**/.angular/
+src/frontend/**/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+## Environment local do Angular (mantemos apenas o .example versionado).
+## Observação: environment.ts é o arquivo "default" sem segredos (apenas apiUrl/flags
+## públicas) e É versionado — necessário para o build de produção/CI via fileReplacements.
+src/frontend/**/environments/environment.development.ts
+
+## ===== Banco de dados / dados locais =====
+*.mdf
+*.ldf
+*.bak
+database/local/
+
+## ===== Docker =====
+docker-data/
+
+## ===== Testes / cobertura =====
+**/TestResults/
+**/coverage/
+*.trx
+
+## ===== Sistema operacional =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+## ===== Claude Code (config/estado local, não deve ir pro repo) =====
+.claude/settings.local.json
+.claude/*.lock
+
+## ===== Diversos =====
+*.log
+.env
+.env.*
+!.env.example

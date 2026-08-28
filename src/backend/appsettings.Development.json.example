@@ -1,0 +1,31 @@
+{
+  "_comment": "Copie este arquivo para dentro do projeto MeuFinanceiro.Api como 'appsettings.Development.json' (ele já está no .gitignore e nunca deve ser commitado).",
+
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=MeuFinanceiro;Username=postgres;Password=DevPassword!2026",
+    "BlobStorage": "UseDevelopmentStorage=true"
+  },
+
+  "Jwt": {
+    "Issuer": "MeuFinanceiro.Api",
+    "Audience": "MeuFinanceiro.Frontend",
+    "Key": "GERE_UMA_CHAVE_LOCAL_COM_dotnet_user-secrets_NUNCA_COMMITAR",
+    "AccessTokenExpirationMinutes": 15,
+    "RefreshTokenExpirationDays": 7
+  },
+
+  "ApplicationInsights": {
+    "ConnectionString": ""
+  },
+
+  "Cors": {
+    "AllowedOrigins": [ "http://localhost:4200", "https://localhost:4200" ]
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}

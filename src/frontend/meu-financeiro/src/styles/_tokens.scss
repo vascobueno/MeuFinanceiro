@@ -1,0 +1,70 @@
+// MeuFinanceiro — design tokens (docs/14-angular.md).
+// Fonte única das cores/medidas da marca. Componentes devem usar var(--mf-*),
+// nunca hex/tamanhos soltos (V5.1 seção 5 do .github/copilot-instructions.md).
+
+:root {
+  // Acento — laranja é o skin padrão (Parte 6: 7 skins de cores, ver _material-theme.scss
+  // pro mat.theme() correspondente de cada um). Os outros 6 sobrescrevem só estes 3 tokens
+  // via [data-theme="X"] logo abaixo — o resto da paleta (fundo/cartões/texto/semânticas)
+  // é compartilhado pelos 7, não muda por skin.
+  --mf-primary: #df5830;
+  --mf-primary-dark: #b8431f;
+  --mf-primary-tint: rgba(223, 88, 48, 0.12);
+  --mf-green: #12966f;
+  --mf-yellow: #b8792c;
+  --mf-red: #c0392b;
+
+  // Superfícies e texto
+  --mf-bg: #f7f4ef;
+  --mf-card: #fff;
+  --mf-text: #2b2621;
+  --mf-muted: #8b8175;
+  --mf-line: #e8e1d8;
+
+  // Elevação
+  --mf-shadow: 0 1px 2px rgba(43, 38, 33, 0.04), 0 10px 24px -16px rgba(43, 38, 33, 0.18);
+
+  // Layout e forma
+  --mf-sidebar-width: 245px;
+  --mf-sidebar-width-collapsed: 64px;
+  --mf-radius: 0.75rem;
+}
+
+html[data-theme="azul"] {
+  --mf-primary: #2f6fed;
+  --mf-primary-dark: #1f4fb8;
+  --mf-primary-tint: rgba(47, 111, 237, 0.12);
+}
+
+html[data-theme="verde"] {
+  --mf-primary: #1f9d6b;
+  --mf-primary-dark: #157a52;
+  --mf-primary-tint: rgba(31, 157, 107, 0.12);
+}
+
+html[data-theme="roxo"] {
+  --mf-primary: #7c4dff;
+  --mf-primary-dark: #5c30d9;
+  --mf-primary-tint: rgba(124, 77, 255, 0.12);
+}
+
+// Sem paleta Material cromática nativa equivalente pra cinza/preto — a estrutura de
+// contraste/estados vem de mat.$blue-palette (ver _material-theme.scss), só o hex visível
+// muda aqui, mesma técnica já usada pro laranja com orange-palette.
+html[data-theme="cinza"] {
+  --mf-primary: #6b6a63;
+  --mf-primary-dark: #514f49;
+  --mf-primary-tint: rgba(107, 106, 99, 0.14);
+}
+
+html[data-theme="preto"] {
+  --mf-primary: #252220;
+  --mf-primary-dark: #0f0e0d;
+  --mf-primary-tint: rgba(37, 34, 32, 0.12);
+}
+
+html[data-theme="amarelo"] {
+  --mf-primary: #c99a0e;
+  --mf-primary-dark: #a67d0a;
+  --mf-primary-tint: rgba(201, 154, 14, 0.16);
+}

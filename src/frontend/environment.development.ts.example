@@ -1,0 +1,12 @@
+// Copie este arquivo para dentro do projeto Angular como:
+//   src/frontend/meu-financeiro/src/environments/environment.development.ts
+// (já está no .gitignore e nunca deve ser commitado com valores reais)
+
+export const environment = {
+  production: false,
+  apiUrl: 'https://localhost:5001/api/v1',
+
+  // Debounce do autocomplete de descrição (docs/copilot-instructions.md)
+  autocompleteDebounceMs: 300,
+  autocompleteMaxSuggestions: 15,
+};

@@ -1,0 +1,56 @@
+// MeuFinanceiro — utilitários financeiros globais (docs/14-angular.md).
+// Classes usadas fora dos componentes Material (valores monetários, badges de status,
+// cards de KPI) para não repetir cor/tamanho soltos pelas telas.
+@use 'tokens';
+
+.mf-amount-positive {
+  color: var(--mf-green);
+  font-weight: 600;
+}
+
+.mf-amount-negative {
+  color: var(--mf-red);
+  font-weight: 600;
+}
+
+.mf-amount-neutral {
+  color: var(--mf-text);
+  font-weight: 600;
+}
+
+.mf-card {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+}
+
+.mf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.mf-badge-success {
+  background: rgba(18, 150, 111, 0.12);
+  color: var(--mf-green);
+}
+
+.mf-badge-warning {
+  background: rgba(197, 138, 0, 0.12);
+  color: var(--mf-yellow);
+}
+
+.mf-badge-danger {
+  background: rgba(192, 57, 43, 0.12);
+  color: var(--mf-red);
+}
+
+.mf-badge-neutral {
+  background: rgba(112, 123, 143, 0.12);
+  color: var(--mf-muted);
+}

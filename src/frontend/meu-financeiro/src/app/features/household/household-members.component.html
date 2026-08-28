@@ -1,0 +1,71 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title">
+    <mat-icon svgIcon="mf-settings" class="mf-page-title-icon"></mat-icon>
+    {{ householdId ? (household()?.name ?? 'Membros') : 'Membros da família' }}
+  </h2>
+  <div class="mf-sub">Quem tem acesso a estes dados financeiros, e com qual papel.</div>
+</div>
+
+@if (canManage) {
+  <mat-card appearance="outlined" class="mf-inline-form">
+    <h6>Adicionar membro</h6>
+    <div class="mf-inline-form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>E-mail</mat-label>
+        <input matInput [(ngModel)]="newEmail" placeholder="nome@exemplo.com" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Papel</mat-label>
+        <mat-select [(ngModel)]="newRole">
+          <mat-option [value]="HouseholdRole.Member">Member</mat-option>
+          <mat-option [value]="HouseholdRole.Owner">Owner</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="addMember()">Adicionar</button>
+    </div>
+  </mat-card>
+}
+
+@if (actionError()) {
+  <div class="mf-form-error" role="alert">{{ actionError() }}</div>
+}
+
+<mf-list-state
+  [loading]="loading()"
+  [error]="loadError()"
+  [empty]="!loading() && !loadError() && (household()?.members?.length ?? 0) === 0"
+  emptyMessage="Nenhum membro encontrado."
+  [onRetry]="load.bind(this)"
+></mf-list-state>
+
+@if (!loading() && household(); as h) {
+  <mat-card appearance="outlined" class="mf-members-card">
+    @for (member of h.members; track member.userId) {
+      <div class="mf-member-row">
+        <div class="mf-member-avatar">{{ member.name.charAt(0).toUpperCase() }}</div>
+        <div class="mf-member-info">
+          <div class="mf-member-name">{{ member.name }}</div>
+          <div class="mf-member-email">{{ member.email }}</div>
+        </div>
+        <span class="mf-badge" [ngClass]="member.role === HouseholdRole.Owner ? 'mf-badge-ok' : 'mf-badge-neutral'">
+          {{ member.role === HouseholdRole.Owner ? 'Owner' : 'Member' }}
+        </span>
+        @if (canManage) {
+          <mat-form-field appearance="outline" class="mf-member-profile">
+            <mat-label>Acesso</mat-label>
+            <mat-select
+              [value]="member.accessProfile"
+              [disabled]="member.role === HouseholdRole.Owner"
+              (selectionChange)="updateAccessProfile(member, $event.value)"
+            >
+              <mat-option [value]="HouseholdAccessProfile.Completo">Completo</mat-option>
+              <mat-option [value]="HouseholdAccessProfile.Editor">Editor</mat-option>
+              <mat-option [value]="HouseholdAccessProfile.Visualizador">Visualizador</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <button mat-stroked-button color="warn" type="button" (click)="removeMember(member.userId)">Remover</button>
+        }
+      </div>
+    }
+  </mat-card>
+}

@@ -1,0 +1,146 @@
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title"><mat-icon svgIcon="mf-reconciliation-card" class="mf-page-title-icon"></mat-icon>Conciliação de cartão</h2>
+    <div class="mf-sub">Encontre correspondências entre fatura e lançamentos.</div>
+  </div>
+  @if (authService.canWrite()) {
+    <button mat-flat-button color="primary" type="button" (click)="showImportForm.set(!showImportForm())">Importar fatura</button>
+  }
+</div>
+
+@if (!loading() && !error() && items().length > 0) {
+  <div class="mf-stat-grid">
+    <mf-stat-card label="Conciliados" [value]="matchedCount.toString()" hint="itens" hintTone="positive"></mf-stat-card>
+    <mf-stat-card label="Possíveis" [value]="possibleCount.toString()" hint="revisão necessária"></mf-stat-card>
+    <mf-stat-card label="Sem vínculo" [value]="unmatchedCount.toString()" hint="requerem ação" hintTone="negative"></mf-stat-card>
+  </div>
+}
+
+@if (showImportForm()) {
+  <mat-card appearance="outlined" class="mf-import-card">
+    <h6>Importar fatura de cartão</h6>
+    <p class="mf-sub">
+      Cole um item por linha no formato <code>data;descrição;parcela;valor</code>. Ex.:
+      <code>2026-05-12;Amazon;2/6;89.90</code>
+    </p>
+
+    <div class="mf-import-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Cartão</mat-label>
+        <mat-select [(ngModel)]="importCardId">
+          @for (card of cards(); track card.id) {
+            <mat-option [value]="card.id">{{ card.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Fechamento</mat-label>
+        <input matInput [matDatepicker]="closingPicker" [(ngModel)]="closingDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="closingPicker"></mat-datepicker-toggle>
+        <mat-datepicker #closingPicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Vencimento</mat-label>
+        <input matInput [matDatepicker]="duePicker" [(ngModel)]="dueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
+        <mat-datepicker #duePicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Total da fatura</mat-label>
+        <input matInput type="number" step="0.01" [(ngModel)]="totalAmount" />
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="mf-form-full">
+      <mat-label>Itens</mat-label>
+      <textarea matInput rows="6" placeholder="2026-05-12;Amazon;2/6;89.90" [(ngModel)]="itemsRaw"></textarea>
+    </mat-form-field>
+
+    @if (importResult()) {
+      <div class="mf-form-info">{{ importResult() }}</div>
+    }
+
+    <button mat-flat-button color="primary" type="button" [disabled]="importing()" (click)="submitImport()">Importar</button>
+  </mat-card>
+}
+
+<div class="mf-filters-card">
+  <div class="mf-filters-grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Cartão</mat-label>
+      <mat-select [(ngModel)]="selectedCardId" (selectionChange)="load()">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (card of cards(); track card.id) {
+          <mat-option [value]="card.id">{{ card.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="load()">
+        <mat-option value="">Todos</mat-option>
+        <mat-option value="Matched">Conciliado</mat-option>
+        <mat-option value="PossibleMatch">Possível match</mat-option>
+        <mat-option value="Unmatched">Sem correspondência</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+</div>
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && items().length === 0"
+      emptyMessage="Nenhum item de fatura importado ainda."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && items().length > 0) {
+      <table mat-table [dataSource]="dataSource" matSort class="mf-reconciliation-table">
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="itemDate">Data</th>
+          <td mat-cell *matCellDef="let item">{{ item.itemDate | date: 'dd/MM/yyyy' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="itemDescription">Descrição da fatura</th>
+          <td mat-cell *matCellDef="let item">{{ item.itemDescription }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="itemAmount" class="mf-col-end">Valor</th>
+          <td mat-cell *matCellDef="let item" class="mf-col-end">{{ item.itemAmount | currency: 'BRL' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="score">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Score</th>
+          <td mat-cell *matCellDef="let item">{{ item.score }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let item"><span class="mf-badge" [ngClass]="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let item" class="mf-col-end">
+            @if (authService.canWrite()) {
+              @if (item.status === 'Matched' || item.status === 'PossibleMatch') {
+                <button mat-stroked-button color="primary" type="button" (click)="accept(item)">Aceitar</button>
+              }
+              @if (item.status === 'Matched' || item.status === 'ManuallyMatched') {
+                <button mat-stroked-button type="button" (click)="undo(item)">Desfazer</button>
+              }
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    }
+  </div>
+</div>

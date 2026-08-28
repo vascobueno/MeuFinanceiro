@@ -1,0 +1,138 @@
+<div class="mf-form-header">
+  <h2 class="mf-page-title"><mat-icon svgIcon="mf-installments" class="mf-page-title-icon"></mat-icon>Parcelamento</h2>
+  <div class="mf-sub">Divida um lançamento em parcelas, com fechamento exato do valor.</div>
+</div>
+
+<mat-card appearance="outlined" class="mf-form-card">
+  <form (ngSubmit)="submit()">
+    <div class="mf-form-grid mf-grid-descr">
+      <mat-form-field appearance="outline">
+        <mat-label>Descrição</mat-label>
+        <input matInput [(ngModel)]="description" name="description" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Conta</mat-label>
+        <mat-select [(ngModel)]="accountId" name="accountId" [disabled]="!!creditCardId">
+          <mat-option [value]="null">Nenhuma</mat-option>
+          @for (account of accounts(); track account.id) {
+            <mat-option [value]="account.id">{{ account.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cartão</mat-label>
+        <mat-select [(ngModel)]="creditCardId" name="creditCardId" [disabled]="!!accountId">
+          <mat-option [value]="null">Nenhum</mat-option>
+          @for (card of cards(); track card.id) {
+            <mat-option [value]="card.id">{{ card.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="mf-form-full">
+      <mat-label>Categoria</mat-label>
+      <mat-select [(ngModel)]="categoryId" name="categoryId">
+        <mat-option [value]="null">Nenhuma</mat-option>
+        @for (category of categories(); track category.id) {
+          <mat-option [value]="category.id">{{ category.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="mf-mode-label">Como quer informar o parcelamento?</div>
+    <div class="mf-mode-cards" role="radiogroup" aria-label="Como quer informar o parcelamento" (keydown)="onModeKeydown($event)">
+      <div
+        #modeCardTotal
+        class="mf-mode-card"
+        [class.selected]="mode === InstallmentMode.TotalAmount"
+        role="radio"
+        [attr.aria-checked]="mode === InstallmentMode.TotalAmount"
+        [attr.tabindex]="mode === InstallmentMode.TotalAmount ? 0 : -1"
+        (click)="selectMode(InstallmentMode.TotalAmount)"
+        (keydown.enter)="selectMode(InstallmentMode.TotalAmount)"
+        (keydown.space)="$event.preventDefault(); selectMode(InstallmentMode.TotalAmount)"
+      >
+        <span class="check" aria-hidden="true"></span>
+        <span class="icon-box" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="30" height="30">
+            <circle cx="32" cy="32" r="26" fill="#fff" opacity="0.18" />
+            <path d="M32 32 L32 6 A26 26 0 0 1 54.5 45 Z" fill="#fff" />
+            <path d="M32 32 L54.5 45 A26 26 0 0 1 9.5 45 Z" fill="#fff" opacity="0.72" />
+            <path d="M32 32 L9.5 45 A26 26 0 0 1 32 6 Z" fill="#fff" opacity="0.42" />
+          </svg>
+        </span>
+        <span class="txt">
+          <span class="title">Valor total + quantidade</span>
+          <span class="desc">Divide o total em N parcelas iguais</span>
+        </span>
+      </div>
+      <div
+        #modeCardInstallment
+        class="mf-mode-card"
+        [class.selected]="mode === InstallmentMode.InstallmentAmount"
+        role="radio"
+        [attr.aria-checked]="mode === InstallmentMode.InstallmentAmount"
+        [attr.tabindex]="mode === InstallmentMode.InstallmentAmount ? 0 : -1"
+        (click)="selectMode(InstallmentMode.InstallmentAmount)"
+        (keydown.enter)="selectMode(InstallmentMode.InstallmentAmount)"
+        (keydown.space)="$event.preventDefault(); selectMode(InstallmentMode.InstallmentAmount)"
+      >
+        <span class="check" aria-hidden="true"></span>
+        <span class="icon-box" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="30" height="30">
+            <rect x="6" y="23" width="15" height="19" rx="4" style="fill: var(--mf-primary)" opacity="0.35" />
+            <rect x="24.5" y="23" width="15" height="19" rx="4" style="fill: var(--mf-primary)" opacity="0.65" />
+            <rect x="43" y="23" width="15" height="19" rx="4" style="fill: var(--mf-primary)" />
+            <circle cx="13.5" cy="32.5" r="3.4" fill="#fff" />
+            <circle cx="32" cy="32.5" r="3.4" fill="#fff" />
+            <circle cx="50.5" cy="32.5" r="3.4" fill="#fff" />
+          </svg>
+        </span>
+        <span class="txt">
+          <span class="title">Valor da parcela + quantidade</span>
+          <span class="desc">Repete o mesmo valor N vezes</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="mf-form-grid mf-grid-3">
+      <mf-money-input
+        [(ngModel)]="amount"
+        name="amount"
+        [label]="mode === InstallmentMode.TotalAmount ? 'Total' : 'Parcela'"
+      ></mf-money-input>
+      <mat-form-field appearance="outline">
+        <mat-label>Quantidade</mat-label>
+        <input matInput type="number" min="1" [(ngModel)]="installmentCount" name="installmentCount" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Primeira parcela</mat-label>
+        <input matInput [matDatepicker]="firstDuePicker" [(ngModel)]="firstDueDate" name="firstDueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="firstDuePicker"></mat-datepicker-toggle>
+        <mat-datepicker #firstDuePicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+
+    @if (preview(); as text) {
+      <div class="mf-form-preview">{{ text }}</div>
+    }
+
+    @if (error()) {
+      <div class="mf-form-error" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="mf-form-success" role="status">
+        {{ success() }}
+        <a (click)="goToTransactions()" role="button">Ver lançamentos</a>
+      </div>
+    }
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+      @if (saving()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" class="mf-form-spinner"></mat-progress-spinner>
+      }
+      Criar parcelas
+    </button>
+  </form>
+</mat-card>

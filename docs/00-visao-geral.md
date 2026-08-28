@@ -1,0 +1,47 @@
+# 00 — Visão Geral
+
+## Objetivo
+Substituir o controle operacional em Excel por um sistema web.
+
+## Domínios
+- Usuários e segurança
+- Multi-usuário (Household — Owner/Member, perfis de acesso Completo/Editor/Visualizador)
+- Administração do sistema (role Administrator, gestão de todos os households)
+- Contas correntes
+- Cartões
+- Lançamentos
+- Categorias
+- Estabelecimentos/descrições
+- Recorrências
+- Parcelamentos
+- Extratos bancários
+- Faturas
+- Conciliação
+- Investimentos
+- Projeção
+- Auditoria
+- Migração inicial
+
+## Fontes externas
+- Excel: migração inicial.
+- Extrato bancário: conciliação da conta.
+- Fatura: conciliação do cartão.
+- Extrato consolidado: atualização de investimentos.
+
+## Arquitetura
+```text
+Angular + Angular Material (ver docs/21-telas.md e docs/14-angular.md)
+        |
+      HTTPS
+        |
+ASP.NET Core Web API
+        |
+Entity Framework Core
+        |
+PostgreSQL
+
+Arquivos -> Azure Blob Storage
+Secrets -> Azure Key Vault
+Logs -> Application Insights
+CI/CD -> GitHub Actions -> Azure
+```

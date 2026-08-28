@@ -1,0 +1,66 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mat-icon svgIcon="mf-settings" class="mf-page-title-icon"></mat-icon>Categorias</h2>
+  <div class="mf-sub">Organize receitas e despesas por categoria e subcategoria.</div>
+</div>
+
+@if (authService.canWrite()) {
+  <mat-card appearance="outlined" class="mf-inline-form">
+    <h6>Nova categoria</h6>
+    <div class="mf-inline-form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Nome</mat-label>
+        <input matInput [(ngModel)]="newName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select [(ngModel)]="newType">
+          <mat-option [value]="CategoryType.Expense">Despesa</mat-option>
+          <mat-option [value]="CategoryType.Income">Receita</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="addCategory()">Adicionar</button>
+    </div>
+  </mat-card>
+}
+
+<mf-list-state [loading]="loading()" [error]="error()" [empty]="!loading() && !error() && categories().length === 0" emptyMessage="Nenhuma categoria cadastrada ainda." [onRetry]="load.bind(this)"></mf-list-state>
+
+@if (!loading() && !error()) {
+  <div class="mf-categories-grid">
+    @for (category of categories(); track category.id) {
+      <mat-card appearance="outlined" class="mf-category-card">
+        <div class="mf-category-header">
+          <div>
+            <h6>{{ category.name }}</h6>
+            <span class="mf-badge" [ngClass]="category.type === CategoryType.Income ? 'mf-badge-ok' : 'mf-badge-bad'">
+              {{ category.type === CategoryType.Income ? 'Receita' : 'Despesa' }}
+            </span>
+          </div>
+          @if (authService.canWrite() && !category.isSystemDefault) {
+            <button mat-stroked-button color="warn" type="button" (click)="deleteCategory(category)">Excluir</button>
+          }
+        </div>
+
+        <ul class="mf-subcategory-list">
+          @for (sub of category.subcategories; track sub.id) {
+            <li>— {{ sub.name }}</li>
+          }
+        </ul>
+
+        @if (authService.canWrite()) {
+          <div class="mf-add-subcategory">
+            <mat-form-field appearance="outline" class="mf-add-subcategory-field">
+              <mat-label>Nova subcategoria</mat-label>
+              <input
+                matInput
+                [ngModel]="subcategoryDrafts.get(category.id) ?? ''"
+                (ngModelChange)="subcategoryDrafts.set(category.id, $event)"
+              />
+            </mat-form-field>
+            <button mat-stroked-button type="button" (click)="addSubcategory(category)">+</button>
+          </div>
+        }
+      </mat-card>
+    }
+  </div>
+}

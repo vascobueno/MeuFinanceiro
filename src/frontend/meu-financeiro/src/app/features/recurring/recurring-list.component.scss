@@ -1,0 +1,26 @@
+.mf-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  overflow: hidden;
+}
+
+.mf-panel-body {
+  padding: 1rem;
+}
+
+.mf-recurring-table {
+  width: 100%;
+}
+
+.mf-col-end {
+  text-align: right;
+}

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -A 3 '\\\\$orange-palette' d:/Projetos/MeuFinanceiro/src/frontend/meu-financeiro/node_modules/@angular/material/core/theming/_palettes.scss)"
+    ]
+  }
+}

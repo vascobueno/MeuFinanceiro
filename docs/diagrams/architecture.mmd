@@ -1,0 +1,11 @@
+flowchart TD
+DEV[Visual Studio / VS Code] --> GH[GitHub]
+GH --> COP[GitHub Copilot]
+GH --> CI[GitHub Actions]
+CI --> AZ[Azure]
+AZ --> APP[App Service]
+APP --> API[ASP.NET Core API]
+API --> SQL[PostgreSQL / Azure Database for PostgreSQL]
+API --> BLOB[Azure Blob Storage]
+API --> KV[Azure Key Vault]
+API --> AI[Application Insights]

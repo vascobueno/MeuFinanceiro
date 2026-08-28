@@ -1,0 +1,83 @@
+.mf-list-header {
+  margin-bottom: 1rem;
+}
+
+.mf-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.mf-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mf-inline-form {
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.mf-inline-form-grid {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+.mf-grid-3 {
+  grid-template-columns: repeat(2, 1fr) auto;
+}
+
+.mf-grid-5 {
+  grid-template-columns: repeat(4, 1fr) auto;
+}
+
+.mf-inline-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+.mf-form-hint {
+  margin: 0.5rem 0 0;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  overflow: hidden;
+}
+
+.mf-panel-body {
+  padding: 1rem;
+}
+
+.mf-investments-table {
+  width: 100%;
+}
+
+.mf-col-end {
+  text-align: right;
+}
+
+.mf-fw-semibold {
+  font-weight: 600;
+}
+
+.mf-tx-form {
+  margin-top: 1rem;
+}
+
+@media (max-width: 1100px) {
+  .mf-stat-grid {
+    grid-template-columns: 1fr;
+  }
+  .mf-grid-3,
+  .mf-grid-5 {
+    grid-template-columns: 1fr;
+  }
+}

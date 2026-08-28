@@ -1,0 +1,69 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mat-icon svgIcon="mf-audit" class="mf-page-title-icon"></mat-icon>Auditoria</h2>
+  <div class="mf-sub">Acessos e alterações de dados do seu household, filtráveis por período.</div>
+</div>
+
+<div class="mf-filter-bar">
+  <mf-date-range [range]="dateRange" (rangeChange)="onDateRangeChange($event)"></mf-date-range>
+  <mat-form-field appearance="outline">
+    <mat-label>Tipo</mat-label>
+    <mat-select [(ngModel)]="action" (ngModelChange)="onActionChange()">
+      <mat-option [value]="null">Todos</mat-option>
+      <mat-option value="Login">Acesso</mat-option>
+      <mat-option value="LoginFailed">Acesso negado</mat-option>
+      <mat-option value="Added">Criado</mat-option>
+      <mat-option value="Modified">Alterado</mat-option>
+      <mat-option value="Deleted">Excluído</mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+
+<div class="mf-panel">
+  <mf-list-state
+    [loading]="loading()"
+    [error]="error()"
+    [empty]="!loading() && !error() && entries().length === 0"
+    emptyMessage="Nenhum evento encontrado para os filtros selecionados."
+    [onRetry]="load.bind(this)"
+  ></mf-list-state>
+
+  @if (!loading() && !error() && entries().length > 0) {
+    <table class="mf-report-table">
+      <thead>
+        <tr>
+          <th>Quando</th>
+          <th>Quem</th>
+          <th>Ação</th>
+          <th>Entidade</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td>{{ entry.timestamp | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ entry.userName ?? '—' }}</td>
+            <td>
+              <span
+                class="mf-badge"
+                [ngClass]="entry.action === 'LoginFailed' ? 'mf-badge-bad' : entry.action === 'Login' ? 'mf-badge-ok' : 'mf-badge-neutral'"
+              >
+                {{ actionLabel(entry.action) }}
+              </span>
+            </td>
+            <td>{{ entry.entityName !== 'ApplicationUser' ? entry.entityName : '—' }}</td>
+            <td>{{ entry.ipAddress ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <mf-pagination
+      class="mf-pagination-block"
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [totalItems]="totalItems()"
+      (pageChange)="onPageChange($event)"
+    ></mf-pagination>
+  }
+</div>
