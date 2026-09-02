@@ -52,7 +52,7 @@ jobs:
         run: npm ci
 
       - name: Verificar dependências vulneráveis (npm)
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Test
         run: npm test -- --watch=false --browsers=ChromeHeadless

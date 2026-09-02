@@ -9,3 +9,7 @@ updates:
     directory: "/src/frontend/meu-financeiro"
     schedule:
       interval: "weekly"
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
