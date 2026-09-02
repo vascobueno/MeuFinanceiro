@@ -10,7 +10,7 @@ import { DateRange, DateRangeComponent } from '../../shared/components/date-rang
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 
-/** Relatório de auditoria (acessos + alterações), filtrável por data — Owner vê só o próprio household, Administrator vê todos (resolvido no backend). */
+/** Relatório de auditoria (acessos + alterações), filtrável por data — Owner vê só o próprio grupo, Administrator vê todos (resolvido no backend). */
 @Component({
   selector: 'mf-audit-log',
   standalone: true,

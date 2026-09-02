@@ -10,5 +10,7 @@ public class ApplicationUser : IdentityUser<Guid>
 {
     public string Name { get; set; } = string.Empty;
 
+    public bool MustChangePassword { get; set; }
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

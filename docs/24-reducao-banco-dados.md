@@ -1,7 +1,7 @@
 # 24 — Redução do banco de dados (arquivamento de dados antigos)
 
 Pesquisa apenas — não implementado nesta rodada (decisão explícita, ver plano de
-Household/Relatórios). Cobre como reduzir o tamanho do banco fazendo backup de dados
+Grupo/Relatórios). Cobre como reduzir o tamanho do banco fazendo backup de dados
 anteriores a uma data de corte e depois eliminando-os.
 
 ## Por que um DELETE simples não encolhe o banco

@@ -7,7 +7,7 @@ namespace MeuFinanceiro.Domain.Entities;
 /// Lançamento financeiro. Regra 20: valores sempre decimal. Regra 12: lançamentos
 /// conciliados não são alterados automaticamente. Ver docs/04-modelo-dados.md e docs/06-lancamentos.md.
 /// </summary>
-public class FinancialTransaction : HouseholdOwnedEntity
+public class FinancialTransaction : GrupoOwnedEntity
 {
     public DateOnly TransactionDate { get; set; }
     public string Description { get; set; } = string.Empty;

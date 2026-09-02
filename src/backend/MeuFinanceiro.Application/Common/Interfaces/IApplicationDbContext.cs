@@ -10,8 +10,8 @@ namespace MeuFinanceiro.Application.Common.Interfaces;
 /// </summary>
 public interface IApplicationDbContext
 {
-    DbSet<Household> Households { get; }
-    DbSet<HouseholdMember> HouseholdMembers { get; }
+    DbSet<Grupo> Grupos { get; }
+    DbSet<GrupoMember> GrupoMembers { get; }
     DbSet<Account> Accounts { get; }
     DbSet<CreditCard> CreditCards { get; }
     DbSet<Category> Categories { get; }

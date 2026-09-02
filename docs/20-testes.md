@@ -12,7 +12,8 @@ investimentos, transferências, validators e autocomplete.
 ## Integração
 Backend: `tests/backend/MeuFinanceiro.Application.IntegrationTests` (hoje:
 `AccountsEndpointTests`, `InstallmentsRecurringInvoicesEndpointTests`,
-`HouseholdsEndpointTests`, `HouseholdAccessProfileTests`, via `CustomWebApplicationFactory`
+`GruposEndpointTests`, `GrupoAccessProfileTests`, `PasswordResetEndpointTests`,
+`CreateMemberEndpointTests`, via `CustomWebApplicationFactory`
 — EF Core InMemory, sem suporte a transação real).
 
 Backend deve testar API -> Application -> Infrastructure -> EF Core -> PostgreSQL, preferencialmente com PostgreSQL em container.

@@ -1,11 +1,12 @@
 export interface RegisterRequest {
   name: string;
+  username: string;
   email: string;
   password: string;
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -19,13 +20,13 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
-export enum HouseholdRole {
+export enum GrupoRole {
   Owner = 0,
   Member = 1,
 }
 
-/** Perfil de acesso de um Member dentro do próprio household — Owner é sempre Completo. */
-export enum HouseholdAccessProfile {
+/** Perfil de acesso de um Member dentro do próprio grupo — Owner é sempre Completo. */
+export enum GrupoAccessProfile {
   Completo = 0,
   Editor = 1,
   Visualizador = 2,
@@ -35,10 +36,16 @@ export interface UserResponse {
   id: string;
   name: string;
   email: string;
-  householdId: string;
-  householdRole: HouseholdRole;
-  accessProfile: HouseholdAccessProfile;
+  grupoId: string;
+  grupoRole: GrupoRole;
+  accessProfile: GrupoAccessProfile;
   isAdministrator: boolean;
+  mustChangePassword: boolean;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface AuthResponse {

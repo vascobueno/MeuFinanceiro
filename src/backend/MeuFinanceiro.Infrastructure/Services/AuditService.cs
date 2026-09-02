@@ -28,7 +28,7 @@ public class AuditService : IAuditService
         _db.AuditLogs.Add(new AuditLog
         {
             UserId = _currentUser.IsAuthenticated ? _currentUser.UserId : null,
-            HouseholdId = _currentUser.IsAuthenticated ? _currentUser.HouseholdId : null,
+            GrupoId = _currentUser.IsAuthenticated ? _currentUser.GrupoId : null,
             Action = action,
             EntityName = entityName,
             EntityId = entityId,
@@ -40,12 +40,12 @@ public class AuditService : IAuditService
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task LogAccessAsync(string action, Guid? userId, Guid? householdId, string? ipAddress, string? userAgent, CancellationToken ct = default)
+    public async Task LogAccessAsync(string action, Guid? userId, Guid? grupoId, string? ipAddress, string? userAgent, CancellationToken ct = default)
     {
         _db.AuditLogs.Add(new AuditLog
         {
             UserId = userId,
-            HouseholdId = householdId,
+            GrupoId = grupoId,
             Action = action,
             EntityName = nameof(ApplicationUser),
             EntityId = userId?.ToString() ?? string.Empty,
@@ -61,16 +61,16 @@ public class AuditService : IAuditService
     {
         var query = _db.AuditLogs.AsNoTracking().AsQueryable();
 
-        // Visibilidade: Administrator vê tudo (com filtro opcional por household); qualquer
-        // outro usuário vê só o audit log do próprio household.
+        // Visibilidade: Administrator vê tudo (com filtro opcional por grupo); qualquer
+        // outro usuário vê só o audit log do próprio grupo.
         if (_currentUser.IsAdministrator)
         {
-            if (filter.HouseholdId is not null)
-                query = query.Where(a => a.HouseholdId == filter.HouseholdId);
+            if (filter.GrupoId is not null)
+                query = query.Where(a => a.GrupoId == filter.GrupoId);
         }
         else
         {
-            query = query.Where(a => a.HouseholdId == _currentUser.HouseholdId);
+            query = query.Where(a => a.GrupoId == _currentUser.GrupoId);
         }
 
         if (filter.StartDate is not null)

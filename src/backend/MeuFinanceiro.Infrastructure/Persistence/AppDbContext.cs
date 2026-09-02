@@ -24,8 +24,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         _currentUser = currentUser;
     }
 
-    public DbSet<Household> Households => Set<Household>();
-    public DbSet<HouseholdMember> HouseholdMembers => Set<HouseholdMember>();
+    public DbSet<Grupo> Grupos => Set<Grupo>();
+    public DbSet<GrupoMember> GrupoMembers => Set<GrupoMember>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
     public DbSet<Category> Categories => Set<Category>();
@@ -65,16 +65,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             }
         }
 
-        // FK de cada entidade "de household" para Households(Id) — sem navigation property
+        // FK de cada entidade "de grupo" para Grupos(Id) — sem navigation property
         // em nenhum dos dois lados (mesmo padrão do resto do Domain), só a constraint no banco.
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            if (typeof(HouseholdOwnedEntity).IsAssignableFrom(entityType.ClrType))
+            if (typeof(GrupoOwnedEntity).IsAssignableFrom(entityType.ClrType))
             {
                 builder.Entity(entityType.ClrType)
-                    .HasOne(typeof(Household))
+                    .HasOne(typeof(Grupo))
                     .WithMany()
-                    .HasForeignKey(nameof(HouseholdOwnedEntity.HouseholdId))
+                    .HasForeignKey(nameof(GrupoOwnedEntity.GrupoId))
                     .OnDelete(DeleteBehavior.Restrict);
             }
         }
@@ -91,8 +91,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         // Índices baseados nas consultas de docs/04-modelo-dados.md e docs/06-lancamentos.md.
         builder.Entity<FinancialTransaction>(e =>
         {
-            e.HasIndex(t => new { t.HouseholdId, t.TransactionDate });
-            e.HasIndex(t => new { t.HouseholdId, t.Description });
+            e.HasIndex(t => new { t.GrupoId, t.TransactionDate });
+            e.HasIndex(t => new { t.GrupoId, t.Description });
             e.HasIndex(t => t.MerchantId);
             e.HasIndex(t => t.Status);
 
@@ -111,12 +111,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         builder.Entity<BankStatementItem>(e => e.HasIndex(i => i.Date));
         builder.Entity<CardInvoiceItem>(e => e.HasIndex(i => i.Date));
         builder.Entity<Reconciliation>(e => e.HasIndex(r => r.Status));
-        builder.Entity<Merchant>(e => e.HasIndex(m => new { m.HouseholdId, m.Name }));
+        builder.Entity<Merchant>(e => e.HasIndex(m => new { m.GrupoId, m.Name }));
 
-        builder.Entity<HouseholdMember>(e =>
+        builder.Entity<GrupoMember>(e =>
         {
             e.HasIndex(m => m.UserId).IsUnique();
-            e.HasOne<Household>().WithMany().HasForeignKey(m => m.HouseholdId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Grupo>().WithMany().HasForeignKey(m => m.GrupoId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<InstallmentPlan>()
@@ -149,8 +149,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
     /// <summary>
     /// Auditoria automática de Create/Update/Delete (docs/17-auditoria.md, Parte 5 do plano de
-    /// Household): antes só 2 de 13 serviços chamavam IAuditService manualmente — isso cobre as
-    /// 12 entidades de household (e qualquer entidade nova) de uma vez, sem precisar lembrar de
+    /// Grupo): antes só 2 de 13 serviços chamavam IAuditService manualmente — isso cobre as
+    /// 12 entidades de grupo (e qualquer entidade nova) de uma vez, sem precisar lembrar de
     /// instrumentar cada serviço. CardReconciliationService/BankReconciliationService continuam
     /// com suas chamadas manuais específicas (ações como "Accept"/"Undo" têm semântica própria
     /// que este override genérico não capturaria) — as duas formas convivem sem conflito.
@@ -175,7 +175,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             if (AuditExcludedTypes.Contains(entry.Entity.GetType())) continue;
             if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted)) continue;
 
-            var householdId = entry.Entity is HouseholdOwnedEntity owned ? owned.HouseholdId : (Guid?)null;
+            var grupoId = entry.Entity is GrupoOwnedEntity owned ? owned.GrupoId : (Guid?)null;
             var pkValue = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey())?.CurrentValue?.ToString() ?? string.Empty;
 
             string? oldValues = entry.State is EntityState.Modified or EntityState.Deleted
@@ -189,7 +189,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             entries.Add(new AuditLog
             {
                 UserId = _currentUser.IsAuthenticated ? _currentUser.UserId : null,
-                HouseholdId = householdId,
+                GrupoId = grupoId,
                 Action = entry.State.ToString(),
                 EntityName = entry.Entity.GetType().Name,
                 EntityId = pkValue,

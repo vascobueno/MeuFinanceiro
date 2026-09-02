@@ -27,7 +27,7 @@ public class RecurringTransactionService : IRecurringTransactionService
         var query = _db.RecurringTransactions
             .AsNoTracking()
             .Include(r => r.Versions)
-            .Where(r => r.HouseholdId == _currentUser.HouseholdId);
+            .Where(r => r.GrupoId == _currentUser.GrupoId);
 
         if (type is not null) query = query.Where(r => r.Type == type);
 
@@ -86,7 +86,7 @@ public class RecurringTransactionService : IRecurringTransactionService
             .Include(r => r.Versions)
             .FirstOrDefaultAsync(r => r.Id == id, ct) ?? throw new NotFoundException(nameof(RecurringTransaction), id);
 
-        if (recurring.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (recurring.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
         return recurring;
     }
 

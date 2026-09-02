@@ -3,7 +3,7 @@ using MeuFinanceiro.Domain.Common;
 namespace MeuFinanceiro.Domain.Entities;
 
 /// <summary>docs/08-conciliacao-cartoes.md — fatura importada (entrada inicial: PDF).</summary>
-public class CardInvoice : HouseholdOwnedEntity
+public class CardInvoice : GrupoOwnedEntity
 {
     public Guid CreditCardId { get; set; }
     public CreditCard? CreditCard { get; set; }

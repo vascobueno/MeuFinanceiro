@@ -7,13 +7,15 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule, MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ProblemDetails } from '../../core/models/paged-result.model';
 import { passwordValidators, passwordsMatchValidator } from '../../shared/validators/password.validators';
+import { usernameValidators } from '../../shared/validators/username.validators';
 
 /**
- * Cadastro de novo usuário (RF001) — cria a identidade e, na mesma chamada, o household
+ * Cadastro de novo usuário (RF001) — cria a identidade e, na mesma chamada, o grupo
  * novo do usuário (AuthService.register já loga automaticamente, igual ao login).
  */
 @Component({
@@ -27,6 +29,7 @@ import { passwordValidators, passwordsMatchValidator } from '../../shared/valida
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
     MatProgressSpinnerModule,
   ],
   providers: [{ provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { floatLabel: 'always', subscriptSizing: 'dynamic' } }],
@@ -42,12 +45,16 @@ export class RegisterComponent {
   readonly form = this.fb.nonNullable.group(
     {
       name: ['', [Validators.required, Validators.minLength(2)]],
+      username: ['', usernameValidators],
       email: ['', [Validators.required, Validators.email]],
       password: ['', passwordValidators],
       confirmPassword: ['', [Validators.required]],
     },
     { validators: [passwordsMatchValidator] },
   );
+
+  readonly hidePassword = signal(true);
+  readonly hideConfirmPassword = signal(true);
 
   constructor(
     private readonly authService: AuthService,
@@ -63,8 +70,8 @@ export class RegisterComponent {
     this.loading.set(true);
     this.errorMessage.set(null);
 
-    const { name, email, password } = this.form.getRawValue();
-    this.authService.register({ name, email, password }).subscribe({
+    const { name, username, email, password } = this.form.getRawValue();
+    this.authService.register({ name, username, email, password }).subscribe({
       next: () => {
         this.loading.set(false);
         this.router.navigate(['/dashboard']);

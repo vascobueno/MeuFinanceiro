@@ -32,7 +32,7 @@ public class MerchantService : IMerchantService
             // Postgres LIKE é case-sensitive por padrão, o que quebraria a regra 18 ("ama"
             // encontra "Amazon"). Evita EF.Functions.ILike (específico do Npgsql) para não
             // criar dependência do provider de banco na camada Application.
-            .Where(m => m.HouseholdId == _currentUser.HouseholdId && m.Name.ToLower().StartsWith(normalizedPrefix))
+            .Where(m => m.GrupoId == _currentUser.GrupoId && m.Name.ToLower().StartsWith(normalizedPrefix))
             .OrderByDescending(m => m.UsageCount)
             .ThenByDescending(m => m.LastUsedAt)
             .Take(take)
@@ -46,13 +46,13 @@ public class MerchantService : IMerchantService
         var normalized = description.Trim();
 
         var merchant = await _db.Merchants.FirstOrDefaultAsync(
-            m => m.HouseholdId == _currentUser.HouseholdId && m.Name == normalized, ct);
+            m => m.GrupoId == _currentUser.GrupoId && m.Name == normalized, ct);
 
         if (merchant is null)
         {
             merchant = new Merchant
             {
-                HouseholdId = _currentUser.HouseholdId,
+                GrupoId = _currentUser.GrupoId,
                 Name = normalized,
                 UsageCount = 1,
                 LastUsedAt = DateTime.UtcNow,

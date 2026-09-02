@@ -20,11 +20,14 @@ public class PasswordResetEndpointTests : IClassFixture<CustomWebApplicationFact
         _factory = factory;
     }
 
+    private static string UsernameFromEmail(string email) => $"user{email.Split('@')[0]}";
+
     private async Task<(HttpClient client, AuthResponse auth)> RegisterAsync(string name)
     {
         var client = _factory.CreateClient();
-        var email = $"{Guid.NewGuid():N}@teste.com";
-        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequest(name, email, Password));
+        var id = Guid.NewGuid().ToString("N")[..12];
+        var email = $"{id}@teste.com";
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequest(name, UsernameFromEmail(email), email, Password));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
@@ -78,11 +81,11 @@ public class PasswordResetEndpointTests : IClassFixture<CustomWebApplicationFact
         resetResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Senha antiga não funciona mais.
-        var loginOld = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(auth.User.Email, Password));
+        var loginOld = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(auth.User.Email), Password));
         loginOld.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         // Senha nova funciona.
-        var loginNew = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(auth.User.Email, newPassword));
+        var loginNew = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(auth.User.Email), newPassword));
         loginNew.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Refresh token emitido antes do reset foi revogado.

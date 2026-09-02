@@ -73,6 +73,30 @@ h6 {
   color: #8b8175;
 }
 
+// Botão de mostrar/ocultar senha (matSuffix dentro de mat-form-field, telas de auth) — menor
+// que o tamanho padrão do mat-icon-button (40px), que fica grande demais dentro do campo.
+// Único uso de matSuffix no app — align-self:center pode ser global sem afetar outra tela:
+// por padrão o suffix segue align-items:baseline do mat-form-field-flex (pensado pra texto),
+// o que deixa o botão puxado pra cima com floatLabel:'always' (label sempre ocupando espaço
+// no topo do campo); center alinha com o meio do campo, onde o ícone visualmente pertence.
+.mat-mdc-form-field-icon-suffix {
+  align-self: center;
+}
+.mf-password-toggle {
+  --mdc-icon-button-state-layer-size: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+}
+.mf-password-toggle-icon {
+  // Material mantém a caixa do ícone em 24x24 (regra própria com especificidade maior que
+  // esta classe, então width/height aqui não pegam) — só o glifo (font-size) encolhe; o
+  // line-height precisa bater com essa caixa real de 24px pra continuar centralizado
+  // verticalmente dentro dela (com line-height:18px o glifo ficava colado no topo dos 24px).
+  font-size: 18px;
+  line-height: 24px;
+}
+
 .mf-empty-state {
   text-align: center;
   padding: 3rem 1rem;

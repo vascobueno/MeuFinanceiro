@@ -5,8 +5,8 @@ Substituir o controle operacional em Excel por um sistema web.
 
 ## Domínios
 - Usuários e segurança
-- Multi-usuário (Household — Owner/Member, perfis de acesso Completo/Editor/Visualizador)
-- Administração do sistema (role Administrator, gestão de todos os households)
+- Multi-usuário (Grupo — Owner/Member, perfis de acesso Completo/Editor/Visualizador)
+- Administração do sistema (role Administrator, gestão de todos os grupos)
 - Contas correntes
 - Cartões
 - Lançamentos

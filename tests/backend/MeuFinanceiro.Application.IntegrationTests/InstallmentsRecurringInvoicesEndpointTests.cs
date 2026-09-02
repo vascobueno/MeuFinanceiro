@@ -28,9 +28,10 @@ public class InstallmentsRecurringInvoicesEndpointTests : IClassFixture<CustomWe
 
     private async Task AuthenticateAsync()
     {
-        var email = $"user-{Guid.NewGuid():N}@teste.com";
+        var id = Guid.NewGuid().ToString("N")[..12];
+        var email = $"user-{id}@teste.com";
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register",
-            new RegisterRequest("Usuário Teste", email, "SenhaForte!123"));
+            new RegisterRequest("Usuário Teste", $"user{id}", email, "SenhaForte!123"));
         var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
     }

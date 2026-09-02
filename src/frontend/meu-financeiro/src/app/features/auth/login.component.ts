@@ -8,9 +8,11 @@ import { MatFormFieldModule, MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/mat
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ProblemDetails } from '../../core/models/paged-result.model';
+import { usernameValidators } from '../../shared/validators/username.validators';
 
 /** Tela de login (RF001), espelhando docs/screens/login/mockup.html. */
 @Component({
@@ -25,6 +27,7 @@ import { ProblemDetails } from '../../core/models/paged-result.model';
     MatInputModule,
     MatCheckboxModule,
     MatButtonModule,
+    MatIconModule,
     MatProgressSpinnerModule,
   ],
   providers: [{ provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { floatLabel: 'always', subscriptSizing: 'dynamic' } }],
@@ -38,9 +41,11 @@ export class LoginComponent {
   private readonly fb = inject(FormBuilder);
 
   readonly form = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]],
+    username: ['', usernameValidators],
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
+
+  readonly hidePassword = signal(true);
 
   constructor(
     private readonly authService: AuthService,

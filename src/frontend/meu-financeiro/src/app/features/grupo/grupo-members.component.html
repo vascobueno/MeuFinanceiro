@@ -1,0 +1,98 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title">
+    <mat-icon svgIcon="mf-settings" class="mf-page-title-icon"></mat-icon>
+    {{ grupoId ? (grupo()?.name ?? 'Membros') : 'Membros da família' }}
+  </h2>
+  <div class="mf-sub">Quem tem acesso a estes dados financeiros, e com qual papel.</div>
+</div>
+
+@if (canManage) {
+  <mat-card appearance="outlined" class="mf-inline-form">
+    <h6>Adicionar membro</h6>
+    <div class="mf-inline-form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>E-mail</mat-label>
+        <input matInput [(ngModel)]="newEmail" placeholder="nome@exemplo.com" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Papel</mat-label>
+        <mat-select [(ngModel)]="newRole">
+          <mat-option [value]="GrupoRole.Member">Member</mat-option>
+          <mat-option [value]="GrupoRole.Owner">Owner</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="addMember()">Adicionar</button>
+    </div>
+  </mat-card>
+
+  <mat-card appearance="outlined" class="mf-inline-form">
+    <h6>Criar novo usuário</h6>
+    <p class="mf-sub">Para quem ainda não tem conta — o sistema envia uma senha temporária por e-mail.</p>
+    <div class="mf-inline-form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Nome</mat-label>
+        <input matInput [(ngModel)]="newMember.name" placeholder="Nome completo" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Nome de usuário</mat-label>
+        <input matInput [(ngModel)]="newMember.username" placeholder="seu.usuario" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>E-mail</mat-label>
+        <input matInput [(ngModel)]="newMember.email" placeholder="nome@exemplo.com" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Papel</mat-label>
+        <mat-select [(ngModel)]="newMember.role">
+          <mat-option [value]="GrupoRole.Member">Member</mat-option>
+          <mat-option [value]="GrupoRole.Owner">Owner</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" [disabled]="creatingMember()" (click)="createMember()">Criar e enviar senha</button>
+    </div>
+  </mat-card>
+}
+
+@if (actionError()) {
+  <div class="mf-form-error" role="alert">{{ actionError() }}</div>
+}
+
+<mf-list-state
+  [loading]="loading()"
+  [error]="loadError()"
+  [empty]="!loading() && !loadError() && (grupo()?.members?.length ?? 0) === 0"
+  emptyMessage="Nenhum membro encontrado."
+  [onRetry]="load.bind(this)"
+></mf-list-state>
+
+@if (!loading() && grupo(); as h) {
+  <mat-card appearance="outlined" class="mf-members-card">
+    @for (member of h.members; track member.userId) {
+      <div class="mf-member-row">
+        <div class="mf-member-avatar">{{ member.name.charAt(0).toUpperCase() }}</div>
+        <div class="mf-member-info">
+          <div class="mf-member-name">{{ member.name }}</div>
+          <div class="mf-member-email">{{ member.email }}</div>
+        </div>
+        <span class="mf-badge" [ngClass]="member.role === GrupoRole.Owner ? 'mf-badge-ok' : 'mf-badge-neutral'">
+          {{ member.role === GrupoRole.Owner ? 'Owner' : 'Member' }}
+        </span>
+        @if (canManage) {
+          <mat-form-field appearance="outline" class="mf-member-profile">
+            <mat-label>Acesso</mat-label>
+            <mat-select
+              [value]="member.accessProfile"
+              [disabled]="member.role === GrupoRole.Owner"
+              (selectionChange)="updateAccessProfile(member, $event.value)"
+            >
+              <mat-option [value]="GrupoAccessProfile.Completo">Completo</mat-option>
+              <mat-option [value]="GrupoAccessProfile.Editor">Editor</mat-option>
+              <mat-option [value]="GrupoAccessProfile.Visualizador">Visualizador</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <button mat-stroked-button color="warn" type="button" (click)="removeMember(member.userId)">Remover</button>
+        }
+      </div>
+    }
+  </mat-card>
+}

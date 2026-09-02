@@ -6,7 +6,7 @@ namespace MeuFinanceiro.Domain.Entities;
 /// Estabelecimento/descrição usado no autocomplete por prefixo (RF005, regra 18).
 /// UsageCount/LastUsedAt priorizam frequência e uso recente (docs/05-regras-negocio.md).
 /// </summary>
-public class Merchant : HouseholdOwnedEntity
+public class Merchant : GrupoOwnedEntity
 {
     public string Name { get; set; } = string.Empty;
     public int UsageCount { get; set; }

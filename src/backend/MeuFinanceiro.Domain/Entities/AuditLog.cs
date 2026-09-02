@@ -5,8 +5,8 @@ public class AuditLog
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? UserId { get; set; }
-    /// <summary>Household do dado alterado (entidades household-owned) ou do usuário que logou (eventos de acesso). Null quando não aplicável (ex.: login falhou e o e-mail não existe).</summary>
-    public Guid? HouseholdId { get; set; }
+    /// <summary>Grupo do dado alterado (entidades grupo-owned) ou do usuário que logou (eventos de acesso). Null quando não aplicável (ex.: login falhou e o e-mail não existe).</summary>
+    public Guid? GrupoId { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public string Action { get; set; } = string.Empty; // Create, Update, Delete, Accept, Undo, Login, LoginFailed...
     public string EntityName { get; set; } = string.Empty;

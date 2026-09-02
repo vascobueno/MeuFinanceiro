@@ -25,12 +25,12 @@ public class ProjectionService : IProjectionService
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        var accounts = await _db.Accounts.AsNoTracking().Where(a => a.HouseholdId == _currentUser.HouseholdId).ToListAsync(ct);
+        var accounts = await _db.Accounts.AsNoTracking().Where(a => a.GrupoId == _currentUser.GrupoId).ToListAsync(ct);
         var initialBalance = accounts.Sum(a => a.InitialBalance);
 
         var recordedTransactions = await _db.FinancialTransactions
             .AsNoTracking()
-            .Where(t => t.HouseholdId == _currentUser.HouseholdId && t.AccountId != null && t.Status != TransactionStatus.Pending)
+            .Where(t => t.GrupoId == _currentUser.GrupoId && t.AccountId != null && t.Status != TransactionStatus.Pending)
             .Select(t => new { t.TransactionDate, t.Description, t.Amount, t.Direction, t.Type })
             .ToListAsync(ct);
 
@@ -54,7 +54,7 @@ public class ProjectionService : IProjectionService
             var recurrences = await _db.RecurringTransactions
                 .AsNoTracking()
                 .Include(r => r.Versions)
-                .Where(r => r.HouseholdId == _currentUser.HouseholdId && r.IsActive && r.AccountId != null)
+                .Where(r => r.GrupoId == _currentUser.GrupoId && r.IsActive && r.AccountId != null)
                 .ToListAsync(ct);
 
             foreach (var recurrence in recurrences)
@@ -92,7 +92,7 @@ public class ProjectionService : IProjectionService
             .AsNoTracking()
             .Include(i => i.Positions)
             .Include(i => i.InvestmentAccount)
-            .Where(i => i.InvestmentAccount!.HouseholdId == _currentUser.HouseholdId)
+            .Where(i => i.InvestmentAccount!.GrupoId == _currentUser.GrupoId)
             .ToListAsync(ct);
 
         var investmentsBalance = investments

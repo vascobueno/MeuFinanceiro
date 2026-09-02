@@ -3,19 +3,19 @@ using MeuFinanceiro.Domain.Enums;
 namespace MeuFinanceiro.Application.Common.Interfaces;
 
 /// <summary>
-/// UserId/HouseholdId/HouseholdRole derivados da identidade (token JWT), nunca confiados do
+/// UserId/GrupoId/GrupoRole derivados da identidade (token JWT), nunca confiados do
 /// cliente (regra 22, docs/12-seguranca.md).
 /// </summary>
 public interface ICurrentUserService
 {
     Guid UserId { get; }
-    Guid HouseholdId { get; }
-    HouseholdRole HouseholdRole { get; }
-    HouseholdAccessProfile AccessProfile { get; }
+    Guid GrupoId { get; }
+    GrupoRole GrupoRole { get; }
+    GrupoAccessProfile AccessProfile { get; }
     bool IsAuthenticated { get; }
     bool IsAdministrator { get; }
 
-    /// <summary>Vê páginas de gestão do household (Configurações/Membros) — Owner sempre, ou
+    /// <summary>Vê páginas de gestão do grupo (Configurações/Membros) — Owner sempre, ou
     /// Member com perfil Completo.</summary>
     bool HasFullAccess { get; }
 
@@ -24,9 +24,9 @@ public interface ICurrentUserService
 }
 
 /// <summary>Nomes de claim custom do JWT sem equivalente em <see cref="System.Security.Claims.ClaimTypes"/>.</summary>
-public static class HouseholdClaimTypes
+public static class GrupoClaimTypes
 {
-    public const string HouseholdId = "household_id";
-    public const string HouseholdRole = "household_role";
-    public const string AccessProfile = "household_access_profile";
+    public const string GrupoId = "grupo_id";
+    public const string GrupoRole = "grupo_role";
+    public const string AccessProfile = "grupo_access_profile";
 }

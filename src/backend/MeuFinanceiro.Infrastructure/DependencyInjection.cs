@@ -4,7 +4,7 @@ using MeuFinanceiro.Application.Auth;
 using MeuFinanceiro.Application.Cards;
 using MeuFinanceiro.Application.Categories;
 using MeuFinanceiro.Application.Common.Interfaces;
-using MeuFinanceiro.Application.Households;
+using MeuFinanceiro.Application.Grupos;
 using MeuFinanceiro.Application.Imports;
 using MeuFinanceiro.Application.Installments;
 using MeuFinanceiro.Application.Investments;
@@ -51,7 +51,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IHouseholdService, HouseholdService>();
+        services.AddScoped<IGrupoService, GrupoService>();
         services.AddScoped<IAdminService, AdminService>();
 
         services.AddScoped<IAccountService, AccountService>();

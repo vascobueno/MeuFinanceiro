@@ -15,8 +15,9 @@
 - RF013 Filtros, ordenação e paginação
 - RF014 Auditoria
 - RF015 Migração inicial do Excel
-- RF016 Household multi-usuário (Owner convida/remove Member, dados compartilhados)
-- RF017 Administrador do sistema (gestão de todos os households)
+- RF016 Grupo multi-usuário (Owner convida/remove Member, ou cria a conta direto com senha
+  temporária por e-mail; dados compartilhados)
+- RF017 Administrador do sistema (gestão de todos os grupos)
 - RF018 Perfis de acesso por membro (Completo/Editor/Visualizador)
 - RF019 Relatórios imprimíveis/PDF (projeção de receitas, gastos recorrentes, auditoria)
 - RF020 Skins de cores (7 temas visuais selecionáveis)

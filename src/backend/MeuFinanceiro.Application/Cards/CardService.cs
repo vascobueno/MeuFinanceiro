@@ -19,7 +19,7 @@ public class CardService : ICardService
 
     public async Task<PagedResult<CardResponse>> GetAllAsync(PagedRequest request, CancellationToken ct = default)
     {
-        var query = _db.CreditCards.AsNoTracking().Where(c => c.HouseholdId == _currentUser.HouseholdId);
+        var query = _db.CreditCards.AsNoTracking().Where(c => c.GrupoId == _currentUser.GrupoId);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -49,7 +49,7 @@ public class CardService : ICardService
     {
         var card = new CreditCard
         {
-            HouseholdId = _currentUser.HouseholdId,
+            GrupoId = _currentUser.GrupoId,
             Name = request.Name,
             Brand = request.Brand,
             ClosingDay = request.ClosingDay,
@@ -94,7 +94,7 @@ public class CardService : ICardService
     private async Task<CreditCard> FindOwnedAsync(Guid id, CancellationToken ct)
     {
         var card = await _db.CreditCards.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw new NotFoundException(nameof(CreditCard), id);
-        if (card.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (card.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
         return card;
     }
 

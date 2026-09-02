@@ -18,8 +18,8 @@ public abstract class AuditableEntity
     public byte[]? RowVersion { get; set; }
 }
 
-/// <summary>Entidades "de propriedade" de um household (ownership - docs/12-seguranca.md, regra 22).</summary>
-public abstract class HouseholdOwnedEntity : AuditableEntity
+/// <summary>Entidades "de propriedade" de um grupo (ownership - docs/12-seguranca.md, regra 22).</summary>
+public abstract class GrupoOwnedEntity : AuditableEntity
 {
-    public Guid HouseholdId { get; set; }
+    public Guid GrupoId { get; set; }
 }

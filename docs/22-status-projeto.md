@@ -8,8 +8,8 @@
 - [x] CI (GitHub Actions — build/test do backend e do frontend)
 
 ## Segurança
-- [x] Identidade (JWT — registro/login/refresh/logout)
-- [x] Autorização (`[Authorize]` + escopo por household em todos os endpoints)
+- [x] Identidade (JWT — registro/login/refresh/logout, login por nome de usuário)
+- [x] Autorização (`[Authorize]` + escopo por grupo em todos os endpoints)
 - [x] Perfis de acesso por membro (Completo/Editor/Visualizador — `WriteAccessFilter` +
       `fullAccessGuard`/`canWriteGuard`)
 - [ ] Key Vault
@@ -17,16 +17,18 @@
 - [x] Auditoria (`AuditService`/`AuditLog`, automática via `SaveChangesAsync` + manual nas
       conciliações + acessos de login)
 
-## Household / Multi-usuário
-- [x] Household compartilhado (Owner/Member, dados em comum)
-- [x] Convite por e-mail (só se o household do convidado estiver vazio)
-- [x] Remoção de membro (nunca fica sem household — ganha um novo, vazio)
+## Grupo / Multi-usuário
+- [x] Grupo compartilhado (Owner/Member, dados em comum)
+- [x] Convite por e-mail (só se o grupo do convidado estiver vazio)
+- [x] Criação direta de usuário pelo Owner, com senha temporária por e-mail e troca
+      obrigatória no primeiro login (`/trocar-senha-inicial`)
+- [x] Remoção de membro (nunca fica sem grupo — ganha um novo, vazio)
 - [x] Tela própria de gestão de membros (`/membros`)
 - [x] Perfis de acesso por membro (Completo/Editor/Visualizador)
 
 ## Administração
 - [x] Role de sistema Administrator (seed por configuração, sem auto-promoção)
-- [x] Tela de households (`/admin/households`)
+- [x] Tela de grupos (`/admin/grupos`)
 - [x] Tela cruzada de perfis de acesso (`/admin/perfis-acesso`)
 
 ## Relatórios
@@ -68,6 +70,6 @@
 
 Infra Azure (DEV/STAGING/PROD/Backup/Monitoring/Key Vault/OIDC) ainda não existe — o projeto
 roda hoje só em ambiente local (PostgreSQL local via Docker, `dotnet run` + `ng serve`). Tudo em
-Fundação/Segurança (exceto Key Vault/OIDC)/Household/Administração/Financeiro/Conciliação/
+Fundação/Segurança (exceto Key Vault/OIDC)/Grupo/Administração/Financeiro/Conciliação/
 Investimentos/Relatórios/Interface está implementado e coberto pelas telas descritas em
 `docs/21-telas.md`.

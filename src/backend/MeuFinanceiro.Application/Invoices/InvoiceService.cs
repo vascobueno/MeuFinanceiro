@@ -23,7 +23,7 @@ public class InvoiceService : IInvoiceService
         var query = _db.CardInvoices
             .AsNoTracking()
             .Include(i => i.CreditCard)
-            .Where(i => i.HouseholdId == _currentUser.HouseholdId);
+            .Where(i => i.GrupoId == _currentUser.GrupoId);
 
         if (filter.CreditCardId is not null) query = query.Where(i => i.CreditCardId == filter.CreditCardId);
         if (filter.PeriodStart is not null) query = query.Where(i => i.ClosingDate >= filter.PeriodStart);

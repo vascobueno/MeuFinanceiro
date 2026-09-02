@@ -3,7 +3,7 @@ using MeuFinanceiro.Domain.Enums;
 
 namespace MeuFinanceiro.Domain.Entities;
 
-public class Category : HouseholdOwnedEntity
+public class Category : GrupoOwnedEntity
 {
     public string Name { get; set; } = string.Empty;
     public CategoryType Type { get; set; }

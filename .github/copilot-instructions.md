@@ -3,7 +3,7 @@
 ## 1. O que é o projeto
 
 Sistema web de controle financeiro pessoal (substitui um controle antigo em Excel), com suporte
-a múltiplos usuários por **household** (família/espaço compartilhado). Já está em produção de
+a múltiplos usuários por **grupo** (família/espaço compartilhado). Já está em produção de
 uso ativo — não é um projeto novo nem um protótipo.
 
 Stack:
@@ -39,7 +39,7 @@ docs/03-arquitetura.md          camadas backend + pastas frontend
 docs/04-modelo-dados.md         entidades e índices
 docs/05 a docs/11               regras de negócio por área (lançamentos, recorrência,
                                  parcelamento, conciliação, investimentos, projeção)
-docs/12-seguranca.md            modelo de autorização (household, perfis, administrator)
+docs/12-seguranca.md            modelo de autorização (grupo, perfis, administrator)
 docs/13-api.md                  endpoints por área
 docs/14-angular.md              organização do frontend
 docs/17-auditoria.md            auditoria de acessos e alterações
@@ -57,14 +57,14 @@ código está errado.
 
 ## 3. Modelo de dados/autorização atual (não é dono único por usuário)
 
-Todo dado financeiro pertence a um **household** (`HouseholdId`, não `UserId` direto — ver
-`HouseholdOwnedEntity`), compartilhado entre os membros desse household. Cada membro tem:
-- `HouseholdRole`: `Owner` (gerencia membros) ou `Member`.
-- `HouseholdAccessProfile`: `Completo`, `Editor` ou `Visualizador` — Owner é sempre `Completo`.
+Todo dado financeiro pertence a um **grupo** (`GrupoId`, não `UserId` direto — ver
+`GrupoOwnedEntity`), compartilhado entre os membros desse grupo. Cada membro tem:
+- `GrupoRole`: `Owner` (gerencia membros) ou `Member`.
+- `GrupoAccessProfile`: `Completo`, `Editor` ou `Visualizador` — Owner é sempre `Completo`.
 - Opcionalmente, a role de sistema `Administrator` (ASP.NET Identity role, ortogonal ao
-  household — administra todos os households, não só o próprio).
+  grupo — administra todos os grupos, não só o próprio).
 
-`ICurrentUserService` deriva tudo isso do JWT (nunca confiar em `HouseholdId`/`UserId` enviado
+`ICurrentUserService` deriva tudo isso do JWT (nunca confiar em `GrupoId`/`UserId` enviado
 pelo cliente). Nunca duplicar essa checagem manualmente onde já existe um mecanismo central —
 ver `docs/12-seguranca.md` para os guards de rota (`adminGuard`, `fullAccessGuard`,
 `canWriteGuard`) e o filtro global de backend (`WriteAccessFilter`).

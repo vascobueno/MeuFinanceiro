@@ -3,7 +3,7 @@ using MeuFinanceiro.Domain.Common;
 namespace MeuFinanceiro.Domain.Entities;
 
 /// <summary>docs/09-conciliacao-conta-corrente.md — extrato bancário importado (fonte externa).</summary>
-public class BankStatement : HouseholdOwnedEntity
+public class BankStatement : GrupoOwnedEntity
 {
     public Guid AccountId { get; set; }
     public Account? Account { get; set; }

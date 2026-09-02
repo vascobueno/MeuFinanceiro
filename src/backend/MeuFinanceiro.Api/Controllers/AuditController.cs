@@ -7,7 +7,7 @@ namespace MeuFinanceiro.Api.Controllers;
 
 /// <summary>
 /// Relatório de auditoria (acessos + alterações). Owner/Member vê só o audit log do próprio
-/// household; Administrator vê de todos (visibilidade resolvida dentro do AuditService).
+/// grupo; Administrator vê de todos (visibilidade resolvida dentro do AuditService).
 /// </summary>
 [ApiController]
 [Authorize]

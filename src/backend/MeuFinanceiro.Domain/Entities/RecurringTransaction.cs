@@ -7,7 +7,7 @@ namespace MeuFinanceiro.Domain.Entities;
 /// Regra 13: alterações de recorrência criam nova versão por data de vigência.
 /// Ocorrências históricas/conciliadas nunca são alteradas retroativamente.
 /// </summary>
-public class RecurringTransaction : HouseholdOwnedEntity
+public class RecurringTransaction : GrupoOwnedEntity
 {
     public string Description { get; set; } = string.Empty;
     public Guid? AccountId { get; set; }

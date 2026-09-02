@@ -3,7 +3,7 @@ using MeuFinanceiro.Domain.Common;
 namespace MeuFinanceiro.Domain.Entities;
 
 /// <summary>Conta corrente e cartão são origens diferentes (regra 3).</summary>
-public class CreditCard : HouseholdOwnedEntity
+public class CreditCard : GrupoOwnedEntity
 {
     public string Name { get; set; } = string.Empty;
     public string? Brand { get; set; }

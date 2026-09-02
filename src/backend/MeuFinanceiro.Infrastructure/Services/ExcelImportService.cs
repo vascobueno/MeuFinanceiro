@@ -46,7 +46,7 @@ public class ExcelImportService : IExcelImportService
         buffer.Position = 0;
 
         var existing = await _db.ImportFiles
-            .Where(f => f.HouseholdId == _currentUser.HouseholdId && f.FileHash == hash)
+            .Where(f => f.GrupoId == _currentUser.GrupoId && f.FileHash == hash)
             .OrderByDescending(f => f.CreatedAt)
             .FirstOrDefaultAsync(ct);
 
@@ -62,11 +62,11 @@ public class ExcelImportService : IExcelImportService
         if (!alreadyImportedBefore || force)
         {
             buffer.Position = 0;
-            var blobPath = await _fileStorage.SaveAsync(ContainerName, $"{_currentUser.HouseholdId}/{Guid.NewGuid()}-{originalFileName}", buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ct);
+            var blobPath = await _fileStorage.SaveAsync(ContainerName, $"{_currentUser.GrupoId}/{Guid.NewGuid()}-{originalFileName}", buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ct);
 
             importFile = new ImportFile
             {
-                HouseholdId = _currentUser.HouseholdId,
+                GrupoId = _currentUser.GrupoId,
                 OriginalFileName = originalFileName,
                 FileHash = hash,
                 BlobPath = blobPath,
@@ -95,7 +95,7 @@ public class ExcelImportService : IExcelImportService
     {
         var importFile = await _db.ImportFiles.FirstOrDefaultAsync(f => f.Id == importFileId, ct)
             ?? throw new NotFoundException(nameof(ImportFile), importFileId);
-        if (importFile.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (importFile.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
         if (importFile.Status == ImportStatus.Imported)
             throw new BusinessRuleException("arquivo-ja-importado", "Este arquivo já foi importado anteriormente.");
@@ -109,9 +109,9 @@ public class ExcelImportService : IExcelImportService
         buffer.Position = 0;
 
         var (accountNames, cardNames, categoryNames) = await LoadLookupsAsync(ct);
-        var accountsById = await _db.Accounts.Where(a => a.HouseholdId == _currentUser.HouseholdId).ToDictionaryAsync(a => a.Name, a => a.Id, StringComparer.OrdinalIgnoreCase, ct);
-        var cardsById = await _db.CreditCards.Where(c => c.HouseholdId == _currentUser.HouseholdId).ToDictionaryAsync(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase, ct);
-        var categoriesById = await _db.Categories.Where(c => c.HouseholdId == _currentUser.HouseholdId).ToDictionaryAsync(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase, ct);
+        var accountsById = await _db.Accounts.Where(a => a.GrupoId == _currentUser.GrupoId).ToDictionaryAsync(a => a.Name, a => a.Id, StringComparer.OrdinalIgnoreCase, ct);
+        var cardsById = await _db.CreditCards.Where(c => c.GrupoId == _currentUser.GrupoId).ToDictionaryAsync(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase, ct);
+        var categoriesById = await _db.Categories.Where(c => c.GrupoId == _currentUser.GrupoId).ToDictionaryAsync(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase, ct);
 
         var rawRows = ParseWorkbook(buffer);
         var validatedRows = rawRows.Select(r => Validate(r, accountNames, cardNames, categoryNames)).ToList();
@@ -137,7 +137,7 @@ public class ExcelImportService : IExcelImportService
 
             var transaction = new FinancialTransaction
             {
-                HouseholdId = _currentUser.HouseholdId,
+                GrupoId = _currentUser.GrupoId,
                 TransactionDate = row.Date.Value,
                 Description = row.Description,
                 MerchantId = merchantId,
@@ -180,7 +180,7 @@ public class ExcelImportService : IExcelImportService
     {
         var files = await _db.ImportFiles
             .AsNoTracking()
-            .Where(f => f.HouseholdId == _currentUser.HouseholdId)
+            .Where(f => f.GrupoId == _currentUser.GrupoId)
             .OrderByDescending(f => f.CreatedAt)
             .ToListAsync(ct);
 
@@ -191,9 +191,9 @@ public class ExcelImportService : IExcelImportService
 
     private async Task<(HashSet<string> accounts, HashSet<string> cards, HashSet<string> categories)> LoadLookupsAsync(CancellationToken ct)
     {
-        var accountNames = await _db.Accounts.Where(a => a.HouseholdId == _currentUser.HouseholdId).Select(a => a.Name).ToListAsync(ct);
-        var cardNames = await _db.CreditCards.Where(c => c.HouseholdId == _currentUser.HouseholdId).Select(c => c.Name).ToListAsync(ct);
-        var categoryNames = await _db.Categories.Where(c => c.HouseholdId == _currentUser.HouseholdId).Select(c => c.Name).ToListAsync(ct);
+        var accountNames = await _db.Accounts.Where(a => a.GrupoId == _currentUser.GrupoId).Select(a => a.Name).ToListAsync(ct);
+        var cardNames = await _db.CreditCards.Where(c => c.GrupoId == _currentUser.GrupoId).Select(c => c.Name).ToListAsync(ct);
+        var categoryNames = await _db.Categories.Where(c => c.GrupoId == _currentUser.GrupoId).Select(c => c.Name).ToListAsync(ct);
 
         return (
             new HashSet<string>(accountNames, StringComparer.OrdinalIgnoreCase),
@@ -208,7 +208,7 @@ public class ExcelImportService : IExcelImportService
         if (candidateDates.Count == 0) return new HashSet<int>();
 
         var existing = await _db.FinancialTransactions
-            .Where(t => t.HouseholdId == _currentUser.HouseholdId && candidateDates.Contains(t.TransactionDate))
+            .Where(t => t.GrupoId == _currentUser.GrupoId && candidateDates.Contains(t.TransactionDate))
             .Select(t => new { t.TransactionDate, t.Description, t.Amount })
             .ToListAsync(ct);
 

@@ -39,7 +39,7 @@ public class TransactionService : ITransactionService
             .Include(t => t.Account)
             .Include(t => t.CreditCard)
             .Include(t => t.Installment!).ThenInclude(i => i.InstallmentPlan)
-            .Where(t => t.HouseholdId == _currentUser.HouseholdId);
+            .Where(t => t.GrupoId == _currentUser.GrupoId);
 
         if (filter.StartDate is not null) query = query.Where(t => t.TransactionDate >= filter.StartDate);
         if (filter.EndDate is not null) query = query.Where(t => t.TransactionDate <= filter.EndDate);
@@ -196,7 +196,7 @@ public class TransactionService : ITransactionService
 
         var plan = new InstallmentPlan
         {
-            HouseholdId = _currentUser.HouseholdId,
+            GrupoId = _currentUser.GrupoId,
             Description = request.Description,
             Mode = installmentRequest.Mode,
             TotalAmount = totalAmount,
@@ -235,7 +235,7 @@ public class TransactionService : ITransactionService
     {
         var recurring = new RecurringTransaction
         {
-            HouseholdId = _currentUser.HouseholdId,
+            GrupoId = _currentUser.GrupoId,
             Description = request.Description,
             AccountId = request.AccountId,
             CreditCardId = request.CreditCardId,
@@ -268,7 +268,7 @@ public class TransactionService : ITransactionService
 
     private FinancialTransaction BuildTransaction(CreateTransactionRequest request, Guid? merchantId) => new()
     {
-        HouseholdId = _currentUser.HouseholdId,
+        GrupoId = _currentUser.GrupoId,
         TransactionDate = request.TransactionDate,
         Description = request.Description,
         MerchantId = merchantId,
@@ -293,7 +293,7 @@ public class TransactionService : ITransactionService
             .Include(t => t.Installment!).ThenInclude(i => i.InstallmentPlan)
             .FirstOrDefaultAsync(t => t.Id == id, ct) ?? throw new NotFoundException(nameof(FinancialTransaction), id);
 
-        if (transaction.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (transaction.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
         return transaction;
     }
 

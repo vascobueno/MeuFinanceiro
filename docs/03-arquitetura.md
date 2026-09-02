@@ -49,7 +49,7 @@ src/frontend/meu-financeiro/
     investments/
     projection/
     settings/
-    household/
+    grupo/
     admin/
     reports/
     help/

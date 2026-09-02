@@ -30,14 +30,14 @@ public class BankReconciliationService : IBankReconciliationService
     {
         var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == request.AccountId, ct)
             ?? throw new NotFoundException(nameof(Account), request.AccountId);
-        if (account.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (account.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
         var movementsSum = request.Items.Sum(i => i.Amount);
         var balanceValidated = request.OpeningBalance + movementsSum == request.ClosingBalance;
 
         var statement = new BankStatement
         {
-            HouseholdId = _currentUser.HouseholdId,
+            GrupoId = _currentUser.GrupoId,
             AccountId = request.AccountId,
             ReferenceStart = request.ReferenceStart,
             ReferenceEnd = request.ReferenceEnd,
@@ -49,7 +49,7 @@ public class BankReconciliationService : IBankReconciliationService
         _db.BankStatements.Add(statement);
 
         var candidateTransactions = await _db.FinancialTransactions
-            .Where(t => t.HouseholdId == _currentUser.HouseholdId && t.AccountId == request.AccountId && t.Status != TransactionStatus.Reconciled)
+            .Where(t => t.GrupoId == _currentUser.GrupoId && t.AccountId == request.AccountId && t.Status != TransactionStatus.Reconciled)
             .ToListAsync(ct);
 
         foreach (var itemRequest in request.Items)
@@ -69,7 +69,7 @@ public class BankReconciliationService : IBankReconciliationService
 
             var reconciliation = new Domain.Entities.Reconciliation
             {
-                HouseholdId = _currentUser.HouseholdId,
+                GrupoId = _currentUser.GrupoId,
                 SourceType = ReconciliationSourceType.BankStatement,
                 BankStatementItemId = item.Id,
                 CreatedBy = _currentUser.UserId
@@ -111,7 +111,7 @@ public class BankReconciliationService : IBankReconciliationService
             .AsNoTracking()
             .Include(r => r.BankStatementItem)
             .ThenInclude(i => i!.BankStatement)
-            .Where(r => r.HouseholdId == _currentUser.HouseholdId && r.SourceType == ReconciliationSourceType.BankStatement);
+            .Where(r => r.GrupoId == _currentUser.GrupoId && r.SourceType == ReconciliationSourceType.BankStatement);
 
         if (accountId is not null)
             query = query.Where(r => r.BankStatementItem!.BankStatement!.AccountId == accountId);
@@ -149,11 +149,11 @@ public class BankReconciliationService : IBankReconciliationService
         var item = await _db.BankStatementItems.Include(i => i.BankStatement)
             .FirstOrDefaultAsync(i => i.Id == request.BankStatementItemId, ct)
             ?? throw new NotFoundException(nameof(BankStatementItem), request.BankStatementItemId);
-        if (item.BankStatement!.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (item.BankStatement!.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
         var transaction = await _db.FinancialTransactions.FirstOrDefaultAsync(t => t.Id == request.FinancialTransactionId, ct)
             ?? throw new NotFoundException(nameof(FinancialTransaction), request.FinancialTransactionId);
-        if (transaction.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (transaction.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
         var reconciliation = await _db.Reconciliations.FirstOrDefaultAsync(
             r => r.BankStatementItemId == request.BankStatementItemId && r.SourceType == ReconciliationSourceType.BankStatement, ct);
@@ -162,7 +162,7 @@ public class BankReconciliationService : IBankReconciliationService
         {
             reconciliation = new Domain.Entities.Reconciliation
             {
-                HouseholdId = _currentUser.HouseholdId,
+                GrupoId = _currentUser.GrupoId,
                 SourceType = ReconciliationSourceType.BankStatement,
                 BankStatementItemId = item.Id,
                 CreatedBy = _currentUser.UserId
@@ -244,7 +244,7 @@ public class BankReconciliationService : IBankReconciliationService
     {
         var reconciliation = await _db.Reconciliations.Include(r => r.BankStatementItem)
             .FirstOrDefaultAsync(r => r.Id == id, ct) ?? throw new NotFoundException(nameof(Domain.Entities.Reconciliation), id);
-        if (reconciliation.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (reconciliation.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
         return reconciliation;
     }
 

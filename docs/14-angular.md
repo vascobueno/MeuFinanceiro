@@ -20,7 +20,7 @@ features/
   investments/
   projection/
   settings/
-  household/
+  grupo/
   admin/
   reports/
   help/

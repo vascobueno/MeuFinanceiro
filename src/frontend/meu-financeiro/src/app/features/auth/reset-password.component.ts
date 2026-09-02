@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule, MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ProblemDetails } from '../../core/models/paged-result.model';
@@ -24,6 +25,7 @@ import { passwordValidators, passwordsMatchValidator } from '../../shared/valida
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
     MatProgressSpinnerModule,
   ],
   providers: [{ provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { floatLabel: 'always', subscriptSizing: 'dynamic' } }],
@@ -48,6 +50,9 @@ export class ResetPasswordComponent {
     },
     { validators: [passwordsMatchValidator] },
   );
+
+  readonly hidePassword = signal(true);
+  readonly hideConfirmPassword = signal(true);
 
   constructor(
     private readonly authService: AuthService,

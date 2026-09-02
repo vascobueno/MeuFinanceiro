@@ -37,7 +37,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("InitialBalance")
@@ -64,7 +64,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("Accounts");
                 });
@@ -90,7 +90,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("HouseholdId")
+                    b.Property<Guid?>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("IpAddress")
@@ -137,7 +137,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<string>("FileHash")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("OpeningBalance")
@@ -165,7 +165,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("BankStatements");
                 });
@@ -247,7 +247,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<string>("FileHash")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("OriginalFileName")
@@ -269,7 +269,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasIndex("CreditCardId");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("CardInvoices");
                 });
@@ -332,7 +332,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsSystemDefault")
@@ -356,7 +356,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("Categories");
                 });
@@ -382,7 +382,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<int>("DueDay")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsActive")
@@ -406,7 +406,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("CreditCards");
                 });
@@ -442,7 +442,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<int>("Direction")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("InstallmentId")
@@ -500,14 +500,14 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasIndex("SubcategoryId");
 
-                    b.HasIndex("HouseholdId", "Description");
+                    b.HasIndex("GrupoId", "Description");
 
-                    b.HasIndex("HouseholdId", "TransactionDate");
+                    b.HasIndex("GrupoId", "TransactionDate");
 
                     b.ToTable("FinancialTransactions");
                 });
 
-            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Household", b =>
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Grupo", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -534,10 +534,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Households");
+                    b.ToTable("Grupos");
                 });
 
-            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.HouseholdMember", b =>
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.GrupoMember", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -552,7 +552,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Role")
@@ -572,12 +572,12 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("HouseholdMembers");
+                    b.ToTable("GrupoMembers");
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.ImportFile", b =>
@@ -599,7 +599,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("OriginalFileName")
@@ -629,7 +629,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("ImportFiles");
                 });
@@ -693,7 +693,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("InstallmentCount")
@@ -716,7 +716,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("InstallmentPlans");
                 });
@@ -777,7 +777,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Institution")
@@ -798,7 +798,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("InvestmentAccounts");
                 });
@@ -907,7 +907,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid?>("DefaultCategoryId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("LastUsedAt")
@@ -933,7 +933,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasIndex("DefaultCategoryId");
 
-                    b.HasIndex("HouseholdId", "Name");
+                    b.HasIndex("GrupoId", "Name");
 
                     b.ToTable("Merchants");
                 });
@@ -1003,7 +1003,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid?>("FinancialTransactionId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Reason")
@@ -1035,7 +1035,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasIndex("FinancialTransactionId");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.HasIndex("Status");
 
@@ -1073,7 +1073,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<int>("Frequency")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("HouseholdId")
+                    b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsActive")
@@ -1096,7 +1096,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HouseholdId");
+                    b.HasIndex("GrupoId");
 
                     b.ToTable("RecurringTransactions");
                 });
@@ -1198,6 +1198,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1406,9 +1409,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Account", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1421,9 +1424,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1449,9 +1452,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1471,18 +1474,18 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Category", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CreditCard", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1504,9 +1507,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .HasForeignKey("CreditCardId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1545,20 +1548,20 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Navigation("Subcategory");
                 });
 
-            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.HouseholdMember", b =>
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.GrupoMember", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.ImportFile", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1576,9 +1579,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.InstallmentPlan", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1596,9 +1599,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.InvestmentAccount", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1631,9 +1634,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("DefaultCategoryId");
 
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1665,9 +1668,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("FinancialTransactionId");
 
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1680,9 +1683,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.RecurringTransaction", b =>
                 {
-                    b.HasOne("MeuFinanceiro.Domain.Entities.Household", null)
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
-                        .HasForeignKey("HouseholdId")
+                        .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

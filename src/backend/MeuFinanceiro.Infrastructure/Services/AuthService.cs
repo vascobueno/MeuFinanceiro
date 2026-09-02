@@ -2,7 +2,7 @@ using System.Net;
 using MeuFinanceiro.Application.Auth;
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
-using MeuFinanceiro.Application.Households;
+using MeuFinanceiro.Application.Grupos;
 using MeuFinanceiro.Domain.Enums;
 using MeuFinanceiro.Infrastructure.Identity;
 using MeuFinanceiro.Infrastructure.Persistence;
@@ -17,57 +17,67 @@ public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITokenService _tokenService;
-    private readonly IHouseholdService _householdService;
+    private readonly IGrupoService _grupoService;
     private readonly IAuditService _auditService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AppDbContext _db;
     private readonly IEmailSender _emailSender;
     private readonly IConfiguration _configuration;
+    private readonly ICurrentUserService _currentUser;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         ITokenService tokenService,
-        IHouseholdService householdService,
+        IGrupoService grupoService,
         IAuditService auditService,
         IHttpContextAccessor httpContextAccessor,
         AppDbContext db,
         IEmailSender emailSender,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ICurrentUserService currentUser)
     {
         _userManager = userManager;
         _tokenService = tokenService;
-        _householdService = householdService;
+        _grupoService = grupoService;
         _auditService = auditService;
         _httpContextAccessor = httpContextAccessor;
         _db = db;
         _emailSender = emailSender;
         _configuration = configuration;
+        _currentUser = currentUser;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
     {
+        if (!UsernamePolicy.Pattern.IsMatch(request.Username))
+            throw new BusinessRuleException("usuario-invalido", "Nome de usuário deve ter de 3 a 30 caracteres (letras, números, ., _ ou -).");
+
+        var existingUsername = await _userManager.FindByNameAsync(request.Username);
+        if (existingUsername is not null)
+            throw new BusinessRuleException("usuario-em-uso", "Já existe uma conta com este nome de usuário.");
+
         var existing = await _userManager.FindByEmailAsync(request.Email);
         if (existing is not null)
             throw new BusinessRuleException("email-em-uso", "Já existe um usuário cadastrado com este e-mail.");
 
         var user = new ApplicationUser
         {
-            UserName = request.Email,
+            UserName = request.Username,
             Email = request.Email,
             Name = request.Name
         };
 
-        async Task CreateUserAndHouseholdAsync()
+        async Task CreateUserAndGrupoAsync()
         {
             var result = await _userManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
                 throw new BusinessRuleException("cadastro-invalido", string.Join(" ", result.Errors.Select(e => e.Description)));
 
-            await _householdService.CreateForNewUserAsync(user.Id, user.Name, ct);
+            await _grupoService.CreateForNewUserAsync(user.Id, user.Name, ct);
         }
 
-        // Transação explícita: um usuário nunca deve existir sem household. Sem isso, uma
-        // falha ao criar o Household depois de UserManager.CreateAsync ter sucesso deixaria um
+        // Transação explícita: um usuário nunca deve existir sem grupo. Sem isso, uma
+        // falha ao criar o Grupo depois de UserManager.CreateAsync ter sucesso deixaria um
         // usuário órfão. CreateExecutionStrategy é necessário porque o Npgsql pode ter retry-
         // on-failure habilitado, que exige que a transação seja aberta dentro da strategy.
         // IsRelational() só é falso no provider InMemory usado pelos testes de integração, que
@@ -79,13 +89,13 @@ public class AuthService : IAuthService
             await strategy.ExecuteAsync(async () =>
             {
                 await using var transaction = await _db.Database.BeginTransactionAsync(ct);
-                await CreateUserAndHouseholdAsync();
+                await CreateUserAndGrupoAsync();
                 await transaction.CommitAsync(ct);
             });
         }
         else
         {
-            await CreateUserAndHouseholdAsync();
+            await CreateUserAndGrupoAsync();
         }
 
         return await IssueTokensAsync(user, ct);
@@ -93,21 +103,21 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email);
+        var user = await _userManager.FindByNameAsync(request.Username);
         if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
         {
-            // Household só é conhecido se o usuário existir (senha errada) — e-mail inexistente
-            // não tem household nenhum pra associar ao evento.
-            Guid? householdId = null;
+            // Grupo só é conhecido se o usuário existir (senha errada) — nome de usuário
+            // inexistente não tem grupo nenhum pra associar ao evento.
+            Guid? grupoId = null;
             if (user is not null)
-                householdId = (await _db.HouseholdMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.HouseholdId;
+                grupoId = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
 
-            await _auditService.LogAccessAsync("LoginFailed", user?.Id, householdId, GetClientIp(), GetUserAgent(), ct);
-            throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
+            await _auditService.LogAccessAsync("LoginFailed", user?.Id, grupoId, GetClientIp(), GetUserAgent(), ct);
+            throw new UnauthorizedAccessException("Nome de usuário ou senha inválidos.");
         }
 
         var response = await IssueTokensAsync(user, ct);
-        await _auditService.LogAccessAsync("Login", user.Id, response.User.HouseholdId, GetClientIp(), GetUserAgent(), ct);
+        await _auditService.LogAccessAsync("Login", user.Id, response.User.GrupoId, GetClientIp(), GetUserAgent(), ct);
         return response;
     }
 
@@ -143,12 +153,12 @@ public class AuthService : IAuthService
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
-        // Household só é conhecido se o usuário existir — mesmo padrão de LoginAsync pra
+        // Grupo só é conhecido se o usuário existir — mesmo padrão de LoginAsync pra
         // e-mail inexistente. Sempre audita a tentativa, exista ou não a conta.
-        Guid? householdId = null;
+        Guid? grupoId = null;
         if (user is not null)
         {
-            householdId = (await _db.HouseholdMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.HouseholdId;
+            grupoId = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             // "??" só cobre valor ausente — appsettings.json comitado tem App:FrontendBaseUrl
@@ -170,7 +180,7 @@ public class AuthService : IAuthService
 
         // Sempre a mesma ação/resposta, exista ou não o e-mail — evita enumeração de contas
         // (docs/12-seguranca.md).
-        await _auditService.LogAccessAsync("ForgotPasswordRequested", user?.Id, householdId, GetClientIp(), GetUserAgent(), ct);
+        await _auditService.LogAccessAsync("ForgotPasswordRequested", user?.Id, grupoId, GetClientIp(), GetUserAgent(), ct);
     }
 
     public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
@@ -195,23 +205,37 @@ public class AuthService : IAuthService
         foreach (var token in activeTokens)
             token.RevokedAt = DateTime.UtcNow;
 
-        var householdId = (await _db.HouseholdMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.HouseholdId;
-        await _auditService.LogAccessAsync("PasswordResetCompleted", user.Id, householdId, GetClientIp(), GetUserAgent(), ct);
+        var grupoId = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
+        await _auditService.LogAccessAsync("PasswordResetCompleted", user.Id, grupoId, GetClientIp(), GetUserAgent(), ct);
 
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(_currentUser.UserId.ToString())
+            ?? throw new UnauthorizedAccessException();
+
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+            throw new BusinessRuleException("senha-invalida", string.Join(" ", result.Errors.Select(e => e.Description)));
+
+        user.MustChangePassword = false;
+        if (!user.EmailConfirmed) user.EmailConfirmed = true;
+        await _userManager.UpdateAsync(user);
+    }
+
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken ct)
     {
-        // Busca no momento da emissão (não fica em cache) — mudanças de papel/household
+        // Busca no momento da emissão (não fica em cache) — mudanças de papel/grupo
         // refletem em até 15 min (TTL do access token), igual a qualquer outro dado do token.
-        var membership = await _db.HouseholdMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct)
-            ?? throw new InvalidOperationException($"Usuário {user.Id} não possui household associado.");
+        var membership = await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct)
+            ?? throw new InvalidOperationException($"Usuário {user.Id} não possui grupo associado.");
 
         var roles = await _userManager.GetRolesAsync(user);
 
         var (accessToken, accessExpiresAt) = _tokenService.GenerateAccessToken(
-            user.Id, user.Email!, user.Name, membership.HouseholdId, membership.Role, membership.AccessProfile, roles);
+            user.Id, user.Email!, user.Name, membership.GrupoId, membership.Role, membership.AccessProfile, roles);
         var (refreshToken, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
 
         _db.RefreshTokens.Add(new RefreshToken
@@ -222,9 +246,9 @@ public class AuthService : IAuthService
         });
         await _db.SaveChangesAsync(ct);
 
-        var effectiveAccessProfile = membership.Role == HouseholdRole.Owner ? HouseholdAccessProfile.Completo : membership.AccessProfile;
+        var effectiveAccessProfile = membership.Role == GrupoRole.Owner ? GrupoAccessProfile.Completo : membership.AccessProfile;
 
         return new AuthResponse(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt,
-            new UserResponse(user.Id, user.Name, user.Email!, membership.HouseholdId, membership.Role, effectiveAccessProfile, roles.Contains(IdentitySeeder.AdministratorRole)));
+            new UserResponse(user.Id, user.Name, user.Email!, membership.GrupoId, membership.Role, effectiveAccessProfile, roles.Contains(IdentitySeeder.AdministratorRole), user.MustChangePassword));
     }
 }

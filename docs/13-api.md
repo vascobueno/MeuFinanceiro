@@ -4,14 +4,17 @@ Todos os endpoints ficam sob `api/v1`, exigem autenticação (JWT Bearer) salvo 
 contrário, e são sempre escopados ao usuário autenticado (`ICurrentUserService`).
 
 ## Auth
-POST `/api/v1/auth/register`
-POST `/api/v1/auth/login`
+POST `/api/v1/auth/register` (Name, Username, Email, Password)
+POST `/api/v1/auth/login` (Username, Password — login é por nome de usuário, não e-mail)
 POST `/api/v1/auth/refresh`
 POST `/api/v1/auth/logout`
 POST `/api/v1/auth/forgot-password` (sem autenticação; sempre 204, exista ou não o e-mail —
 evita enumeração de contas)
 POST `/api/v1/auth/reset-password` (sem autenticação; token do Identity, 1h de validade,
 revoga todos os refresh tokens do usuário ao concluir)
+POST `/api/v1/auth/change-password` (CurrentPassword, NewPassword — usada tanto pra troca
+voluntária quanto pra troca obrigatória de senha temporária; limpa `MustChangePassword` e
+confirma o e-mail ao concluir)
 
 ## Transactions (Lançamentos)
 GET `/api/v1/transactions` (paginação, filtros, ordenação)
@@ -74,26 +77,31 @@ POST `/api/v1/reconciliations/card/{id}/undo`
 GET `/api/v1/projection?date=2026-12-31` (cada item da timeline tem `Type` Income/Expense —
 usado pelo relatório de projeção de receitas, que filtra `Type == Income` no frontend)
 
-## Households (Household — RF016)
-GET `/api/v1/households/me` (household atual + membros; 403 se o perfil não for Completo/Owner)
-POST `/api/v1/households/me/members` (Owner-only — convida por e-mail, só se o household do
+## Grupos (Grupo — RF016)
+GET `/api/v1/grupos/me` (grupo atual + membros; 403 se o perfil não for Completo/Owner)
+POST `/api/v1/grupos/me/members` (Owner-only — convida por e-mail, só se o grupo do
 convidado ainda estiver vazio)
-DELETE `/api/v1/households/me/members/{userId}` (Owner-only — bloqueia remover o último Owner)
-PUT `/api/v1/households/me/members/{userId}/access-profile` (Owner-only — Completo/Editor/
+POST `/api/v1/grupos/me/members/new` (Owner-only — cria a conta inteira de alguém que ainda
+não tem conta, com senha temporária enviada por e-mail; `MustChangePassword` força a troca no
+primeiro login)
+DELETE `/api/v1/grupos/me/members/{userId}` (Owner-only — bloqueia remover o último Owner)
+PUT `/api/v1/grupos/me/members/{userId}/access-profile` (Owner-only — Completo/Editor/
 Visualizador; rejeita se o alvo for Owner)
 
 ## Admin (Administrator — RF017)
-Tudo sob `[Authorize(Roles="Administrator")]`, opera em qualquer household (não só o próprio):
-GET `/api/v1/admin/households` (todos os households do sistema)
-GET `/api/v1/admin/members` (todos os membros de todos os households, achatado — usado pela
+Tudo sob `[Authorize(Roles="Administrator")]`, opera em qualquer grupo (não só o próprio):
+GET `/api/v1/admin/grupos` (todos os grupos do sistema)
+GET `/api/v1/admin/members` (todos os membros de todos os grupos, achatado — usado pela
 tela "Perfis de acesso")
-GET/POST/DELETE `/api/v1/admin/households/{householdId}/members[/{userId}]` (mesmas regras do
-`/households/me/members`, sem exigir ser Owner)
-PUT `/api/v1/admin/households/{householdId}/members/{userId}/access-profile`
+GET/POST/DELETE `/api/v1/admin/grupos/{grupoId}/members[/{userId}]` (mesmas regras do
+`/grupos/me/members`, sem exigir ser Owner)
+POST `/api/v1/admin/grupos/{grupoId}/members/new` (mesma regra de `/grupos/me/members/new`,
+sem exigir ser Owner)
+PUT `/api/v1/admin/grupos/{grupoId}/members/{userId}/access-profile`
 
 ## Audit (Auditoria — RF014, ver docs/17-auditoria.md)
-GET `/api/v1/audit` (filtro por período e Action; Owner/Member vê só o próprio household,
-Administrator vê de todos, com filtro adicional por household)
+GET `/api/v1/audit` (filtro por período e Action; Owner/Member vê só o próprio grupo,
+Administrator vê de todos, com filtro adicional por grupo)
 
 ## Investments
 GET `/api/v1/investments/summary`

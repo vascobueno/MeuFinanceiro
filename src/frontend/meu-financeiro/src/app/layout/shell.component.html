@@ -164,9 +164,9 @@
         <mat-icon class="mf-nav-chevron" [class.mf-open]="isSectionExpanded('Administração')">chevron_right</mat-icon>
       </button>
       <mat-nav-list [class.mf-nav-collapsed]="!isSectionExpanded('Administração') && !isCollapsedDesktop()">
-        <a mat-list-item routerLink="/admin/households" routerLinkActive="mf-active" [matTooltip]="'Households'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
+        <a mat-list-item routerLink="/admin/grupos" routerLinkActive="mf-active" [matTooltip]="'Grupos'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
           <mat-icon svgIcon="mf-admin" matListItemIcon></mat-icon>
-          <span matListItemTitle>Households</span>
+          <span matListItemTitle>Grupos</span>
         </a>
         <a mat-list-item routerLink="/admin/perfis-acesso" routerLinkActive="mf-active" [matTooltip]="'Perfis de acesso'" [matTooltipDisabled]="!isCollapsedDesktop()" matTooltipPosition="right">
           <mat-icon svgIcon="mf-admin" matListItemIcon></mat-icon>

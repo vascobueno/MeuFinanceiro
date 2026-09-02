@@ -36,6 +36,12 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {
+        path: 'trocar-senha-inicial',
+        loadComponent: () =>
+          import('./features/auth/change-password.component').then((m) => m.ChangePasswordComponent),
+        data: { title: 'Trocar senha' },
+      },
+      {
         path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
         data: {
@@ -213,7 +219,7 @@ export const routes: Routes = [
         data: {
           title: 'Auditoria',
           section: 'Relatórios',
-          help: 'Acessos (login) e alterações de dados do seu household, filtráveis por período.',
+          help: 'Acessos (login) e alterações de dados do seu grupo, filtráveis por período.',
         },
       },
       {
@@ -230,22 +236,22 @@ export const routes: Routes = [
         path: 'membros',
         canActivate: [fullAccessGuard],
         loadComponent: () =>
-          import('./features/household/household-members.component').then((m) => m.HouseholdMembersComponent),
+          import('./features/grupo/grupo-members.component').then((m) => m.GrupoMembersComponent),
         data: {
           title: 'Membros',
           parent: { title: 'Configurações', path: '/configuracoes' },
-          help: 'Veja e gerencie quem mais tem acesso aos seus dados financeiros. Só o Owner do household pode adicionar ou remover membros, ou mudar o perfil de acesso de alguém.',
+          help: 'Veja e gerencie quem mais tem acesso aos seus dados financeiros. Só o Owner do grupo pode adicionar ou remover membros, ou mudar o perfil de acesso de alguém.',
         },
       },
       {
-        path: 'admin/households',
+        path: 'admin/grupos',
         canActivate: [adminGuard],
         loadComponent: () =>
-          import('./features/admin/admin-households.component').then((m) => m.AdminHouseholdsComponent),
+          import('./features/admin/admin-grupos.component').then((m) => m.AdminGruposComponent),
         data: {
-          title: 'Households',
+          title: 'Grupos',
           section: 'Administração',
-          help: 'Visão de administrador: todos os households do sistema, com seus donos e membros.',
+          help: 'Visão de administrador: todos os grupos do sistema, com seus donos e membros.',
         },
       },
       {
@@ -256,18 +262,18 @@ export const routes: Routes = [
         data: {
           title: 'Perfis de acesso',
           section: 'Administração',
-          help: 'Visão cruzada de todos os membros de todos os households — ajuste o perfil de acesso (Completo/Editor/Visualizador) de qualquer um sem precisar entrar household por household.',
+          help: 'Visão cruzada de todos os membros de todos os grupos — ajuste o perfil de acesso (Completo/Editor/Visualizador) de qualquer um sem precisar entrar grupo por grupo.',
         },
       },
       {
-        path: 'admin/households/:id/membros',
+        path: 'admin/grupos/:id/membros',
         canActivate: [adminGuard],
         loadComponent: () =>
-          import('./features/household/household-members.component').then((m) => m.HouseholdMembersComponent),
+          import('./features/grupo/grupo-members.component').then((m) => m.GrupoMembersComponent),
         data: {
-          title: 'Membros do household',
-          parent: { title: 'Households', path: '/admin/households' },
-          help: 'Membros deste household — como administrador, você pode adicionar ou remover qualquer um deles.',
+          title: 'Membros do grupo',
+          parent: { title: 'Grupos', path: '/admin/grupos' },
+          help: 'Membros deste grupo — como administrador, você pode adicionar ou remover qualquer um deles.',
         },
       },
       {

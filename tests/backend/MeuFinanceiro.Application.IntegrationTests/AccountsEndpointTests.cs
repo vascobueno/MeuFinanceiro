@@ -29,10 +29,11 @@ public class AccountsEndpointTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Deve_registrar_logar_e_criar_uma_conta()
     {
-        var email = $"user-{Guid.NewGuid():N}@teste.com";
+        var id = Guid.NewGuid().ToString("N")[..12];
+        var email = $"user-{id}@teste.com";
 
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register",
-            new RegisterRequest("Usuário Teste", email, "SenhaForte!123"));
+            new RegisterRequest("Usuário Teste", $"user{id}", email, "SenhaForte!123"));
         registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();

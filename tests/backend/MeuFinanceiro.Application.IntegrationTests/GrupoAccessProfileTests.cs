@@ -3,32 +3,35 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MeuFinanceiro.Application.Auth;
-using MeuFinanceiro.Application.Households;
+using MeuFinanceiro.Application.Grupos;
 using MeuFinanceiro.Domain.Enums;
 using Xunit;
 
 namespace MeuFinanceiro.Application.IntegrationTests;
 
 /// <summary>
-/// Cobre o AccessProfile (Completo/Editor/Visualizador) de um HouseholdMember: bloqueio de
+/// Cobre o AccessProfile (Completo/Editor/Visualizador) de um GrupoMember: bloqueio de
 /// página (Configurações/Membros) para Editor/Visualizador, bloqueio de escrita para
 /// Visualizador (WriteAccessFilter), e a proteção de que o Owner nunca pode ser rebaixado.
 /// </summary>
 [Trait("Category", "Integration")]
-public class HouseholdAccessProfileTests : IClassFixture<CustomWebApplicationFactory>
+public class GrupoAccessProfileTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly CustomWebApplicationFactory _factory;
 
-    public HouseholdAccessProfileTests(CustomWebApplicationFactory factory)
+    public GrupoAccessProfileTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
     }
 
+    private static string UsernameFromEmail(string email) => $"user{email.Split('@')[0]}";
+
     private async Task<(HttpClient client, AuthResponse auth)> RegisterAsync(string name)
     {
         var client = _factory.CreateClient();
-        var email = $"{Guid.NewGuid():N}@teste.com";
-        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequest(name, email, "SenhaForte!123"));
+        var id = Guid.NewGuid().ToString("N")[..12];
+        var email = $"{id}@teste.com";
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequest(name, UsernameFromEmail(email), email, "SenhaForte!123"));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
@@ -39,7 +42,7 @@ public class HouseholdAccessProfileTests : IClassFixture<CustomWebApplicationFac
     private async Task<(HttpClient client, AuthResponse auth)> LoginAgainAsync(string email)
     {
         var client = _factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(email, "SenhaForte!123"));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(email), "SenhaForte!123"));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
@@ -55,8 +58,8 @@ public class HouseholdAccessProfileTests : IClassFixture<CustomWebApplicationFac
         var (clientA, authA) = await RegisterAsync("Owner A");
         var (_, authB) = await RegisterAsync("Member B");
 
-        var addResponse = await clientA.PostAsJsonAsync("/api/v1/households/me/members",
-            new AddMemberRequest(authB.User.Email, HouseholdRole.Member));
+        var addResponse = await clientA.PostAsJsonAsync("/api/v1/grupos/me/members",
+            new AddMemberRequest(authB.User.Email, GrupoRole.Member));
         addResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         return (clientA, authA, authB.User.Email);
@@ -67,16 +70,16 @@ public class HouseholdAccessProfileTests : IClassFixture<CustomWebApplicationFac
     {
         var (clientA, _, emailB) = await SetupOwnerWithMemberAsync();
 
-        // authB.User.Id precisa vir do household já movido — pega de novo via login.
+        // authB.User.Id precisa vir do grupo já movido — pega de novo via login.
         var (_, authBBefore) = await LoginAgainAsync(emailB);
         var updateResponse = await clientA.PutAsJsonAsync(
-            $"/api/v1/households/me/members/{authBBefore.User.Id}/access-profile",
-            new UpdateMemberAccessProfileRequest(HouseholdAccessProfile.Editor));
+            $"/api/v1/grupos/me/members/{authBBefore.User.Id}/access-profile",
+            new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Editor));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var (clientB, _) = await LoginAgainAsync(emailB);
 
-        (await clientB.GetAsync("/api/v1/households/me")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await clientB.GetAsync("/api/v1/grupos/me")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await CreateAccountAsync(clientB)).StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
@@ -87,13 +90,13 @@ public class HouseholdAccessProfileTests : IClassFixture<CustomWebApplicationFac
         var (_, authBBefore) = await LoginAgainAsync(emailB);
 
         var updateResponse = await clientA.PutAsJsonAsync(
-            $"/api/v1/households/me/members/{authBBefore.User.Id}/access-profile",
-            new UpdateMemberAccessProfileRequest(HouseholdAccessProfile.Visualizador));
+            $"/api/v1/grupos/me/members/{authBBefore.User.Id}/access-profile",
+            new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Visualizador));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var (clientB, _) = await LoginAgainAsync(emailB);
 
-        (await clientB.GetAsync("/api/v1/households/me")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await clientB.GetAsync("/api/v1/grupos/me")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await CreateAccountAsync(clientB)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await clientB.GetAsync("/api/v1/accounts?page=1&pageSize=50")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -104,8 +107,8 @@ public class HouseholdAccessProfileTests : IClassFixture<CustomWebApplicationFac
         var (clientA, authA) = await RegisterAsync("Owner A");
 
         var response = await clientA.PutAsJsonAsync(
-            $"/api/v1/households/me/members/{authA.User.Id}/access-profile",
-            new UpdateMemberAccessProfileRequest(HouseholdAccessProfile.Visualizador));
+            $"/api/v1/grupos/me/members/{authA.User.Id}/access-profile",
+            new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Visualizador));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -117,8 +120,8 @@ public class HouseholdAccessProfileTests : IClassFixture<CustomWebApplicationFac
         var (_, authBBefore) = await LoginAgainAsync(emailB);
 
         await clientA.PutAsJsonAsync(
-            $"/api/v1/households/me/members/{authBBefore.User.Id}/access-profile",
-            new UpdateMemberAccessProfileRequest(HouseholdAccessProfile.Visualizador));
+            $"/api/v1/grupos/me/members/{authBBefore.User.Id}/access-profile",
+            new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Visualizador));
 
         var (clientB, authB) = await LoginAgainAsync(emailB);
 

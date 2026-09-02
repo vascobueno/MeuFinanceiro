@@ -21,7 +21,7 @@ public class CategoryService : ICategoryService
         var categories = await _db.Categories
             .AsNoTracking()
             .Include(c => c.Subcategories)
-            .Where(c => c.HouseholdId == _currentUser.HouseholdId)
+            .Where(c => c.GrupoId == _currentUser.GrupoId)
             .OrderBy(c => c.Name)
             .ToListAsync(ct);
 
@@ -32,7 +32,7 @@ public class CategoryService : ICategoryService
     {
         var category = new Category
         {
-            HouseholdId = _currentUser.HouseholdId,
+            GrupoId = _currentUser.GrupoId,
             Name = request.Name,
             Type = request.Type,
             CreatedBy = _currentUser.UserId
@@ -80,7 +80,7 @@ public class CategoryService : ICategoryService
     private async Task<Category> FindOwnedAsync(Guid id, CancellationToken ct)
     {
         var category = await _db.Categories.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw new NotFoundException(nameof(Category), id);
-        if (category.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (category.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
         return category;
     }
 

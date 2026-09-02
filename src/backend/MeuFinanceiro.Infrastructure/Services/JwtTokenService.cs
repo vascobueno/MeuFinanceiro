@@ -24,13 +24,13 @@ public class JwtTokenService : ITokenService
     }
 
     public (string token, DateTime expiresAt) GenerateAccessToken(
-        Guid userId, string email, string name, Guid householdId, HouseholdRole householdRole,
-        HouseholdAccessProfile accessProfile, IEnumerable<string> roles)
+        Guid userId, string email, string name, Guid grupoId, GrupoRole grupoRole,
+        GrupoAccessProfile accessProfile, IEnumerable<string> roles)
     {
         // Owner é sempre Completo, independente do que estiver salvo — defesa em profundidade
-        // além da checagem em HouseholdService.UpdateMemberProfileAsync (nunca autotrancar o Owner).
-        if (householdRole == HouseholdRole.Owner)
-            accessProfile = HouseholdAccessProfile.Completo;
+        // além da checagem em GrupoService.UpdateMemberProfileAsync (nunca autotrancar o Owner).
+        if (grupoRole == GrupoRole.Owner)
+            accessProfile = GrupoAccessProfile.Completo;
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -43,9 +43,9 @@ public class JwtTokenService : ITokenService
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Email, email),
             new(ClaimTypes.Name, name),
-            new(HouseholdClaimTypes.HouseholdId, householdId.ToString()),
-            new(HouseholdClaimTypes.HouseholdRole, householdRole.ToString()),
-            new(HouseholdClaimTypes.AccessProfile, accessProfile.ToString()),
+            new(GrupoClaimTypes.GrupoId, grupoId.ToString()),
+            new(GrupoClaimTypes.GrupoRole, grupoRole.ToString()),
+            new(GrupoClaimTypes.AccessProfile, accessProfile.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

@@ -4,7 +4,7 @@ using MeuFinanceiro.Domain.Enums;
 namespace MeuFinanceiro.Domain.Entities;
 
 /// <summary>Conta corrente/poupança. Saldo não inclui investimentos (regra 7).</summary>
-public class Account : HouseholdOwnedEntity
+public class Account : GrupoOwnedEntity
 {
     public string Name { get; set; } = string.Empty;
     public string? Bank { get; set; }

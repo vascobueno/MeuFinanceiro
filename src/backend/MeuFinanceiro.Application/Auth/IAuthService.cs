@@ -12,4 +12,10 @@ public interface IAuthService
 
     /// <summary>Revoga todos os refresh tokens ativos do usuário ao concluir com sucesso.</summary>
     Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Usada tanto pela troca de senha voluntária quanto pela troca obrigatória de senha
+    /// temporária (MustChangePassword) — limpa o flag e confirma o e-mail ao concluir.
+    /// </summary>
+    Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct = default);
 }

@@ -4,7 +4,7 @@ using MeuFinanceiro.Domain.Enums;
 namespace MeuFinanceiro.Domain.Entities;
 
 /// <summary>docs/16-importacao-inicial.md — migração inicial do Excel (regra 1: somente migração inicial).</summary>
-public class ImportFile : HouseholdOwnedEntity
+public class ImportFile : GrupoOwnedEntity
 {
     public string OriginalFileName { get; set; } = string.Empty;
     public string FileHash { get; set; } = string.Empty;

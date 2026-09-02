@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace MeuFinanceiro.Infrastructure.Services;
 
-/// <summary>UserId/HouseholdId/HouseholdRole sempre derivados do token JWT validado, nunca do payload do cliente (regra 22).</summary>
+/// <summary>UserId/GrupoId/GrupoRole sempre derivados do token JWT validado, nunca do payload do cliente (regra 22).</summary>
 public class CurrentUserService : ICurrentUserService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -28,34 +28,34 @@ public class CurrentUserService : ICurrentUserService
         }
     }
 
-    public Guid HouseholdId
+    public Guid GrupoId
     {
         get
         {
-            var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(HouseholdClaimTypes.HouseholdId);
+            var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(GrupoClaimTypes.GrupoId);
             return value is not null && Guid.TryParse(value, out var id) ? id : Guid.Empty;
         }
     }
 
-    public HouseholdRole HouseholdRole
+    public GrupoRole GrupoRole
     {
         get
         {
-            var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(HouseholdClaimTypes.HouseholdRole);
-            return value is not null && Enum.TryParse<HouseholdRole>(value, out var role) ? role : HouseholdRole.Member;
+            var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(GrupoClaimTypes.GrupoRole);
+            return value is not null && Enum.TryParse<GrupoRole>(value, out var role) ? role : GrupoRole.Member;
         }
     }
 
-    public HouseholdAccessProfile AccessProfile
+    public GrupoAccessProfile AccessProfile
     {
         get
         {
-            var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(HouseholdClaimTypes.AccessProfile);
-            return value is not null && Enum.TryParse<HouseholdAccessProfile>(value, out var profile) ? profile : HouseholdAccessProfile.Completo;
+            var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(GrupoClaimTypes.AccessProfile);
+            return value is not null && Enum.TryParse<GrupoAccessProfile>(value, out var profile) ? profile : GrupoAccessProfile.Completo;
         }
     }
 
-    public bool HasFullAccess => HouseholdRole == HouseholdRole.Owner || AccessProfile == HouseholdAccessProfile.Completo;
+    public bool HasFullAccess => GrupoRole == GrupoRole.Owner || AccessProfile == GrupoAccessProfile.Completo;
 
-    public bool CanWrite => HouseholdRole == HouseholdRole.Owner || AccessProfile != HouseholdAccessProfile.Visualizador;
+    public bool CanWrite => GrupoRole == GrupoRole.Owner || AccessProfile != GrupoAccessProfile.Visualizador;
 }

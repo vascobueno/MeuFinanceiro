@@ -7,7 +7,7 @@ namespace MeuFinanceiro.Domain.Entities;
 /// Regras 15/16/17: aceita valor total OU valor da parcela + quantidade; a soma das
 /// parcelas deve fechar exatamente o principal; arredondamento fica na última parcela.
 /// </summary>
-public class InstallmentPlan : HouseholdOwnedEntity
+public class InstallmentPlan : GrupoOwnedEntity
 {
     public string Description { get; set; } = string.Empty;
     public InstallmentMode Mode { get; set; }

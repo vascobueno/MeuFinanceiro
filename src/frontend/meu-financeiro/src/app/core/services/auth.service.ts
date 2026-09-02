@@ -4,9 +4,10 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AuthResponse,
+  ChangePasswordRequest,
   ForgotPasswordRequest,
-  HouseholdAccessProfile,
-  HouseholdRole,
+  GrupoAccessProfile,
+  GrupoRole,
   LoginRequest,
   RegisterRequest,
   ResetPasswordRequest,
@@ -26,16 +27,16 @@ export class AuthService {
   private readonly currentUserSignal = signal<UserResponse | null>(this.readStoredUser());
   readonly currentUser = this.currentUserSignal.asReadonly();
 
-  /** Vê páginas de gestão do household (Configurações/Membros) — Owner sempre, ou Member com perfil Completo. */
+  /** Vê páginas de gestão do grupo (Configurações/Membros) — Owner sempre, ou Member com perfil Completo. */
   readonly hasFullAccess = computed(() => {
     const user = this.currentUser();
-    return user?.householdRole === HouseholdRole.Owner || user?.accessProfile === HouseholdAccessProfile.Completo;
+    return user?.grupoRole === GrupoRole.Owner || user?.accessProfile === GrupoAccessProfile.Completo;
   });
 
   /** Pode criar/editar/excluir dados financeiros — todos menos Visualizador. */
   readonly canWrite = computed(() => {
     const user = this.currentUser();
-    return user?.householdRole === HouseholdRole.Owner || user?.accessProfile !== HouseholdAccessProfile.Visualizador;
+    return user?.grupoRole === GrupoRole.Owner || user?.accessProfile !== GrupoAccessProfile.Visualizador;
   });
 
   constructor(private readonly http: HttpClient) {}
@@ -76,6 +77,21 @@ export class AuthService {
 
   resetPassword(request: ResetPasswordRequest): Observable<void> {
     return this.http.post<void>(`${environment.apiUrl}/auth/reset-password`, request);
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<void> {
+    return this.http
+      .post<void>(`${environment.apiUrl}/auth/change-password`, request)
+      .pipe(tap(() => this.updateCurrentUser({ mustChangePassword: false })));
+  }
+
+  private updateCurrentUser(patch: Partial<UserResponse>): void {
+    const user = this.currentUserSignal();
+    if (!user) return;
+
+    const updated = { ...user, ...patch };
+    localStorage.setItem(USER_KEY, JSON.stringify(updated));
+    this.currentUserSignal.set(updated);
   }
 
   logout(): void {

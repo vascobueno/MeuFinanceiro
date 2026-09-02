@@ -1,12 +1,12 @@
 <div class="mf-list-header">
   <h2 class="mf-page-title"><mat-icon svgIcon="mf-admin" class="mf-page-title-icon"></mat-icon>Perfis de acesso</h2>
-  <div class="mf-sub">Todos os membros de todos os households — ajuste o perfil de acesso sem entrar household por household.</div>
+  <div class="mf-sub">Todos os membros de todos os grupos — ajuste o perfil de acesso sem entrar grupo por grupo.</div>
 </div>
 
 <div class="mf-filters-card">
   <mat-form-field appearance="outline">
     <mat-label>Buscar</mat-label>
-    <input matInput [(ngModel)]="search" (ngModelChange)="applyFilter()" placeholder="Nome, e-mail ou household" />
+    <input matInput [(ngModel)]="search" (ngModelChange)="applyFilter()" placeholder="Nome, e-mail ou grupo" />
   </mat-form-field>
 </div>
 
@@ -25,9 +25,9 @@
 
   @if (!loading() && !error() && members().length > 0) {
     <table mat-table [dataSource]="dataSource" matSort class="mf-members-table">
-      <ng-container matColumnDef="household">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Household</th>
-        <td mat-cell *matCellDef="let m">{{ m.householdName }}</td>
+      <ng-container matColumnDef="grupo">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo</th>
+        <td mat-cell *matCellDef="let m">{{ m.grupoName }}</td>
       </ng-container>
 
       <ng-container matColumnDef="name">
@@ -38,8 +38,8 @@
       <ng-container matColumnDef="role">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Papel</th>
         <td mat-cell *matCellDef="let m">
-          <span class="mf-badge" [ngClass]="m.role === HouseholdRole.Owner ? 'mf-badge-ok' : 'mf-badge-neutral'">
-            {{ m.role === HouseholdRole.Owner ? 'Owner' : 'Member' }}
+          <span class="mf-badge" [ngClass]="m.role === GrupoRole.Owner ? 'mf-badge-ok' : 'mf-badge-neutral'">
+            {{ m.role === GrupoRole.Owner ? 'Owner' : 'Member' }}
           </span>
         </td>
       </ng-container>
@@ -50,12 +50,12 @@
           <mat-form-field appearance="outline" class="mf-access-select">
             <mat-select
               [value]="m.accessProfile"
-              [disabled]="m.role === HouseholdRole.Owner"
+              [disabled]="m.role === GrupoRole.Owner"
               (selectionChange)="updateAccessProfile(m, $event.value)"
             >
-              <mat-option [value]="HouseholdAccessProfile.Completo">Completo</mat-option>
-              <mat-option [value]="HouseholdAccessProfile.Editor">Editor</mat-option>
-              <mat-option [value]="HouseholdAccessProfile.Visualizador">Visualizador</mat-option>
+              <mat-option [value]="GrupoAccessProfile.Completo">Completo</mat-option>
+              <mat-option [value]="GrupoAccessProfile.Editor">Editor</mat-option>
+              <mat-option [value]="GrupoAccessProfile.Visualizador">Visualizador</mat-option>
             </mat-select>
           </mat-form-field>
         </td>

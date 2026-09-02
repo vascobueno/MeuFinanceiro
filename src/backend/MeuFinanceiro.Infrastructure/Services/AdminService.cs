@@ -18,28 +18,28 @@ public class AdminService : IAdminService
         _userManager = userManager;
     }
 
-    public async Task<IReadOnlyList<AdminHouseholdResponse>> GetHouseholdsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<AdminGrupoResponse>> GetGruposAsync(CancellationToken ct = default)
     {
-        var households = await _db.Households.AsNoTracking().OrderBy(h => h.CreatedAt).ToListAsync(ct);
-        var members = await _db.HouseholdMembers.AsNoTracking().ToListAsync(ct);
+        var grupos = await _db.Grupos.AsNoTracking().OrderBy(h => h.CreatedAt).ToListAsync(ct);
+        var members = await _db.GrupoMembers.AsNoTracking().ToListAsync(ct);
 
         var userIds = members.Select(m => m.UserId).Distinct().ToList();
         var users = await _userManager.Users.Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, ct);
 
-        var result = new List<AdminHouseholdResponse>(households.Count);
-        foreach (var household in households)
+        var result = new List<AdminGrupoResponse>(grupos.Count);
+        foreach (var grupo in grupos)
         {
-            var householdMembers = members.Where(m => m.HouseholdId == household.Id).ToList();
-            var owner = householdMembers.FirstOrDefault(m => m.Role == HouseholdRole.Owner);
+            var grupoMembers = members.Where(m => m.GrupoId == grupo.Id).ToList();
+            var owner = grupoMembers.FirstOrDefault(m => m.Role == GrupoRole.Owner);
             var ownerUser = owner is not null ? users.GetValueOrDefault(owner.UserId) : null;
 
-            result.Add(new AdminHouseholdResponse(
-                household.Id,
-                household.Name,
+            result.Add(new AdminGrupoResponse(
+                grupo.Id,
+                grupo.Name,
                 ownerUser?.Name ?? "—",
                 ownerUser?.Email ?? "—",
-                householdMembers.Count,
-                household.CreatedAt));
+                grupoMembers.Count,
+                grupo.CreatedAt));
         }
 
         return result;
@@ -47,16 +47,16 @@ public class AdminService : IAdminService
 
     public async Task<IReadOnlyList<AdminMemberResponse>> GetAllMembersAsync(CancellationToken ct = default)
     {
-        var households = await _db.Households.AsNoTracking().ToDictionaryAsync(h => h.Id, ct);
-        var members = await _db.HouseholdMembers.AsNoTracking().ToListAsync(ct);
+        var grupos = await _db.Grupos.AsNoTracking().ToDictionaryAsync(h => h.Id, ct);
+        var members = await _db.GrupoMembers.AsNoTracking().ToListAsync(ct);
 
         var userIds = members.Select(m => m.UserId).Distinct().ToList();
         var users = await _userManager.Users.Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, ct);
 
         return members
             .Select(m => new AdminMemberResponse(
-                m.HouseholdId,
-                households.GetValueOrDefault(m.HouseholdId)?.Name ?? "—",
+                m.GrupoId,
+                grupos.GetValueOrDefault(m.GrupoId)?.Name ?? "—",
                 m.UserId,
                 users.GetValueOrDefault(m.UserId)?.Name ?? string.Empty,
                 users.GetValueOrDefault(m.UserId)?.Email ?? string.Empty,

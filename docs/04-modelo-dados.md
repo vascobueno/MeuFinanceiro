@@ -4,8 +4,8 @@
 ```text
 ApplicationUser
 RefreshToken
-Household
-HouseholdMember
+Grupo
+GrupoMember
 Account
 CreditCard
 Merchant
@@ -30,18 +30,23 @@ ImportFile
 AuditLog
 ```
 
-## Household / HouseholdMember
-`Household`: Id, Name. `HouseholdMember`: HouseholdId, UserId, Role (`HouseholdRole`:
-Owner/Member), AccessProfile (`HouseholdAccessProfile`: Completo/Editor/Visualizador — Owner é
-sempre Completo). Todo `ApplicationUser` pertence a exatamente um household (índice único em
-`HouseholdMember.UserId`).
+## ApplicationUser
+Além dos campos padrão do Identity (`UserName`, `Email`, senha com hash), `Name` e
+`MustChangePassword` (bool) — força a troca de senha no primeiro login de contas criadas
+diretamente pelo Owner com senha temporária (ver `docs/12-seguranca.md`).
+
+## Grupo / GrupoMember
+`Grupo`: Id, Name. `GrupoMember`: GrupoId, UserId, Role (`GrupoRole`:
+Owner/Member), AccessProfile (`GrupoAccessProfile`: Completo/Editor/Visualizador — Owner é
+sempre Completo). Todo `ApplicationUser` pertence a exatamente um grupo (índice único em
+`GrupoMember.UserId`).
 
 ## FinancialTransaction
-Id, **HouseholdId** (dono real do dado, compartilhado entre os membros do household — não é
+Id, **GrupoId** (dono real do dado, compartilhado entre os membros do grupo — não é
 mais `UserId` direto), TransactionDate, Description, MerchantId, CategoryId, AccountId?,
 CreditCardId?, Type, Amount decimal(18,2), Direction, Status, InstallmentId?,
 RecurringTransactionId?, CreatedAt/By, UpdatedAt/By (`CreatedBy`/`UpdatedBy` continuam
-identificando a pessoa, não o household). Mesmo padrão (`HouseholdOwnedEntity`) vale para as
+identificando a pessoa, não o grupo). Mesmo padrão (`GrupoOwnedEntity`) vale para as
 outras 11 entidades financeiras (Account, CreditCard, Category, Merchant,
 RecurringTransaction, InstallmentPlan, BankStatement, CardInvoice, Reconciliation,
 InvestmentAccount, ImportFile).
@@ -50,10 +55,10 @@ InvestmentAccount, ImportFile).
 FinancialTransactionId?, BankStatementItemId?, CardInvoiceItemId?, Status, Score, AmountDifference, DateDifferenceDays, DescriptionScore, Reason, auditoria.
 
 ## AuditLog
-UserId, HouseholdId (do dado alterado, ou de quem logou; null quando não se aplica),
+UserId, GrupoId (do dado alterado, ou de quem logou; null quando não se aplica),
 Timestamp, Action, EntityName, EntityId, OldValues/NewValues (JSON), IpAddress, UserAgent,
 CorrelationId — ver `docs/17-auditoria.md` para como é preenchido.
 
 ## Índices
-HouseholdId + TransactionDate; HouseholdId + Description; MerchantId; data dos itens de
-extrato/fatura; status de conciliação; UserId único em HouseholdMember.
+GrupoId + TransactionDate; GrupoId + Description; MerchantId; data dos itens de
+extrato/fatura; status de conciliação; UserId único em GrupoMember.

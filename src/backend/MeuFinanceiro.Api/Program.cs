@@ -99,6 +99,13 @@ using (var scope = app.Services.CreateScope())
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);
 }
 
+if (args.Contains("--corrigir-usernames-antigos"))
+{
+    using var backfillScope = app.Services.CreateScope();
+    await LegacyUsernameBackfiller.RunAsync(backfillScope.ServiceProvider);
+    return;
+}
+
 // --- Pipeline -----------------------------------------------------------
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

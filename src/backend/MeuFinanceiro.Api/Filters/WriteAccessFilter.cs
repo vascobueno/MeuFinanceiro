@@ -11,7 +11,7 @@ namespace MeuFinanceiro.Api.Filters;
 /// controllers financeiros, mesmo raciocínio do override de auditoria em
 /// AppDbContext.SaveChangesAsync. AuthController (login/refresh/logout precisam sempre
 /// funcionar) e AdminController (papel de sistema, ortogonal ao AccessProfile pessoal do
-/// household do administrador) ficam de fora.
+/// grupo do administrador) ficam de fora.
 /// </summary>
 public class WriteAccessFilter : IAsyncActionFilter
 {

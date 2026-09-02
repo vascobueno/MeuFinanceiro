@@ -27,7 +27,7 @@ public class InvestmentService : IInvestmentService
         var accounts = await _db.InvestmentAccounts
             .AsNoTracking()
             .Include(a => a.Investments).ThenInclude(i => i.Positions)
-            .Where(a => a.HouseholdId == _currentUser.HouseholdId)
+            .Where(a => a.GrupoId == _currentUser.GrupoId)
             .ToListAsync(ct);
 
         var responses = accounts.Select(ToAccountResponse).ToList();
@@ -38,7 +38,7 @@ public class InvestmentService : IInvestmentService
     {
         var account = new InvestmentAccount
         {
-            HouseholdId = _currentUser.HouseholdId,
+            GrupoId = _currentUser.GrupoId,
             Institution = request.Institution,
             Name = request.Name,
             CreatedBy = _currentUser.UserId
@@ -55,7 +55,7 @@ public class InvestmentService : IInvestmentService
             .AsNoTracking()
             .Include(i => i.Positions)
             .Include(i => i.InvestmentAccount)
-            .Where(i => i.InvestmentAccount!.HouseholdId == _currentUser.HouseholdId);
+            .Where(i => i.InvestmentAccount!.GrupoId == _currentUser.GrupoId);
 
         if (investmentAccountId is not null)
             query = query.Where(i => i.InvestmentAccountId == investmentAccountId);
@@ -68,7 +68,7 @@ public class InvestmentService : IInvestmentService
     {
         var account = await _db.InvestmentAccounts.FirstOrDefaultAsync(a => a.Id == request.InvestmentAccountId, ct)
             ?? throw new NotFoundException(nameof(InvestmentAccount), request.InvestmentAccountId);
-        if (account.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (account.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
         var investment = new Investment
         {
@@ -91,7 +91,7 @@ public class InvestmentService : IInvestmentService
             .Include(i => i.Positions)
             .FirstOrDefaultAsync(i => i.Id == request.InvestmentId, ct)
             ?? throw new NotFoundException(nameof(Investment), request.InvestmentId);
-        if (investment.InvestmentAccount!.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+        if (investment.InvestmentAccount!.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
         if (request.Amount <= 0)
             throw new BusinessRuleException("valor-invalido", "O valor da movimentação de investimento deve ser maior que zero.");
@@ -105,13 +105,13 @@ public class InvestmentService : IInvestmentService
 
             var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == request.AccountId, ct)
                 ?? throw new NotFoundException(nameof(Account), request.AccountId);
-            if (account.HouseholdId != _currentUser.HouseholdId) throw new ForbiddenException();
+            if (account.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
             // Regra 10: aplicação reduz conta / resgate aumenta conta. Nenhum dos dois é
             // receita/despesa operacional — refletido no Type dedicado (regra 10/11).
             var financialTransaction = new FinancialTransaction
             {
-                HouseholdId = _currentUser.HouseholdId,
+                GrupoId = _currentUser.GrupoId,
                 TransactionDate = request.Date,
                 Description = $"{(request.Type == InvestmentTransactionType.Application ? "Aplicação" : "Resgate")} — {investment.Name}",
                 AccountId = account.Id,

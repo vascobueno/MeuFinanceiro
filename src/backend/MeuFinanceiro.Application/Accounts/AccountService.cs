@@ -20,7 +20,7 @@ public class AccountService : IAccountService
 
     public async Task<PagedResult<AccountResponse>> GetAllAsync(PagedRequest request, CancellationToken ct = default)
     {
-        var query = _db.Accounts.AsNoTracking().Where(a => a.HouseholdId == _currentUser.HouseholdId);
+        var query = _db.Accounts.AsNoTracking().Where(a => a.GrupoId == _currentUser.GrupoId);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -56,7 +56,7 @@ public class AccountService : IAccountService
     {
         var account = new Account
         {
-            HouseholdId = _currentUser.HouseholdId,
+            GrupoId = _currentUser.GrupoId,
             Name = request.Name,
             Bank = request.Bank,
             Type = request.Type,
@@ -102,7 +102,7 @@ public class AccountService : IAccountService
         var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id, ct)
             ?? throw new NotFoundException(nameof(Account), id);
 
-        if (account.HouseholdId != _currentUser.HouseholdId)
+        if (account.GrupoId != _currentUser.GrupoId)
             throw new ForbiddenException();
 
         return account;
