@@ -66,6 +66,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 // ausente num checkout limpo como o do CI) — sem isso, PasswordResetEndpointTests
                 // pegava o "" comitado em appsettings.json e gerava um link relativo quebrado.
                 ["App:FrontendBaseUrl"] = "http://localhost:4200",
+                // O limite de produção (10/5min) é pensado pra um IP de verdade — o TestServer
+                // não tem um, então muitos testes no mesmo fixture compartilhariam a partição
+                // "anonymous" e esbarrariam no limite. Afrouxado só pra não interferir nos testes.
+                ["RateLimiting:Auth:PermitLimit"] = "100000",
+                ["RateLimiting:Auth:WindowMinutes"] = "1",
             });
         });
     }

@@ -10,7 +10,7 @@
     "Issuer": "MeuFinanceiro.Api",
     "Audience": "MeuFinanceiro.Frontend",
     "Key": "GERE_UMA_CHAVE_LOCAL_COM_dotnet_user-secrets_NUNCA_COMMITAR",
-    "AccessTokenExpirationMinutes": 15,
+    "AccessTokenExpirationMinutes": 60,
     "RefreshTokenExpirationDays": 7
   },
 

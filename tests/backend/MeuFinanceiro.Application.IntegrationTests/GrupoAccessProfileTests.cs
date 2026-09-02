@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MeuFinanceiro.Application.Auth;
@@ -26,43 +25,29 @@ public class GrupoAccessProfileTests : IClassFixture<CustomWebApplicationFactory
 
     private static string UsernameFromEmail(string email) => $"user{email.Split('@')[0]}";
 
-    private async Task<(HttpClient client, AuthResponse auth)> RegisterAsync(string name)
+    private async Task<(HttpClient client, UserResponse user)> RegisterAsync(string name)
     {
-        var client = _factory.CreateClient();
         var id = Guid.NewGuid().ToString("N")[..12];
         var email = $"{id}@teste.com";
-        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequest(name, UsernameFromEmail(email), email, "SenhaForte!123"));
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
-        return (client, auth);
+        return await AuthTestHelpers.RegisterConfirmAndLoginAsync(_factory, name, UsernameFromEmail(email), email, "SenhaForte!123");
     }
 
-    private async Task<(HttpClient client, AuthResponse auth)> LoginAgainAsync(string email)
-    {
-        var client = _factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(email), "SenhaForte!123"));
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
-        return (client, auth);
-    }
+    private Task<(HttpClient client, UserResponse user)> LoginAgainAsync(string email) =>
+        AuthTestHelpers.LoginAsync(_factory, UsernameFromEmail(email), "SenhaForte!123");
 
     private static Task<HttpResponseMessage> CreateAccountAsync(HttpClient client) =>
         client.PostAsJsonAsync("/api/v1/accounts", new { name = "Conta", bank = "Banco", type = 1, initialBalance = 0m });
 
-    private async Task<(HttpClient clientA, AuthResponse authA, string emailB)> SetupOwnerWithMemberAsync()
+    private async Task<(HttpClient clientA, UserResponse userA, string emailB)> SetupOwnerWithMemberAsync()
     {
-        var (clientA, authA) = await RegisterAsync("Owner A");
-        var (_, authB) = await RegisterAsync("Member B");
+        var (clientA, userA) = await RegisterAsync("Owner A");
+        var (_, userB) = await RegisterAsync("Member B");
 
         var addResponse = await clientA.PostAsJsonAsync("/api/v1/grupos/me/members",
-            new AddMemberRequest(authB.User.Email, GrupoRole.Member));
+            new AddMemberRequest(userB.Email, GrupoRole.Member));
         addResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        return (clientA, authA, authB.User.Email);
+        return (clientA, userA, userB.Email);
     }
 
     [Fact]
@@ -70,10 +55,10 @@ public class GrupoAccessProfileTests : IClassFixture<CustomWebApplicationFactory
     {
         var (clientA, _, emailB) = await SetupOwnerWithMemberAsync();
 
-        // authB.User.Id precisa vir do grupo já movido — pega de novo via login.
-        var (_, authBBefore) = await LoginAgainAsync(emailB);
+        // userB.Id precisa vir do grupo já movido — pega de novo via login.
+        var (_, userBBefore) = await LoginAgainAsync(emailB);
         var updateResponse = await clientA.PutAsJsonAsync(
-            $"/api/v1/grupos/me/members/{authBBefore.User.Id}/access-profile",
+            $"/api/v1/grupos/me/members/{userBBefore.Id}/access-profile",
             new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Editor));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -87,10 +72,10 @@ public class GrupoAccessProfileTests : IClassFixture<CustomWebApplicationFactory
     public async Task Rebaixar_membro_para_Visualizador_bloqueia_pagina_e_escrita()
     {
         var (clientA, _, emailB) = await SetupOwnerWithMemberAsync();
-        var (_, authBBefore) = await LoginAgainAsync(emailB);
+        var (_, userBBefore) = await LoginAgainAsync(emailB);
 
         var updateResponse = await clientA.PutAsJsonAsync(
-            $"/api/v1/grupos/me/members/{authBBefore.User.Id}/access-profile",
+            $"/api/v1/grupos/me/members/{userBBefore.Id}/access-profile",
             new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Visualizador));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -104,10 +89,10 @@ public class GrupoAccessProfileTests : IClassFixture<CustomWebApplicationFactory
     [Fact]
     public async Task Owner_nunca_pode_ser_rebaixado()
     {
-        var (clientA, authA) = await RegisterAsync("Owner A");
+        var (clientA, userA) = await RegisterAsync("Owner A");
 
         var response = await clientA.PutAsJsonAsync(
-            $"/api/v1/grupos/me/members/{authA.User.Id}/access-profile",
+            $"/api/v1/grupos/me/members/{userA.Id}/access-profile",
             new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Visualizador));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -117,15 +102,16 @@ public class GrupoAccessProfileTests : IClassFixture<CustomWebApplicationFactory
     public async Task Usuario_Visualizador_ainda_consegue_fazer_logout()
     {
         var (clientA, _, emailB) = await SetupOwnerWithMemberAsync();
-        var (_, authBBefore) = await LoginAgainAsync(emailB);
+        var (_, userBBefore) = await LoginAgainAsync(emailB);
 
         await clientA.PutAsJsonAsync(
-            $"/api/v1/grupos/me/members/{authBBefore.User.Id}/access-profile",
+            $"/api/v1/grupos/me/members/{userBBefore.Id}/access-profile",
             new UpdateMemberAccessProfileRequest(GrupoAccessProfile.Visualizador));
 
-        var (clientB, authB) = await LoginAgainAsync(emailB);
+        var (clientB, _) = await LoginAgainAsync(emailB);
 
-        var logoutResponse = await clientB.PostAsJsonAsync("/api/v1/auth/logout", new RefreshTokenRequest(authB.RefreshToken));
+        // Logout não recebe corpo — o refresh token vai no cookie httpOnly, lido no backend.
+        var logoutResponse = await clientB.PostAsync("/api/v1/auth/logout", null);
         logoutResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }

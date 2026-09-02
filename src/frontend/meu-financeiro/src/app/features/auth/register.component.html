@@ -5,6 +5,12 @@
     </div>
 
     <h1 class="mf-login-title">Criar conta</h1>
+
+    @if (submitted()) {
+      <div class="mf-login-info" role="status">
+        Conta criada! Enviamos um link de confirmação para o seu e-mail — confirme antes de entrar.
+      </div>
+    } @else {
     <p class="mf-sub mf-login-subtitle">Organize sua vida financeira em um só lugar.</p>
 
     <form [formGroup]="form" (ngSubmit)="submit()">
@@ -55,6 +61,10 @@
         <div class="mf-login-error" role="alert">As senhas não coincidem.</div>
       }
 
+      @if (turnstileSiteKey) {
+        <div class="cf-turnstile" [attr.data-sitekey]="turnstileSiteKey" data-callback="onRegisterTurnstileSuccess"></div>
+      }
+
       @if (errorMessage()) {
         <div class="mf-login-error" role="alert">{{ errorMessage() }}</div>
       }
@@ -66,6 +76,7 @@
         Criar conta
       </button>
     </form>
+    }
 
     <div class="mf-login-row mf-login-row-center">
       <span class="mf-sub">Já tem conta?</span>

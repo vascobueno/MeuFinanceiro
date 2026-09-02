@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MeuFinanceiro.Application.Auth;
@@ -20,20 +19,27 @@ namespace MeuFinanceiro.Application.IntegrationTests;
 public class InstallmentsRecurringInvoicesEndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public InstallmentsRecurringInvoicesEndpointTests(CustomWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
+        _factory = factory;
     }
 
     private async Task AuthenticateAsync()
     {
         var id = Guid.NewGuid().ToString("N")[..12];
         var email = $"user-{id}@teste.com";
-        var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register",
-            new RegisterRequest("Usuário Teste", $"user{id}", email, "SenhaForte!123"));
-        var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+        var username = $"user{id}";
+
+        await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new RegisterRequest("Usuário Teste", username, email, "SenhaForte!123"));
+
+        await AuthTestHelpers.ConfirmEmailAsync(_client, _factory.EmailSender, email);
+
+        await _client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(username, "SenhaForte!123"));
+        await AuthTestHelpers.AttachCsrfTokenAsync(_client);
     }
 
     private async Task<Guid> CreateAccountAsync()

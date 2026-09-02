@@ -30,6 +30,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/reset-password.component').then((m) => m.ResetPasswordComponent),
   },
   {
+    path: 'confirmar-email',
+    loadComponent: () => import('./features/auth/confirm-email.component').then((m) => m.ConfirmEmailComponent),
+  },
+  {
     path: '',
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
     canActivate: [authGuard],

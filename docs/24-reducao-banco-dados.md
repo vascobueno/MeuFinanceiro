@@ -17,9 +17,9 @@ reutilizável, mas o arquivo em disco não encolhe sozinho. Depois do DELETE, um
   tabelas grandes de produção isso pode significar minutos de indisponibilidade daquela tabela.
 - **`pg_repack`**: faz o mesmo que `VACUUM FULL`, mas "online" (sem lock exclusivo
   prolongado); exige a extensão instalada no servidor. O projeto roda Postgres 18 localmente
-  (`docker-compose.yml`) e Azure Database for PostgreSQL Flexible Server em produção
-  (docs/19-deploy-azure.md) — a Flexible Server permite habilitar `pg_repack` via
-  `azure.extensions`, então é viável em produção, não só localmente.
+  (`docker-compose.yml`); em produção (docs/19-deploy.md, sem dependência de Azure), a
+  disponibilidade de `pg_repack` depende do provedor de PostgreSQL escolhido — conferir se o
+  provedor permite habilitar extensões antes de contar com isso em produção.
 
 ## Ordem segura de exclusão
 

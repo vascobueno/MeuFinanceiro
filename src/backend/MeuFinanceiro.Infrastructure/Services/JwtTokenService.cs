@@ -11,7 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace MeuFinanceiro.Infrastructure.Services;
 
 /// <summary>
-/// Access token de vida curta (15 min, configurável) + refresh token opaco (7 dias),
+/// Access token de vida curta (1h, configurável) + refresh token opaco (7 dias),
 /// armazenado com hash no banco — docs/12-seguranca.md.
 /// </summary>
 public class JwtTokenService : ITokenService
@@ -35,7 +35,7 @@ public class JwtTokenService : ITokenService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var expirationMinutes = _configuration.GetValue<int?>("Jwt:AccessTokenExpirationMinutes") ?? 15;
+        var expirationMinutes = _configuration.GetValue<int?>("Jwt:AccessTokenExpirationMinutes") ?? 60;
         var expiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes);
 
         var claims = new List<Claim>

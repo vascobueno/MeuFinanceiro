@@ -1,0 +1,29 @@
+<div class="mf-login-page">
+  <mat-card class="mf-login-card">
+    <div class="mf-login-brand">
+      <img src="logo.png" alt="MeuFinanceiro" class="mf-login-logo" />
+    </div>
+
+    <h1 class="mf-login-title">Confirmar e-mail</h1>
+
+    @if (linkInvalido) {
+      <div class="mf-login-error" role="alert">
+        Este link de confirmação é inválido. Peça um novo na tela de login.
+      </div>
+    } @else if (loading()) {
+      <div class="mf-login-loading">
+        <mat-progress-spinner diameter="32" mode="indeterminate"></mat-progress-spinner>
+      </div>
+    } @else if (success()) {
+      <div class="mf-login-info" role="status">E-mail confirmado! Você já pode entrar.</div>
+    } @else {
+      <div class="mf-login-error" role="alert">{{ errorMessage() }}</div>
+    }
+
+    <div class="mf-login-row mf-login-row-center">
+      <a routerLink="/login">Voltar ao login</a>
+    </div>
+
+    <div class="mf-login-footer">Conexão protegida • Seus dados permanecem privados</div>
+  </mat-card>
+</div>

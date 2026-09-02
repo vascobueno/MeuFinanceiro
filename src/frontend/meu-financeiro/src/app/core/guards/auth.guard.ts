@@ -6,7 +6,9 @@ export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (!authService.isAuthenticated) {
+  // Não tem token pra checar em JS (cookie httpOnly) — currentUser() já foi (tentado a)
+  // populado pelo initializer do bootstrap (app.config.ts) via GET /auth/me.
+  if (!authService.currentUser()) {
     router.navigate(['/login']);
     return false;
   }

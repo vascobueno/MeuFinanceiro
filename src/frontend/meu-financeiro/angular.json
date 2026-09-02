@@ -50,6 +50,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.config.json"
+          },
           "configurations": {
             "production": { "buildTarget": "meu-financeiro:build:production" },
             "development": { "buildTarget": "meu-financeiro:build:development" }

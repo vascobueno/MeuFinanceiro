@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MeuFinanceiro.Application.Auth;
@@ -12,10 +11,12 @@ namespace MeuFinanceiro.Application.IntegrationTests;
 public class AccountsEndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public AccountsEndpointTests(CustomWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
+        _factory = factory;
     }
 
     [Fact]
@@ -31,15 +32,21 @@ public class AccountsEndpointTests : IClassFixture<CustomWebApplicationFactory>
     {
         var id = Guid.NewGuid().ToString("N")[..12];
         var email = $"user-{id}@teste.com";
+        var username = $"user{id}";
 
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register",
-            new RegisterRequest("Usuário Teste", $"user{id}", email, "SenhaForte!123"));
+            new RegisterRequest("Usuário Teste", username, email, "SenhaForte!123"));
         registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
-        auth.Should().NotBeNull();
+        await AuthTestHelpers.ConfirmEmailAsync(_client, _factory.EmailSender, email);
 
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+        var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(username, "SenhaForte!123"));
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var user = await loginResponse.Content.ReadFromJsonAsync<UserResponse>();
+        user.Should().NotBeNull();
+
+        await AuthTestHelpers.AttachCsrfTokenAsync(_client);
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new
         {

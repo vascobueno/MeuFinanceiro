@@ -11,8 +11,30 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Serviços ---------------------------------------------------------
 
-builder.Services.AddControllers(options => options.Filters.Add<WriteAccessFilter>());
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<WriteAccessFilter>();
+    options.Filters.Add<CsrfFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddAntiforgery(options =>
+{
+    // Header combinando com o suporte nativo do HttpClient do Angular
+    // (withXsrfConfiguration) — o Angular não precisa de código customizado pra reenviar.
+    // O cookie interno do Antiforgery (nome padrão do framework, aqui inalterado) carrega o
+    // "cookie token" e fica httpOnly — nunca é lido por JS. O valor que o Angular de fato lê
+    // e ecoa no header (o "request token", um valor DIFERENTE do cookie token, não uma cópia
+    // dele) é escrito manualmente como um cookie "XSRF-TOKEN" à parte em
+    // AuthController.Csrf() — mesmo padrão documentado pela Microsoft pra SPAs.
+    options.HeaderName = "X-XSRF-TOKEN";
+    // SameAsRequest (não Always): GetAndStoreTokens lança exceção se configurado Always e a
+    // requisição não for HTTPS — o TestServer dos testes de integração e um "dotnet run"
+    // local sem certificado válido caem nesse caso. Em produção, atrás de HTTPS de verdade,
+    // o cookie sai Secure normalmente porque a requisição já chega como HTTPS.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+});
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new() { Title = "MeuFinanceiro API", Version = "v1" });
@@ -40,7 +62,20 @@ builder.Services.AddAuthentication(options =>
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddJwtBearer();
+    .AddJwtBearer(options =>
+    {
+        // O access token vem num cookie httpOnly (AuthController.SetAuthCookies), não no
+        // header Authorization — sem isso o middleware de autenticação nunca acharia o token.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Cookies.TryGetValue("access_token", out var token))
+                    context.Token = token;
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 // Configuração via IConfigureOptions<JwtBearerOptions> (em vez de dentro do .AddJwtBearer(...)
 // acima) para ler a configuração de forma tardia (na primeira resolução das options, já com o
@@ -51,7 +86,10 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<IConfiguration>((options, configuration) =>
     {
-        var jwtKey = configuration["Jwt:Key"];
+        // Sem fallback pra uma chave fixa aqui — se Jwt:Key estiver ausente/fraca, a
+        // validação no startup (logo após builder.Build(), antes do app aceitar
+        // requisições) já derrubou o processo. Nunca aceitar como válido um token assinado
+        // com uma string fixa que está no código-fonte.
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -60,7 +98,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             ValidateIssuerSigningKey = true,
             ValidIssuer = configuration["Jwt:Issuer"],
             ValidAudience = configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? "chave-temporaria-somente-para-build-nunca-usar-em-producao")),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!)),
             ClockSkew = TimeSpan.FromSeconds(30)
         };
     });
@@ -78,6 +116,23 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = 200,
                 Window = TimeSpan.FromMinutes(1)
             }));
+
+    // Limite dedicado, mais restrito, pros endpoints de auth (login/registro/recuperação de
+    // senha) — o GlobalLimiter acima (200/min) é permissivo demais pra proteger contra
+    // força bruta/credential stuffing sozinho. Valores configuráveis (em vez de literais)
+    // pra CustomWebApplicationFactory poder afrouxar isso nos testes de integração — o
+    // TestServer não tem IP real, então muitos testes acabariam compartilhando a mesma
+    // partição ("anonymous") e esbarrando no limite pensado pra um IP de verdade.
+    var authPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:Auth:PermitLimit") ?? 10;
+    var authWindowMinutes = builder.Configuration.GetValue<int?>("RateLimiting:Auth:WindowMinutes") ?? 5;
+    options.AddPolicy("auth", context =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = authPermitLimit,
+                Window = TimeSpan.FromMinutes(authWindowMinutes)
+            }));
 });
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
@@ -86,13 +141,25 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy =>
         policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            // Necessário pra cookie httpOnly ir/vir em requisições cross-origin (dev: front
+            // e API em portas diferentes) — exige origem explícita, incompatível com
+            // AllowAnyOrigin (WithOrigins acima já não usa wildcard).
+            .AllowCredentials());
 });
 
 if (!string.IsNullOrWhiteSpace(builder.Configuration["ApplicationInsights:ConnectionString"]))
     builder.Services.AddApplicationInsightsTelemetry();
 
 var app = builder.Build();
+
+// Nunca subir com uma Jwt:Key ausente/fraca — sem essa checagem, um erro de config em
+// produção (ex.: nome errado de variável de ambiente) faria o backend aceitar como válido
+// qualquer token assinado com a antiga chave de fallback fixa no código-fonte.
+var jwtKey = app.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
+    throw new InvalidOperationException(
+        "Configuração 'Jwt:Key' ausente ou fraca (mínimo 32 caracteres) — defina antes de subir a API.");
 
 using (var scope = app.Services.CreateScope())
 {
@@ -108,6 +175,10 @@ if (args.Contains("--corrigir-usernames-antigos"))
 
 // --- Pipeline -----------------------------------------------------------
 
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())

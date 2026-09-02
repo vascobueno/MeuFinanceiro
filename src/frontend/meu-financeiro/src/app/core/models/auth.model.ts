@@ -3,6 +3,7 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
+  captchaToken?: string;
 }
 
 export interface LoginRequest {
@@ -12,6 +13,7 @@ export interface LoginRequest {
 
 export interface ForgotPasswordRequest {
   email: string;
+  captchaToken?: string;
 }
 
 export interface ResetPasswordRequest {
@@ -48,10 +50,16 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
-export interface AuthResponse {
-  accessToken: string;
-  accessTokenExpiresAt: string;
-  refreshToken: string;
-  refreshTokenExpiresAt: string;
-  user: UserResponse;
+export interface ConfirmEmailRequest {
+  email: string;
+  token: string;
+}
+
+export interface ResendConfirmationRequest {
+  username: string;
+}
+
+/** Registro não loga mais automaticamente — precisa confirmar o e-mail primeiro. */
+export interface RegisterResponse {
+  message: string;
 }

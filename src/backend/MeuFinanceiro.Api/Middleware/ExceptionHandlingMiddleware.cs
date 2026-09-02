@@ -1,4 +1,5 @@
 using MeuFinanceiro.Application.Common.Exceptions;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MeuFinanceiro.Api.Middleware;
@@ -40,6 +41,11 @@ public class ExceptionHandlingMiddleware
             NotFoundException => (StatusCodes.Status404NotFound, ex.Message, "https://meufinanceiro/erros/nao-encontrado"),
             ForbiddenException => (StatusCodes.Status403Forbidden, ex.Message, "https://meufinanceiro/erros/sem-permissao"),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, ex.Message, "https://meufinanceiro/erros/nao-autenticado"),
+            // Título fixo (não ex.Message) só aqui — a mensagem real do Antiforgery é técnica
+            // demais pro usuário final, e como Detail = ex.Message pra tudo que não é 500
+            // (abaixo), a exceção real ainda aparece no Detail; o Title genérico é só a
+            // camada de leitura rápida.
+            AntiforgeryValidationException => (StatusCodes.Status400BadRequest, "Token de segurança inválido ou ausente.", "https://meufinanceiro/erros/csrf-invalido"),
             _ => (StatusCodes.Status500InternalServerError, "Ocorreu um erro inesperado.", "https://meufinanceiro/erros/interno")
         };
 

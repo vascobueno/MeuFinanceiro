@@ -13,10 +13,12 @@ Stack:
 - Backend: ASP.NET Core / C#, Clean Architecture (`Api` → `Application` → `Domain` ←
   `Infrastructure`).
 - ORM: Entity Framework Core. Banco: PostgreSQL.
-- Autenticação: JWT (access token curto + refresh token), emitido pelo próprio backend
-  (`AuthService`/`JwtTokenService`) — não é um provedor de identidade externo.
-- Cloud alvo: Azure (App Service, Blob Storage, Key Vault, Application Insights) — ver
-  `docs/19-deploy-azure.md`; hoje o ambiente real é só local (Docker Postgres + `dotnet run` +
+- Autenticação: JWT (access token de 1h + refresh token de 7 dias), emitido pelo próprio
+  backend (`AuthService`/`JwtTokenService`) — não é um provedor de identidade externo. Os
+  tokens vão em cookie httpOnly (nunca localStorage/JS), com CSRF via double-submit cookie
+  (docs/12-seguranca.md).
+- Deploy: sem dependência de Azure — reverse proxy + domínio único (frontend + `/api`), ver
+  `docs/19-deploy.md`; hoje o ambiente real é só local (Docker Postgres + `dotnet run` +
   `ng serve`), ver `docs/23-configuracao-local.md`.
 - CI: GitHub Actions (build + testes de backend e frontend) — ver `docs/18-ci-cd.md`.
 
@@ -85,8 +87,8 @@ ver `docs/12-seguranca.md` para os guards de rota (`adminGuard`, `fullAccessGuar
   carregar tudo de uma vez e ordenar no cliente (`MatTableDataSource`).
 - Toda alteração relevante é auditada — ver `docs/17-auditoria.md` (a maioria é automática via
   `AppDbContext.SaveChangesAsync`, não precisa de chamada manual por serviço).
-- Nunca commitar segredo (JWT key, connection string, credencial Azure, senha, token) — usar
-  User Secrets localmente, Key Vault em produção.
+- Nunca commitar segredo (JWT key, connection string, credencial de SMTP/CAPTCHA, senha,
+  token) — usar User Secrets localmente, variável de ambiente em produção (docs/19-deploy.md).
 
 ## 5. Processo recomendado
 

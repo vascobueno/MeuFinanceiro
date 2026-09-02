@@ -3,28 +3,32 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  AuthResponse,
   ChangePasswordRequest,
+  ConfirmEmailRequest,
   ForgotPasswordRequest,
   GrupoAccessProfile,
   GrupoRole,
   LoginRequest,
   RegisterRequest,
+  RegisterResponse,
+  ResendConfirmationRequest,
   ResetPasswordRequest,
   UserResponse,
 } from '../models/auth.model';
 
-const ACCESS_TOKEN_KEY = 'mf_access_token';
-const REFRESH_TOKEN_KEY = 'mf_refresh_token';
-const USER_KEY = 'mf_user';
+// Só uma cópia leve pra UI não piscar "deslogado" durante o F5, antes do bootstrap do app
+// terminar de chamar me() — NUNCA usada pra autorização, o servidor sempre revalida pelo
+// cookie httpOnly (docs/12-seguranca.md).
+const USER_CACHE_KEY = 'mf_user_cache';
 
 /**
- * Autenticação via JWT emitido pela própria API (docs/12-seguranca.md).
- * Nenhum segredo fica no front-end — apenas os tokens recebidos após login.
+ * Autenticação via JWT emitido pela própria API, entregue em cookie httpOnly (nunca em
+ * localStorage/JS) — docs/12-seguranca.md. login/register/refresh não devolvem mais token
+ * nenhum no corpo, só o perfil do usuário; a sessão em si é o cookie.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly currentUserSignal = signal<UserResponse | null>(this.readStoredUser());
+  private readonly currentUserSignal = signal<UserResponse | null>(this.readCachedUser());
   readonly currentUser = this.currentUserSignal.asReadonly();
 
   /** Vê páginas de gestão do grupo (Configurações/Membros) — Owner sempre, ou Member com perfil Completo. */
@@ -41,34 +45,41 @@ export class AuthService {
 
   constructor(private readonly http: HttpClient) {}
 
-  get accessToken(): string | null {
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
-  }
-
-  get refreshToken(): string | null {
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
-  }
-
-  get isAuthenticated(): boolean {
-    return !!this.accessToken;
-  }
-
-  login(request: LoginRequest): Observable<AuthResponse> {
+  login(request: LoginRequest): Observable<UserResponse> {
     return this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/login`, request)
-      .pipe(tap((response) => this.storeSession(response)));
+      .post<UserResponse>(`${environment.apiUrl}/auth/login`, request)
+      .pipe(tap((user) => this.setCurrentUser(user)));
   }
 
-  register(request: RegisterRequest): Observable<AuthResponse> {
-    return this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/register`, request)
-      .pipe(tap((response) => this.storeSession(response)));
+  // Não loga automaticamente — o registro agora exige confirmar o e-mail primeiro
+  // (docs/12-seguranca.md).
+  register(request: RegisterRequest): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(`${environment.apiUrl}/auth/register`, request);
   }
 
-  refresh(): Observable<AuthResponse> {
+  confirmEmail(request: ConfirmEmailRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/confirm-email`, request);
+  }
+
+  resendConfirmation(request: ResendConfirmationRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/resend-confirmation`, request);
+  }
+
+  /** O cookie de refresh já vai sozinho — não precisa mandar nada no corpo. */
+  refresh(): Observable<UserResponse> {
     return this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken: this.refreshToken })
-      .pipe(tap((response) => this.storeSession(response)));
+      .post<UserResponse>(`${environment.apiUrl}/auth/refresh`, {})
+      .pipe(tap((user) => this.setCurrentUser(user)));
+  }
+
+  /** "Quem sou eu" — usado no bootstrap do app pra rehidratar a sessão a partir do cookie httpOnly após um F5. */
+  me(): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${environment.apiUrl}/auth/me`).pipe(tap((user) => this.setCurrentUser(user)));
+  }
+
+  /** Busca o cookie CSRF (XSRF-TOKEN) — precisa ser chamado uma vez antes de qualquer POST/PUT/DELETE fora do login/registro. */
+  fetchCsrfToken(): Observable<void> {
+    return this.http.get<void>(`${environment.apiUrl}/auth/csrf`);
   }
 
   forgotPassword(request: ForgotPasswordRequest): Observable<void> {
@@ -85,35 +96,25 @@ export class AuthService {
       .pipe(tap(() => this.updateCurrentUser({ mustChangePassword: false })));
   }
 
-  private updateCurrentUser(patch: Partial<UserResponse>): void {
-    const user = this.currentUserSignal();
-    if (!user) return;
-
-    const updated = { ...user, ...patch };
-    localStorage.setItem(USER_KEY, JSON.stringify(updated));
-    this.currentUserSignal.set(updated);
-  }
-
   logout(): void {
-    const refreshToken = this.refreshToken;
-    if (refreshToken) {
-      this.http.post(`${environment.apiUrl}/auth/logout`, { refreshToken }).subscribe({ error: () => undefined });
-    }
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    this.http.post(`${environment.apiUrl}/auth/logout`, {}).subscribe({ error: () => undefined });
+    sessionStorage.removeItem(USER_CACHE_KEY);
     this.currentUserSignal.set(null);
   }
 
-  private storeSession(response: AuthResponse): void {
-    localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(response.user));
-    this.currentUserSignal.set(response.user);
+  private updateCurrentUser(patch: Partial<UserResponse>): void {
+    const user = this.currentUserSignal();
+    if (!user) return;
+    this.setCurrentUser({ ...user, ...patch });
   }
 
-  private readStoredUser(): UserResponse | null {
-    const raw = localStorage.getItem(USER_KEY);
+  private setCurrentUser(user: UserResponse): void {
+    sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
+    this.currentUserSignal.set(user);
+  }
+
+  private readCachedUser(): UserResponse | null {
+    const raw = sessionStorage.getItem(USER_CACHE_KEY);
     return raw ? (JSON.parse(raw) as UserResponse) : null;
   }
 }

@@ -8,12 +8,20 @@
 - [x] CI (GitHub Actions — build/test do backend e do frontend)
 
 ## Segurança
-- [x] Identidade (JWT — registro/login/refresh/logout, login por nome de usuário)
+- [x] Identidade (JWT — registro/login/refresh/logout, login por nome de usuário, sessão via
+      cookie httpOnly + CSRF double-submit)
 - [x] Autorização (`[Authorize]` + escopo por grupo em todos os endpoints)
 - [x] Perfis de acesso por membro (Completo/Editor/Visualizador — `WriteAccessFilter` +
       `fullAccessGuard`/`canWriteGuard`)
-- [ ] Key Vault
-- [ ] OIDC (GitHub -> Azure)
+- [x] Bloqueio de conta por tentativas de senha errada (lockout)
+- [x] Rate limiting dedicado pros endpoints de auth
+- [x] Validação obrigatória de chave JWT no startup (nunca aceita fallback)
+- [x] Cabeçalhos de segurança + HSTS
+- [x] Confirmação de e-mail obrigatória antes do login
+- [x] CAPTCHA (Cloudflare Turnstile) no cadastro e recuperação de senha
+- [x] Scan de dependências vulneráveis no CI + Dependabot
+- [ ] Segredos via variável de ambiente em produção (mecanismo já pronto — `Jwt__Key` etc.,
+      docs/19-deploy.md — falta só o deploy de verdade acontecer)
 - [x] Auditoria (`AuditService`/`AuditLog`, automática via `SaveChangesAsync` + manual nas
       conciliações + acessos de login)
 
@@ -62,14 +70,14 @@
 - [x] Projeção
 
 ## Infra
-- [ ] DEV (Azure)
+- [ ] DEV
 - [ ] STAGING
 - [ ] PROD
 - [ ] Backup
 - [ ] Monitoring
 
-Infra Azure (DEV/STAGING/PROD/Backup/Monitoring/Key Vault/OIDC) ainda não existe — o projeto
-roda hoje só em ambiente local (PostgreSQL local via Docker, `dotnet run` + `ng serve`). Tudo em
-Fundação/Segurança (exceto Key Vault/OIDC)/Grupo/Administração/Financeiro/Conciliação/
+Infra de produção (DEV/STAGING/PROD/Backup/Monitoring, ver docs/19-deploy.md) ainda não
+existe — o projeto roda hoje só em ambiente local (PostgreSQL local via Docker, `dotnet run`
++ `ng serve`). Tudo em Fundação/Segurança/Grupo/Administração/Financeiro/Conciliação/
 Investimentos/Relatórios/Interface está implementado e coberto pelas telas descritas em
 `docs/21-telas.md`.

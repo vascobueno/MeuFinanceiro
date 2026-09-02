@@ -1,16 +1,14 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
 import { environment } from '../../../environments/environment';
 
-/** Anexa o Bearer token nas chamadas para a própria API (nunca envia segredo ao front-end — docs/14-angular.md). */
+/**
+ * Marca as chamadas pra própria API com withCredentials — necessário pro navegador enviar
+ * (e aceitar) os cookies httpOnly de sessão em requisições cross-origin (front e API em
+ * portas/domínios diferentes). O token em si nunca passa por aqui — vai sozinho no cookie
+ * (docs/12-seguranca.md).
+ */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-
   if (!req.url.startsWith(environment.apiUrl)) return next(req);
 
-  const token = authService.accessToken;
-  if (!token) return next(req);
-
-  return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
+  return next(req.clone({ withCredentials: true }));
 };

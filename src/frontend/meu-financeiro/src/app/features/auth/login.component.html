@@ -33,7 +33,20 @@
       </div>
 
       @if (errorMessage()) {
-        <div class="mf-login-error" role="alert">{{ errorMessage() }}</div>
+        <div class="mf-login-error" role="alert">
+          {{ errorMessage() }}
+          @if (showResendConfirmation() && !resendConfirmationSent()) {
+            <button mat-button type="button" color="primary" [disabled]="resendingConfirmation()" (click)="resendConfirmation()">
+              Reenviar confirmação
+            </button>
+          }
+        </div>
+      }
+
+      @if (resendConfirmationSent()) {
+        <div class="mf-login-info" role="status">
+          Se a conta existir e ainda não tiver sido confirmada, reenviamos o link de confirmação.
+        </div>
       }
 
       <button mat-flat-button color="primary" type="submit" class="mf-login-submit" [disabled]="loading()">

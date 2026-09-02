@@ -29,6 +29,9 @@ jobs:
       - name: Integration tests
         run: dotnet test tests/backend/MeuFinanceiro.Application.IntegrationTests --no-build --configuration Release --filter "Category=Integration"
 
+      - name: Verificar dependências vulneráveis (.NET)
+        run: dotnet list src/backend/MeuFinanceiro.Api package --vulnerable --include-transitive
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -47,6 +50,9 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Verificar dependências vulneráveis (npm)
+        run: npm audit --audit-level=high
 
       - name: Test
         run: npm test -- --watch=false --browsers=ChromeHeadless

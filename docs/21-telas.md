@@ -55,6 +55,7 @@ nível clicável do breadcrumb) — ver `app.routes.ts`.
 | `/registrar` | `RegisterComponent` | Criar conta (fora do shell, sem autenticação) |
 | `/esqueci-senha` | `ForgotPasswordComponent` | Pedir link de redefinição de senha (fora do shell, sem autenticação) |
 | `/redefinir-senha` | `ResetPasswordComponent` | Definir nova senha a partir do link recebido por e-mail (fora do shell, sem autenticação) |
+| `/confirmar-email` | `ConfirmEmailComponent` | Confirma o e-mail automaticamente ao abrir o link recebido no cadastro (fora do shell, sem autenticação) |
 | `/trocar-senha-inicial` | `ChangePasswordComponent` | Troca obrigatória da senha temporária no primeiro login (fora do menu — `authGuard` redireciona pra cá enquanto `MustChangePassword` estiver ativo) |
 | `/admin/grupos` | `AdminGruposComponent` | Grupos (Administrator) |
 | `/admin/perfis-acesso` | `AdminAccessProfilesComponent` | Perfis de acesso (Administrator) |

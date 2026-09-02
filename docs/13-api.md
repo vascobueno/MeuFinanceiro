@@ -1,20 +1,36 @@
 # 13 — API
 
-Todos os endpoints ficam sob `api/v1`, exigem autenticação (JWT Bearer) salvo indicação em
-contrário, e são sempre escopados ao usuário autenticado (`ICurrentUserService`).
+Todos os endpoints ficam sob `api/v1`, exigem autenticação (cookie httpOnly `access_token`,
+lido via `JwtBearerEvents.OnMessageReceived` — nunca um header `Authorization` manual) salvo
+indicação em contrário, e são sempre escopados ao usuário autenticado (`ICurrentUserService`).
+Todo POST/PUT/DELETE fora do `## Auth` abaixo exige também o header `X-XSRF-TOKEN` (CSRF —
+ver docs/12-seguranca.md), obtido via `GET /auth/csrf`.
 
 ## Auth
-POST `/api/v1/auth/register` (Name, Username, Email, Password)
-POST `/api/v1/auth/login` (Username, Password — login é por nome de usuário, não e-mail)
-POST `/api/v1/auth/refresh`
-POST `/api/v1/auth/logout`
-POST `/api/v1/auth/forgot-password` (sem autenticação; sempre 204, exista ou não o e-mail —
-evita enumeração de contas)
+POST `/api/v1/auth/register` (Name, Username, Email, Password, CaptchaToken opcional) — não
+loga mais automaticamente, devolve só `{ message }`; manda e-mail de confirmação.
+POST `/api/v1/auth/login` (Username, Password — login é por nome de usuário, não e-mail) —
+devolve `UserResponse` no corpo; os tokens vão em cookie httpOnly (`Set-Cookie`), não no JSON.
+POST `/api/v1/auth/refresh` (sem corpo — lê o cookie `refresh_token`, restrito ao path
+`/api/v1/auth`) — devolve `UserResponse`, renova os dois cookies.
+GET `/api/v1/auth/me` (autenticado) — "quem sou eu", usado pelo frontend pra rehidratar a
+sessão a partir do cookie após um F5.
+GET `/api/v1/auth/csrf` (sem autenticação) — grava o cookie `XSRF-TOKEN` (legível por JS).
+POST `/api/v1/auth/logout` (autenticado, sem corpo — lê o cookie `refresh_token`) — revoga o
+refresh token e limpa os dois cookies de sessão.
+POST `/api/v1/auth/forgot-password` (Email, CaptchaToken opcional — sem autenticação; sempre
+204, exista ou não o e-mail — evita enumeração de contas)
 POST `/api/v1/auth/reset-password` (sem autenticação; token do Identity, 1h de validade,
 revoga todos os refresh tokens do usuário ao concluir)
 POST `/api/v1/auth/change-password` (CurrentPassword, NewPassword — usada tanto pra troca
 voluntária quanto pra troca obrigatória de senha temporária; limpa `MustChangePassword` e
 confirma o e-mail ao concluir)
+POST `/api/v1/auth/confirm-email` (Email, Token — sem autenticação; mesma mensagem genérica
+pra "e-mail não existe" e "token inválido/expirado")
+POST `/api/v1/auth/resend-confirmation` (Username — sem autenticação; sempre 204)
+
+Todos os endpoints de `## Auth` (`[AllowAnonymous]` ou não) ficam de fora do `CsrfFilter` —
+login/registro precisam funcionar antes de existir qualquer cookie CSRF.
 
 ## Transactions (Lançamentos)
 GET `/api/v1/transactions` (paginação, filtros, ordenação)

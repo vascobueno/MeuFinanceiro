@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 /**
  * Pede o e-mail e chama forgot-password — o backend sempre responde 204, exista ou não a
@@ -40,7 +41,14 @@ export class ForgotPasswordComponent {
     email: ['', [Validators.required, Validators.email]],
   });
 
-  constructor(private readonly authService: AuthService) {}
+  readonly turnstileSiteKey = environment.turnstileSiteKey;
+  private captchaToken = '';
+
+  constructor(private readonly authService: AuthService) {
+    (window as unknown as Record<string, unknown>)['onForgotPasswordTurnstileSuccess'] = (token: string) => {
+      this.captchaToken = token;
+    };
+  }
 
   submit(): void {
     if (this.form.invalid) {
@@ -49,7 +57,8 @@ export class ForgotPasswordComponent {
     }
 
     this.loading.set(true);
-    this.authService.forgotPassword(this.form.getRawValue()).subscribe({
+    const { email } = this.form.getRawValue();
+    this.authService.forgotPassword({ email, captchaToken: this.captchaToken }).subscribe({
       next: () => {
         this.loading.set(false);
         this.submitted.set(true);

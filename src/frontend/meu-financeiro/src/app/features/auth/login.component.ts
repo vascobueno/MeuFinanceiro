@@ -37,6 +37,9 @@ import { usernameValidators } from '../../shared/validators/username.validators'
 export class LoginComponent {
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly showResendConfirmation = signal(false);
+  readonly resendingConfirmation = signal(false);
+  readonly resendConfirmationSent = signal(false);
 
   private readonly fb = inject(FormBuilder);
 
@@ -60,6 +63,8 @@ export class LoginComponent {
 
     this.loading.set(true);
     this.errorMessage.set(null);
+    this.showResendConfirmation.set(false);
+    this.resendConfirmationSent.set(false);
 
     this.authService.login(this.form.getRawValue()).subscribe({
       next: () => {
@@ -70,6 +75,26 @@ export class LoginComponent {
         this.loading.set(false);
         const problem = err.error as ProblemDetails | undefined;
         this.errorMessage.set(problem?.detail ?? 'Não foi possível entrar. Verifique suas credenciais.');
+        this.showResendConfirmation.set(!!problem?.type?.endsWith('email-nao-confirmado'));
+      },
+    });
+  }
+
+  // Mesmo resultado em sucesso ou erro — o backend sempre responde 204 (evita enumeração de
+  // contas), a UI segue o mesmo raciocínio.
+  resendConfirmation(): void {
+    const username = this.form.controls.username.value;
+    if (!username) return;
+
+    this.resendingConfirmation.set(true);
+    this.authService.resendConfirmation({ username }).subscribe({
+      next: () => {
+        this.resendingConfirmation.set(false);
+        this.resendConfirmationSent.set(true);
+      },
+      error: () => {
+        this.resendingConfirmation.set(false);
+        this.resendConfirmationSent.set(true);
       },
     });
   }

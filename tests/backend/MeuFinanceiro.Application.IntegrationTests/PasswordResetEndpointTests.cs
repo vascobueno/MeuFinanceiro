@@ -1,9 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MeuFinanceiro.Application.Auth;
-using Microsoft.AspNetCore.WebUtilities;
 using Xunit;
 
 namespace MeuFinanceiro.Application.IntegrationTests;
@@ -22,38 +20,26 @@ public class PasswordResetEndpointTests : IClassFixture<CustomWebApplicationFact
 
     private static string UsernameFromEmail(string email) => $"user{email.Split('@')[0]}";
 
-    private async Task<(HttpClient client, AuthResponse auth)> RegisterAsync(string name)
+    private async Task<(HttpClient client, UserResponse user)> RegisterAsync(string name)
     {
-        var client = _factory.CreateClient();
         var id = Guid.NewGuid().ToString("N")[..12];
         var email = $"{id}@teste.com";
-        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequest(name, UsernameFromEmail(email), email, Password));
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
-        return (client, auth);
+        return await AuthTestHelpers.RegisterConfirmAndLoginAsync(_factory, name, UsernameFromEmail(email), email, Password);
     }
 
-    private static string ExtractTokenFromLastEmail(TestEmailSender sender)
-    {
-        var body = sender.LastEmail!.Value.HtmlBody;
-        var href = System.Text.RegularExpressions.Regex.Match(body, "href=\"([^\"]+)\"").Groups[1].Value;
-        var query = QueryHelpers.ParseQuery(new Uri(href).Query);
-        return query["token"]!;
-    }
+    private static string ExtractTokenFromLastEmail(TestEmailSender sender) => AuthTestHelpers.ExtractTokenFromLastEmail(sender);
 
     [Fact]
     public async Task ForgotPassword_com_email_existente_envia_link_e_retorna_204()
     {
-        var (_, auth) = await RegisterAsync("Usuário Reset");
+        var (_, user) = await RegisterAsync("Usuário Reset");
         var client = _factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(auth.User.Email));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(user.Email));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         _factory.EmailSender.LastEmail.Should().NotBeNull();
-        _factory.EmailSender.LastEmail!.Value.ToEmail.Should().Be(auth.User.Email);
+        _factory.EmailSender.LastEmail!.Value.ToEmail.Should().Be(user.Email);
     }
 
     [Fact]
@@ -69,38 +55,39 @@ public class PasswordResetEndpointTests : IClassFixture<CustomWebApplicationFact
     [Fact]
     public async Task ResetPassword_com_token_valido_troca_a_senha_e_revoga_refresh_tokens_antigos()
     {
-        var (_, auth) = await RegisterAsync("Usuário Reset 2");
-        var client = _factory.CreateClient();
+        // client já tem a sessão original (access_token + refresh_token do login inicial).
+        var (client, user) = await RegisterAsync("Usuário Reset 2");
 
-        await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(auth.User.Email));
+        await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(user.Email));
         var token = ExtractTokenFromLastEmail(_factory.EmailSender);
 
         const string newPassword = "NovaSenhaForte!456";
         var resetResponse = await client.PostAsJsonAsync("/api/v1/auth/reset-password",
-            new ResetPasswordRequest(auth.User.Email, token, newPassword));
+            new ResetPasswordRequest(user.Email, token, newPassword));
         resetResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Senha antiga não funciona mais.
-        var loginOld = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(auth.User.Email), Password));
+        // Senha antiga não funciona mais (client novo, sem cookies antigos).
+        var loginOld = await _factory.CreateClient().PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(user.Email), Password));
         loginOld.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         // Senha nova funciona.
-        var loginNew = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(auth.User.Email), newPassword));
+        var loginNew = await _factory.CreateClient().PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(UsernameFromEmail(user.Email), newPassword));
         loginNew.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Refresh token emitido antes do reset foi revogado.
-        var refreshResponse = await client.PostAsJsonAsync("/api/v1/auth/refresh", new RefreshTokenRequest(auth.RefreshToken));
+        // Refresh token emitido antes do reset foi revogado — usa o client original, que
+        // ainda carrega o cookie refresh_token de antes do reset.
+        var refreshResponse = await client.PostAsync("/api/v1/auth/refresh", null);
         refreshResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
     public async Task ResetPassword_com_token_invalido_retorna_400_com_mensagem_generica()
     {
-        var (_, auth) = await RegisterAsync("Usuário Reset 3");
+        var (_, user) = await RegisterAsync("Usuário Reset 3");
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/reset-password",
-            new ResetPasswordRequest(auth.User.Email, "token-forjado-invalido", "NovaSenhaForte!456"));
+            new ResetPasswordRequest(user.Email, "token-forjado-invalido", "NovaSenhaForte!456"));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetailsResponse>();
@@ -110,14 +97,14 @@ public class PasswordResetEndpointTests : IClassFixture<CustomWebApplicationFact
     [Fact]
     public async Task ResetPassword_com_senha_fraca_retorna_400_com_mensagem_de_politica()
     {
-        var (_, auth) = await RegisterAsync("Usuário Reset 4");
+        var (_, user) = await RegisterAsync("Usuário Reset 4");
         var client = _factory.CreateClient();
 
-        await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(auth.User.Email));
+        await client.PostAsJsonAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(user.Email));
         var token = ExtractTokenFromLastEmail(_factory.EmailSender);
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/reset-password",
-            new ResetPasswordRequest(auth.User.Email, token, "fraca"));
+            new ResetPasswordRequest(user.Email, token, "fraca"));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
