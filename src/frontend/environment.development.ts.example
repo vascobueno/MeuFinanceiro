@@ -17,4 +17,9 @@ export const environment = {
   // Opcional em dev — sem uma site key, o widget de CAPTCHA não aparece nas telas de
   // cadastro/recuperação de senha, e isso não bloqueia nada (docs/23-configuracao-local.md).
   turnstileSiteKey: '',
+
+  // Opcional em dev — sem uma license key, PrimeNG mostra um aviso de licença no console
+  // (não bloqueia nada). Gerar uma chave gratuita (tier "Community") em primeui.dev/pricing
+  // (docs/migracao-primeng/00-plano.md, UI-00.1).
+  primeNgLicenseKey: '',
 };

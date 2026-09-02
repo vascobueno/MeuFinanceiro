@@ -23,6 +23,9 @@
     "@angular/platform-browser": "^22.1.4",
     "@angular/platform-browser-dynamic": "^22.1.4",
     "@angular/router": "^22.1.4",
+    "@primeuix/themes": "^3.0.0",
+    "primeicons": "^8.0.0",
+    "primeng": "^22.1.0",
     "rxjs": "~7.8.2",
     "tslib": "^2.6.3"
   },
@@ -31,6 +34,7 @@
     "@angular/build": "^22.1.6",
     "@angular/cli": "^22.1.6",
     "@angular/compiler-cli": "^22.1.4",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/jasmine": "~5.1.4",
     "jasmine-core": "~5.2.0",
     "karma": "~6.4.4",
@@ -38,6 +42,9 @@
     "karma-coverage": "~2.2.1",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
+    "tailwindcss-primeui": "^0.6.1",
     "typescript": "^6.0.0"
   }
 }

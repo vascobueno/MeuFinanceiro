@@ -8,4 +8,5 @@ export const environment = {
   // widget de CAPTCHA não aparece; sem Turnstile:SecretKey configurado no backend, isso não
   // bloqueia nada (mesmo padrão de degradação graciosa do SMTP).
   turnstileSiteKey: '',
+  primeNgLicenseKey: '',
 };

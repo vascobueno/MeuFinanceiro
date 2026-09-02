@@ -195,106 +195,77 @@ material`).
 
 ## 8. Fases e tickets
 
-### Fase 0 — Fundação
+### Fase 0 — Fundação — ✅ Implementado (2026-09-02)
 
-**UI-00.1 — Instalar PrimeNG + Tailwind**
-- Arquivos: `package.json`, `package-lock.json`, novo `postcss.config.mjs` (raiz de
-  `src/frontend/meu-financeiro`, ao lado de `angular.json`).
-- Atividades:
-  ```bash
-  cd src/frontend/meu-financeiro
-  npm install primeng@^22 primeicons
-  npm install -D tailwindcss @tailwindcss/postcss postcss tailwindcss-primeui
-  ```
-  Criar `postcss.config.mjs`:
-  ```javascript
-  export default {
-    plugins: {
-      '@tailwindcss/postcss': {},
-    },
-  };
-  ```
-  Gerar a license key Community gratuita em [primeui.dev](https://primeui.dev) (conta
-  grátis, projeto se enquadra no limite <5 devs/<10 funcionários/<US$1M receita) — guardar
-  como `primeNgLicenseKey` em `environment.ts`/`environment.development.ts`, mesmo padrão já
-  usado pra `turnstileSiteKey`.
-- Aceite: `npm install`/`npm run build`/`npm start` funcionam; nenhuma tela existente quebra
-  (Material continua 100% funcional, PrimeNG só instalado, ainda não usado em lugar nenhum).
+**UI-00.1 — Instalar PrimeNG + Tailwind** ✅
+- `npm install primeng@^22 primeicons`, `npm install -D tailwindcss @tailwindcss/postcss postcss tailwindcss-primeui`.
+- Versões instaladas: `primeng@22.1.0`, `primeicons@8.0.0`, `tailwindcss@4.3.3`,
+  `tailwindcss-primeui@0.6.1`. Criado `postcss.config.mjs` na raiz do projeto Angular.
+- **Correção em relação ao plano original**: PrimeNG v22 (rebrand "PrimeUI") **exige license
+  key mesmo no tier Community gratuito** (renovação anual, sem isso só mostra aviso no
+  console — não bloqueia nada). Chave gerada pelo usuário em
+  [primeui.dev/pricing](https://primeui.dev/pricing) e configurada em
+  `environment.development.ts` (gitignored) como `primeNgLicenseKey`; `environment.ts`/
+  `environment.production.ts`/`environment.development.ts.example` ganharam o mesmo campo
+  vazio (produção precisa de uma chave própria, a de dev não vale pro domínio de produção).
+- Aceite confirmado: `npm ci` limpo, `npm run build` e `npm test` passando.
 
-**UI-00.2 — Configurar PrimeNG + Tailwind globalmente**
-- Arquivos: `app.config.ts`, `styles.scss`.
-- Atividades: adicionar `providePrimeNG` à lista de providers já existente (sem remover
-  nenhum dos atuais — `provideZonelessChangeDetection()`, `provideRouter(routes)`,
-  `provideHttpClient(...)`, `provideAnimationsAsync()`, `provideAppInitializer(...)`):
-  ```typescript
-  import { providePrimeNG } from 'primeng/config';
-  import Aura from '@primeng/themes/aura';
+**UI-00.2 — Configurar PrimeNG + Tailwind globalmente** ✅
+- `providePrimeNG({ theme: { preset: MfPreset }, license: environment.primeNgLicenseKey })`
+  adicionado a `app.config.ts`, sem remover nenhum provider existente.
+- **Correção em relação ao plano original**: `@import "tailwindcss"` **não pode ir dentro de
+  um `.scss`** — o compilador Sass tenta resolver `"tailwindcss"` como um partial Sass local
+  e falha ("Can't find stylesheet to import"), já que esse `@import` é resolvido pelo
+  PostCSS, não pelo Sass. Solução: novo arquivo **`src/styles/tailwind.css`** (extensão
+  `.css`, não `.scss`) com `@import "tailwindcss";` + `@plugin "tailwindcss-primeui";` + o
+  bloco `@theme` mapeando os tokens `--mf-*`, registrado em `angular.json` (`build.options.styles`
+  e `test.options.styles`) **ao lado** de `src/styles.scss` — não dentro dele. `styles.scss`
+  e seus `@use` de Sass ficam intocados.
+- Tela de validação temporária criada em `src/app/dev/dev-primeng-check.component.ts`,
+  testada visualmente via Playwright (Button/InputText/Select/Dialog/Toast do PrimeNG lado a
+  lado com os equivalentes Material) e **removida ao final da fase**, conforme o plano.
+- Achado da validação: nenhum erro/warning de change detection sob zoneless; Select
+  (overlay), Dialog (abre via clique, fecha via botão e via Escape) e Toast funcionam
+  corretamente; valor selecionado no `p-select` atualiza o template via signal/two-way
+  binding sem precisar de `markForCheck()` manual — mesmo comportamento dos componentes
+  Material equivalentes.
+- Bundle inicial cresceu de ~405kB pra ~600kB (Material + PrimeNG coexistindo) — orçamento
+  de bundle em `angular.json` ajustado de `450kB/700kB` pra `700kB/950kB` (`maximumWarning`/
+  `maximumError`), temporário até a Fase 6 remover o Material e o bundle encolher de novo.
+- Aceite confirmado: PrimeNG e Material renderizam juntos sem conflito de CSS; Dialog
+  abre/fecha e Toast aparece corretamente; nenhum warning de change detection.
 
-  providePrimeNG({
-    theme: {
-      preset: Aura, // trocado pelo preset customizado na UI-00.4
-    },
-  }),
-  ```
-  Em `styles.scss`, no topo (antes dos `@use` de `styles/tokens` etc. já existentes):
-  ```scss
-  @import "tailwindcss";
-  @plugin "tailwindcss-primeui";
+**UI-00.3 — Ícones e fontes** ✅
+- `primeicons/primeicons.css` adicionado a `angular.json` (`styles`, junto de `tailwind.css`)
+  como asset local (não CDN) — os arquivos de fonte (`.woff`/`.woff2`/`.ttf`/`.eot`/`.svg`)
+  são copiados e hasheados automaticamente pelo builder, confirmado no `dist/` gerado.
+  Roboto e os 15 ícones SVG de `mf-nav-icons.ts` (via `MatIconRegistry`) ficaram intocados,
+  como previsto.
+- Aceite confirmado: build inclui os fonts do PrimeIcons; `pi-*` disponível a partir daqui.
 
-  @theme {
-    /* mapeia os tokens --mf-* existentes pro namespace do Tailwind, ex.: */
-    --color-primary: var(--mf-primary);
-    --color-surface: var(--mf-surface);
-    /* completar com o restante dos tokens listados em _tokens.scss (seção 3.1) */
-  }
-  ```
-  Criar uma rota/tela de validação temporária (ex.: `dev-primeng-check`, removida ao final
-  da Fase 0) com `Button`, `InputText`, `Select`, `Dialog`, `Toast` do PrimeNG lado a lado
-  com os equivalentes Material, especificamente pra verificar overlays (Dialog, Select
-  dropdown) sob `provideZonelessChangeDetection()` — é a área de maior risco documentada no
-  código atual (comentário em `app.config.ts` já alerta sobre isso pra `AutocompleteComponent`
-  /`MoneyInputComponent`).
-- Aceite: PrimeNG e Material renderizam juntos sem conflito de CSS; Dialog abre/fecha e
-  Toast aparece/some corretamente; nenhum erro ou warning de change detection no console.
-
-**UI-00.3 — Ícones e fontes**
-- Arquivos: `index.html`, `shared/icons/mf-nav-icons.ts` (sem alteração de conteúdo nesta
-  fase, só nota abaixo).
-- Atividades: adicionar `primeicons` (via `angular.json` `styles` como asset local,
-  preferível a CDN externo — seguir convenção do projeto pra outros assets). Manter a fonte
-  Google Roboto (300/400/500) exatamente como está — não há "Inter" no projeto hoje.
-  Manter os 15 ícones SVG customizados de `mf-nav-icons.ts` e seu registro via
-  `MatIconRegistry` sem alteração — Material continua instalado até a Fase 6. A fonte
-  ligature "Material Icons" só é removida do `index.html` na Fase 6 (UI-06.3).
-- Aceite: ícones de navegação continuam aparecendo normalmente; `pi-*` (PrimeIcons)
-  disponíveis pra uso nos componentes PrimeNG a partir daqui.
-
-**UI-00.4 — Tema PrimeNG por skin**
-- Arquivos: novo `styles/primeng-preset.ts`, `services/theme.service.ts` (ajuste, não
-  reescrita).
-- Atividades: criar o preset mapeando **nomes de token PrimeNG** pras **variáveis CSS**
-  `--mf-*` (não pros valores resolvidos) — assim a troca de skin via `data-theme` no
-  `<html>` continua funcionando sem precisar recriar o preset em runtime:
-  ```typescript
-  import { definePreset } from '@primeng/themes';
-  import Aura from '@primeng/themes/aura';
-
-  export const MfPreset = definePreset(Aura, {
-    semantic: {
-      primary: {
-        500: 'var(--mf-primary)',
-        // ...demais shades, todas apontando pra variáveis --mf-*
-      },
-    },
-  });
-  ```
-  Trocar `preset: Aura` (da UI-00.2) por `preset: MfPreset`. Nenhuma mudança necessária no
-  `ThemeService` em si — ele já só troca o atributo `data-theme` no `<html>`, e como o preset
-  aponta pra `var(--mf-*)` (não pro valor fixo), a resolução acontece automaticamente pelo
-  CSS cascade a cada troca de skin, igual já acontece hoje com o Material
-  (`_material-theme.scss`).
-- Aceite: cada uma das 7 skins aplica corretamente em componentes PrimeNG de teste (Button,
-  Input, Select, Card, Table, Dialog, Toast) sem precisar de lógica JS adicional.
+**UI-00.4 — Tema PrimeNG por skin** ✅
+- **Correção em relação ao plano original**: o pacote de presets **não é `@primeng/themes`**
+  (esse nome não existe — há inclusive uma issue no GitHub do PrimeNG com esse exato nome de
+  pacote errado) — é **`@primeuix/themes`** (rebrand "PrimeUI"), instalado à parte
+  (`npm install @primeuix/themes`, v22.1.1). `definePreset`/`Aura` vêm de lá:
+  `import { definePreset } from '@primeuix/themes'; import Aura from '@primeuix/themes/aura';`.
+- Criado `src/app/styles/primeng-preset.ts` com `MfPreset = definePreset(Aura, { semantic: { primary: {...} } })`,
+  mapeando os 11 shades (`50`–`950`) e `color`/`hoverColor`/`activeColor`/`contrastColor` do
+  token semântico `primary` pras variáveis `var(--mf-primary)`/`var(--mf-primary-dark)`/
+  `var(--mf-primary-tint)` já existentes em `_tokens.scss` (shades claros → `-tint`, médios →
+  `-primary`, escuros → `-dark` — aproximação razoável, já que o projeto só tem 3 tokens de
+  cor de marca, não uma escala completa de 11 degradês; revisar visualmente se algum
+  componente específico expuser um desses shades intermediários de forma visível durante as
+  Fases 1–5).
+  `colorScheme`/`surface`/texto **não foram remapeados nesta ticket** — ficaram no padrão do
+  preset Aura; revalidar visualmente durante as Fases 1–5 se precisarem de ajuste.
+- Confirmado via Playwright: o botão "Abrir Dialog (PrimeNG)" foi de verde (Aura padrão,
+  paleta `emerald`) pra laranja (`--mf-primary`) depois do preset aplicado, sem nenhuma
+  lógica JS adicional — a troca de skin via `data-theme` já deve propagar pro PrimeNG pela
+  mesma cascata CSS usada pelo Material (a confirmar visualmente pra cada skin durante a
+  Fase 1, quando os primeiros componentes PrimeNG passarem a aparecer nas telas reais).
+- Aceite confirmado (skin laranja, a padrão): Button, Select, Dialog e Toast do PrimeNG
+  usam a cor de marca corretamente.
 
 ### Fase 1 — Shared UI kit (`shared/components/*`)
 
@@ -459,13 +430,13 @@ Depois da implementação:
 ## 12. Ordem recomendada de execução
 
 ```
-UI-(-1).1  Alinhar versões @angular/* (corrige CI quebrado)
-UI-(-1).2  Agrupar pacotes Angular no Dependabot
+UI-(-1).1  Alinhar versões @angular/* (corrige CI quebrado)              ✅
+UI-(-1).2  Agrupar pacotes Angular no Dependabot                         ✅
 
-UI-00.1  Instalar PrimeNG + Tailwind
-UI-00.2  Configurar globalmente
-UI-00.3  Ícones e fontes
-UI-00.4  Tema PrimeNG por skin
+UI-00.1  Instalar PrimeNG + Tailwind                                     ✅
+UI-00.2  Configurar globalmente                                          ✅
+UI-00.3  Ícones e fontes                                                 ✅
+UI-00.4  Tema PrimeNG por skin                                           ✅
 
 UI-01.1  Pagination
 UI-01.2  Stat-card / List-state / Status-badge

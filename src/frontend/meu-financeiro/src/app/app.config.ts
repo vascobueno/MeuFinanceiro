@@ -2,12 +2,15 @@ import { ApplicationConfig, inject, provideAppInitializer, provideZonelessChange
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { providePrimeNG } from 'primeng/config';
 import { firstValueFrom } from 'rxjs';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { AuthService } from './core/services/auth.service';
+import { environment } from '../environments/environment';
+import { MfPreset } from './styles/primeng-preset';
 
 /**
  * Zoneless (docs/14-angular.md): sem zone.js, o Angular só verifica um componente quando
@@ -26,6 +29,15 @@ export const appConfig: ApplicationConfig = {
       withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
     ),
     provideAnimationsAsync(),
+    // PrimeNG (docs/migracao-primeng/00-plano.md) — coexiste com o Material durante a
+    // migração. MfPreset (styles/primeng-preset.ts) mapeia a cor "primary" pros tokens
+    // --mf-* já existentes, então a troca de skin (ThemeService) também vale pro PrimeNG.
+    // Sem license key configurada, PrimeNG só mostra um aviso no console — não bloqueia
+    // nada (mesmo padrão de degradação graciosa do SMTP/Turnstile).
+    providePrimeNG({
+      theme: { preset: MfPreset },
+      license: environment.primeNgLicenseKey,
+    }),
     // Busca o cookie CSRF e tenta rehidratar a sessão a partir do cookie httpOnly (sobrevive
     // a um F5, já que não há mais token nenhum em localStorage) antes de renderizar as rotas
     // — 401 aqui é o caso normal de "ainda não logado", não um erro de bootstrap.

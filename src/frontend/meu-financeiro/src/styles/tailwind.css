@@ -1,0 +1,24 @@
+/* Ponto de entrada do Tailwind CSS v4 (docs/migracao-primeng/00-plano.md, UI-00.2).
+   Arquivo .css separado (não .scss) porque o `@import "tailwindcss"` do Tailwind é
+   resolvido pelo PostCSS, não pelo Sass — dentro de um .scss o compilador Sass tentaria
+   resolver "tailwindcss" como um partial Sass e falharia. Registrado em angular.json ao
+   lado de styles.scss (Sass continua cuidando de _tokens/_material-theme/_layout/_finance). */
+@import "tailwindcss";
+@plugin "tailwindcss-primeui";
+
+@theme {
+  /* Mapeia os tokens --mf-* existentes (src/styles/_tokens.scss) pro namespace do Tailwind
+     — não duplica valores, só referencia as custom properties já trocadas por skin. */
+  --color-primary: var(--mf-primary);
+  --color-primary-dark: var(--mf-primary-dark);
+  --color-primary-tint: var(--mf-primary-tint);
+  --color-mf-green: var(--mf-green);
+  --color-mf-yellow: var(--mf-yellow);
+  --color-mf-red: var(--mf-red);
+  --color-bg: var(--mf-bg);
+  --color-card: var(--mf-card);
+  --color-text: var(--mf-text);
+  --color-muted: var(--mf-muted);
+  --color-line: var(--mf-line);
+  --radius-mf: var(--mf-radius);
+}
