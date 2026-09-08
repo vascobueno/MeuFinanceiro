@@ -1,0 +1,25 @@
+// Copie este arquivo para dentro do projeto Angular como:
+//   src/frontend/meu-financeiro/src/environments/environment.development.ts
+// (já está no .gitignore e nunca deve ser commitado com valores reais)
+
+export const environment = {
+  production: false,
+  // Relativo (não https://localhost:5001) — o `ng serve` usa proxy.config.json pra
+  // encaminhar /api pro backend na mesma origem (localhost:4200), senão os cookies
+  // httpOnly de sessão (SameSite=Strict) não seriam enviados entre portas diferentes
+  // (docs/23-configuracao-local.md).
+  apiUrl: '/api/v1',
+
+  // Debounce do autocomplete de descrição (docs/copilot-instructions.md)
+  autocompleteDebounceMs: 300,
+  autocompleteMaxSuggestions: 15,
+
+  // Opcional em dev — sem uma site key, o widget de CAPTCHA não aparece nas telas de
+  // cadastro/recuperação de senha, e isso não bloqueia nada (docs/23-configuracao-local.md).
+  turnstileSiteKey: '',
+
+  // Opcional em dev — sem uma license key, PrimeNG mostra um aviso de licença no console
+  // (não bloqueia nada). Gerar uma chave gratuita (tier "Community") em primeui.dev/pricing
+  // (docs/migracao-primeng/00-plano.md, UI-00.1).
+  primeNgLicenseKey: '',
+};

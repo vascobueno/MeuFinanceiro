@@ -1,0 +1,151 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-investments" class="mf-page-title-icon"></mf-icon>Investimentos</h2>
+  <div class="mf-sub">Patrimônio investido, separado do caixa operacional.</div>
+</div>
+
+<div class="mf-stat-grid">
+  <mf-stat-card label="Saldo investido" [value]="summary()?.totalPosition ?? 0 | currency: 'BRL'" hint="posição atual" variant="hero"></mf-stat-card>
+  <mf-stat-card label="Principal" [value]="totalPrincipal | currency: 'BRL'" hint="capital aplicado"></mf-stat-card>
+  <mf-stat-card label="Rendimento" [value]="totalYield | currency: 'BRL'" hint="valor líquido − principal" [hintTone]="totalYield >= 0 ? 'positive' : 'negative'"></mf-stat-card>
+</div>
+
+@if (authService.canWrite()) {
+  <div class="mf-actions-row">
+    <button pButton [outlined]="true" type="button" (click)="showAccountForm.set(!showAccountForm())">
+      Nova instituição
+    </button>
+    <button pButton type="button" (click)="showInvestmentForm.set(!showInvestmentForm())">
+      Novo investimento
+    </button>
+  </div>
+}
+
+@if (showAccountForm()) {
+  <div class="mf-card mf-inline-form">
+    <h6>Nova instituição financeira</h6>
+    <div class="mf-inline-form-grid mf-grid-3">
+      <div>
+        <label class="mf-field-label">Instituição</label>
+        <input pInputText pSize="small" class="mf-field-input" placeholder="ex.: Santander" [(ngModel)]="newAccount.institution" />
+      </div>
+      <div>
+        <label class="mf-field-label">Apelido (opcional)</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newAccount.name" />
+      </div>
+      <button pButton type="button" (click)="createAccount()">Salvar</button>
+    </div>
+  </div>
+}
+
+@if (showInvestmentForm()) {
+  <div class="mf-card mf-inline-form">
+    <h6>Novo investimento</h6>
+    <div class="mf-inline-form-grid mf-grid-5">
+      <div>
+        <label class="mf-field-label">Instituição</label>
+        <p-select size="small"
+          class="mf-field-input"
+          [options]="summary()?.accounts ?? []"
+          optionValue="id"
+          [(ngModel)]="newInvestment.investmentAccountId"
+        >
+          <ng-template #selectedItem let-selected>
+            {{ selected.institution }} {{ selected.name ? '(' + selected.name + ')' : '' }}
+          </ng-template>
+          <ng-template #item let-account>
+            {{ account.institution }} {{ account.name ? '(' + account.name + ')' : '' }}
+          </ng-template>
+        </p-select>
+      </div>
+      <div>
+        <label class="mf-field-label">Nome</label>
+        <input pInputText pSize="small" class="mf-field-input" placeholder="ex.: CDB DI" [(ngModel)]="newInvestment.name" />
+      </div>
+      <div>
+        <label class="mf-field-label">Tipo</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newInvestment.type" />
+      </div>
+      <div>
+        <label class="mf-field-label">Vencimento</label>
+        <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="newInvestmentMaturityDate" />
+      </div>
+      <button pButton type="button" (click)="createInvestment()">Salvar</button>
+    </div>
+  </div>
+}
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && investments().length === 0"
+      emptyMessage="Nenhum investimento cadastrado ainda."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && investments().length > 0) {
+      <p-table [value]="investments()" styleClass="mf-investments-table">
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="name">Investimento <p-sort-icon field="name" /></th>
+            <th pSortableColumn="type">Tipo <p-sort-icon field="type" /></th>
+            <th pSortableColumn="maturityDate">Vencimento <p-sort-icon field="maturityDate" /></th>
+            <th pSortableColumn="principal" class="mf-col-end">Principal <p-sort-icon field="principal" /></th>
+            <th pSortableColumn="netValue" class="mf-col-end">Valor líquido <p-sort-icon field="netValue" /></th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-investment>
+          <tr>
+            <td>{{ investment.name }}</td>
+            <td>{{ investment.type || '—' }}</td>
+            <td>{{ investment.maturityDate ? (investment.maturityDate | date: 'dd/MM/yyyy') : '—' }}</td>
+            <td class="mf-col-end">{{ investment.principal | currency: 'BRL' }}</td>
+            <td class="mf-col-end mf-fw-semibold">{{ investment.netValue | currency: 'BRL' }}</td>
+            <td class="mf-col-end">
+              @if (authService.canWrite()) {
+                <button pButton [outlined]="true" type="button" (click)="openTransactionForm(investment)">
+                  Movimentar
+                </button>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</div>
+
+@if (txInvestmentId()) {
+  <div class="mf-card mf-inline-form mf-tx-form">
+    <h6>Registrar movimentação</h6>
+    <div class="mf-inline-form-grid mf-grid-5">
+      <div>
+        <label class="mf-field-label">Tipo</label>
+        <p-select size="small" class="mf-field-input" [options]="txTypeOptions" optionLabel="label" optionValue="value" [(ngModel)]="txType" />
+      </div>
+      @if (txType !== InvestmentTransactionType.Yield) {
+        <div>
+          <label class="mf-field-label">Conta {{ txType === InvestmentTransactionType.Application ? '(origem)' : '(destino)' }}</label>
+          <p-select size="small" class="mf-field-input" [options]="accounts()" optionLabel="name" optionValue="id" [(ngModel)]="txAccountId" placeholder="Selecione..." />
+        </div>
+      }
+      <div>
+        <label class="mf-field-label">Data</label>
+        <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="txDate" />
+      </div>
+      <div>
+        <label class="mf-field-label">Valor</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="txAmount" />
+      </div>
+      <div class="mf-inline-form-actions">
+        <button pButton type="button" (click)="submitTransaction()">Confirmar</button>
+        <button pButton [outlined]="true" type="button" (click)="closeTransactionForm()">Cancelar</button>
+      </div>
+    </div>
+    <p class="mf-sub mf-form-hint">
+      Aplicação reduz o saldo da conta e aumenta o investimento; resgate faz o inverso; rendimento não movimenta a conta (regras 10/11).
+    </p>
+  </div>
+}

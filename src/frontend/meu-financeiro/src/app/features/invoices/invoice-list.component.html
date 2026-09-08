@@ -1,0 +1,89 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-invoices" class="mf-page-title-icon"></mf-icon>Faturas</h2>
+  <div class="mf-sub">Listar e acompanhar faturas de cartão.</div>
+</div>
+
+<div class="mf-filters-card">
+  <div class="mf-filters-grid">
+    <div>
+      <label class="mf-field-label">Cartão</label>
+      <p-select size="small" class="mf-field-input" [options]="cardOptions()" optionLabel="label" optionValue="value" [(ngModel)]="filter.creditCardId" (onChange)="applyFilters()" />
+    </div>
+
+    <mf-date-range size="small" [range]="period" (rangeChange)="onPeriodChange($event)"></mf-date-range>
+
+    <div>
+      <label class="mf-field-label">Status</label>
+      <p-select size="small" class="mf-field-input" [options]="statusOptions" optionLabel="label" optionValue="value" [(ngModel)]="filter.status" (onChange)="applyFilters()" />
+    </div>
+
+    <div>
+      <label class="mf-field-label">Valor mín.</label>
+      <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="filter.minAmount" (change)="applyFilters()" />
+    </div>
+
+    <div>
+      <label class="mf-field-label">Valor máx.</label>
+      <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="filter.maxAmount" (change)="applyFilters()" />
+    </div>
+  </div>
+</div>
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && invoices().length === 0"
+      emptyMessage="Nenhuma fatura encontrada para os filtros selecionados."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && invoices().length > 0) {
+      <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir de filter.sortBy/
+           filter.sortDir (que (onSort) também escreve) fecha um ciclo de reemissão infinita
+           no p-table — ver comentário completo em transaction-list.component.html. -->
+      <p-table
+        [value]="invoices()"
+        [customSort]="true"
+        (onSort)="onSort($event)"
+        styleClass="mf-invoices-table"
+      >
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="cartao">Cartão <p-sort-icon field="cartao" /></th>
+            <th>Período</th>
+            <th pSortableColumn="fechamento">Fechamento <p-sort-icon field="fechamento" /></th>
+            <th pSortableColumn="vencimento">Vencimento <p-sort-icon field="vencimento" /></th>
+            <th pSortableColumn="total" class="mf-col-end">Total <p-sort-icon field="total" /></th>
+            <th>Status</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-invoice>
+          <tr>
+            <td>{{ invoice.creditCardName }}</td>
+            <td>{{ invoice.closingDate | date: 'MM/yyyy' }}</td>
+            <td>{{ invoice.closingDate | date: 'dd/MM' }}</td>
+            <td>{{ invoice.dueDate | date: 'dd/MM' }}</td>
+            <td class="mf-col-end">{{ invoice.totalAmount | currency: 'BRL' }}</td>
+            <td>
+              <span class="mf-badge" [ngClass]="invoice.status === CardInvoiceStatus.Aberta ? 'mf-badge-neutral' : 'mf-badge-bad'">
+                {{ invoice.status === CardInvoiceStatus.Aberta ? 'Aberta' : 'Vencida' }}
+              </span>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+
+    @if (!loading() && !error() && invoices().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="filter.page"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>

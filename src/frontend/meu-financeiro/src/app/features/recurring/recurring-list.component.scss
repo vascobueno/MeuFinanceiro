@@ -1,0 +1,43 @@
+.mf-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  overflow: hidden;
+}
+
+.mf-panel-body {
+  padding: 1rem;
+}
+
+.mf-recurring-table {
+  width: 100%;
+}
+
+.mf-col-end {
+  text-align: right;
+}
+
+.mf-row-edit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  font-size: 1rem;
+  color: var(--mf-primary);
+  cursor: pointer;
+}
+.mf-row-edit-icon:hover {
+  opacity: 0.7;
+}

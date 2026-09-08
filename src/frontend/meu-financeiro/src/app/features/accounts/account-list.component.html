@@ -1,0 +1,124 @@
+<p-confirm-dialog />
+
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title"><mf-icon name="mf-accounts" class="mf-page-title-icon"></mf-icon>Contas correntes</h2>
+    <div class="mf-sub">Saldo operacional das contas, sem somar investimentos.</div>
+  </div>
+  @if (authService.canWrite()) {
+    <button pButton type="button" (click)="openForm()">+ Nova conta</button>
+  }
+</div>
+
+<div class="mf-stat-grid">
+  <mf-stat-card
+    label="Saldo total em contas"
+    [value]="accountsTotalBalance() | currency: 'BRL'"
+    [hint]="activeAccountsCount() + ' conta' + (activeAccountsCount() === 1 ? '' : 's') + ' ativa' + (activeAccountsCount() === 1 ? '' : 's')"
+  ></mf-stat-card>
+  <mf-stat-card label="Investimentos" [value]="investmentsBalance() | currency: 'BRL'" hint="não incluídos acima"></mf-stat-card>
+</div>
+
+@if (showForm()) {
+  <div class="mf-card mf-inline-form">
+    <h6>Nova conta</h6>
+    <div class="mf-inline-form-grid">
+      <div>
+        <label class="mf-field-label">Nome</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newAccount.name" />
+      </div>
+      <div>
+        <label class="mf-field-label">Banco</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newAccount.bank" />
+      </div>
+      <div>
+        <label class="mf-field-label">Tipo</label>
+        <p-select size="small" class="mf-field-input" [options]="typeOptions" optionLabel="label" optionValue="value" [(ngModel)]="newAccount.type" />
+      </div>
+      <div>
+        <label class="mf-field-label">Saldo inicial</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="newAccount.initialBalance" />
+      </div>
+      <div class="mf-inline-form-actions">
+        <button pButton type="button" [disabled]="saving()" (click)="submit()">Salvar</button>
+        <button pButton [outlined]="true" type="button" (click)="closeForm()">Cancelar</button>
+      </div>
+    </div>
+    @if (formError()) {
+      <div class="mf-form-error">{{ formError() }}</div>
+    }
+  </div>
+}
+
+<div class="mf-panel">
+  <div class="mf-panel-header"><b>Minhas contas</b></div>
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && accounts().length === 0"
+      emptyMessage="Nenhuma conta cadastrada ainda."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && accounts().length > 0) {
+      <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir de sortBy/sortDir
+           (que (onSort) também escreve) fecha um ciclo de reemissão infinita no p-table —
+           ver comentário completo em transaction-list.component.html. -->
+      <p-table
+        [value]="accounts()"
+        [customSort]="true"
+        (onSort)="onSort($event)"
+        styleClass="mf-accounts-table"
+      >
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="name">Nome <p-sort-icon field="name" /></th>
+            <th pSortableColumn="bank">Banco <p-sort-icon field="bank" /></th>
+            <th pSortableColumn="type">Tipo <p-sort-icon field="type" /></th>
+            <th class="mf-col-end">Saldo</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-account>
+          <tr>
+            <td>{{ account.name }}</td>
+            <td>{{ account.bank || '—' }}</td>
+            <td>{{ account.type === AccountType.Checking ? 'Corrente' : 'Poupança' }}</td>
+            <td class="mf-col-end">{{ account.currentBalance | currency: 'BRL' }}</td>
+            <td>
+              <span class="mf-badge" [ngClass]="account.isActive ? 'mf-badge-ok' : 'mf-badge-neutral'">
+                {{ account.isActive ? 'Ativa' : 'Inativa' }}
+              </span>
+            </td>
+            <td class="mf-col-end">
+              @if (authService.canWrite()) {
+                <button
+                  type="button"
+                  class="mf-row-delete-icon"
+                  pTooltip="Excluir"
+                  tooltipPosition="top"
+                  [attr.aria-label]="'Excluir'"
+                  (click)="confirmDelete(account)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+
+    @if (!loading() && !error() && accounts().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="page()"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>

@@ -1,0 +1,144 @@
+<div class="mf-form-header">
+  <div>
+    <h2 class="mf-page-title"><mf-icon name="mf-transactions" class="mf-page-title-icon"></mf-icon>{{ editingId() ? 'Editar lançamento' : 'Novo lançamento' }}</h2>
+    <div class="mf-sub">Registre uma movimentação com sugestões inteligentes.</div>
+  </div>
+  <a pButton [outlined]="true" routerLink="/lancamentos">Voltar</a>
+</div>
+
+@if (!loading()) {
+  <div class="mf-card mf-form-card">
+    @if (error()) {
+      <div class="mf-form-error" role="alert">{{ error() }}</div>
+    }
+
+    @if (!editingId()) {
+      <p-selectbutton size="small" class="mf-mode-toggle" [options]="modeOptions" optionLabel="label" optionValue="value" [(ngModel)]="mode" />
+    }
+
+    <mf-description-autocomplete [(value)]="description" (suggestionSelected)="onSuggestionSelected($event)"></mf-description-autocomplete>
+
+    <div class="mf-form-grid mf-grid-2">
+      <div>
+        <label class="mf-field-label">Data</label>
+        <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="transactionDate" />
+      </div>
+
+      <div>
+        <label class="mf-field-label">Tipo</label>
+        <p-select size="small" class="mf-field-input" [options]="typeOptions" optionLabel="label" optionValue="value" [(ngModel)]="type" [disabled]="!!editingId()" />
+      </div>
+    </div>
+
+    <!-- Transferência: apenas contas próprias, não é receita/despesa (regra 9) -->
+    @if (type === TransactionType.Transfer) {
+      <div class="mf-form-grid mf-grid-2">
+        <div>
+          <label class="mf-field-label">Conta de origem</label>
+          <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
+        </div>
+        <div>
+          <label class="mf-field-label">Conta de destino</label>
+          <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="destinationAccountId" />
+        </div>
+      </div>
+    }
+
+    <!-- Origem conta/cartão para lançamentos que não são transferência -->
+    @if (type !== TransactionType.Transfer) {
+      <div class="mf-form-grid mf-grid-3">
+        <div>
+          <label class="mf-field-label">Origem</label>
+          <p-select size="small" class="mf-field-input" [options]="originKindOptions" optionLabel="label" optionValue="value" [(ngModel)]="originKind" />
+        </div>
+        @if (originKind === 'account') {
+          <div>
+            <label class="mf-field-label">Conta</label>
+            <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
+          </div>
+        }
+        @if (originKind === 'card') {
+          <div>
+            <label class="mf-field-label">Cartão</label>
+            <p-select size="small" class="mf-field-input" [options]="cardSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="creditCardId" />
+          </div>
+        }
+        <div>
+          <label class="mf-field-label">Categoria</label>
+          <p-select size="small" class="mf-field-input" [options]="categorySelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="categoryId" />
+        </div>
+      </div>
+    }
+
+    <div class="mf-form-grid mf-grid-2">
+      <mf-money-input [(ngModel)]="amount" name="amount"></mf-money-input>
+
+      @if (editingId()) {
+        <div>
+          <label class="mf-field-label">Status</label>
+          <p-select size="small" class="mf-field-input" [options]="statusOptions" optionLabel="label" optionValue="value" [(ngModel)]="status" />
+        </div>
+      }
+    </div>
+
+    <!-- Parcelamento (Modo A: valor total / Modo B: valor da parcela) — regras 15/16/17 -->
+    @if (mode === 'installment' && !editingId()) {
+      <div class="mf-card mf-form-subsection">
+        <h6>Parcelamento</h6>
+        <div class="mf-form-grid mf-grid-3">
+          <div>
+            <label class="mf-field-label">Modo</label>
+            <p-select size="small" class="mf-field-input" [options]="installmentModeOptions" optionLabel="label" optionValue="value" [(ngModel)]="installmentMode" />
+          </div>
+          <div>
+            <label class="mf-field-label">Quantidade</label>
+            <input pInputText pSize="small" class="mf-field-input" type="number" min="1" [(ngModel)]="installmentCount" />
+          </div>
+          <div>
+            <label class="mf-field-label">1ª parcela em</label>
+            <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="firstDueDate" />
+          </div>
+        </div>
+        <p class="mf-sub mf-form-hint">
+          O valor acima é interpretado como {{ installmentMode === InstallmentMode.TotalAmount ? 'o valor total do parcelamento' : 'o valor de cada parcela' }}.
+          A soma das parcelas sempre fecha exatamente o valor principal; eventual arredondamento fica na última parcela.
+        </p>
+      </div>
+    }
+
+    <!-- Recorrência: alteração futura cria nova versão a partir da data de vigência (regra 13) -->
+    @if (mode === 'recurring' && !editingId()) {
+      <div class="mf-card mf-form-subsection">
+        <h6>Recorrência</h6>
+        <div class="mf-form-grid mf-grid-2">
+          <div>
+            <label class="mf-field-label">Frequência</label>
+            <p-select size="small"
+              class="mf-field-input"
+              [options]="recurrenceFrequencyOptions"
+              optionLabel="label"
+              optionValue="value"
+              [(ngModel)]="recurrenceFrequency"
+            />
+          </div>
+          <div>
+            <label class="mf-field-label">Data final (opcional)</label>
+            <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="recurrenceEndDate" />
+          </div>
+        </div>
+      </div>
+    }
+
+    <div class="mf-form-full">
+      <label class="mf-field-label">Observação</label>
+      <textarea pTextarea class="mf-field-input" rows="2" [(ngModel)]="notes"></textarea>
+    </div>
+
+    <button pButton type="button" [disabled]="saving()" (click)="submit()">
+      @if (saving()) {
+        <p-progress-spinner styleClass="mf-inline-spinner" strokeWidth="4" />
+      }
+      Salvar
+    </button>
+  </div>
+}

@@ -1,0 +1,53 @@
+<div class="mf-report-actions no-print">
+  <button pButton [outlined]="true" type="button" (click)="print()">
+    <i class="pi pi-print"></i>
+    Imprimir / Salvar PDF
+  </button>
+</div>
+
+<mf-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="!loading() && !error() && items().length === 0"
+  emptyMessage="Nenhum gasto recorrente ativo."
+  [onRetry]="load.bind(this)"
+></mf-list-state>
+
+@if (!loading() && !error()) {
+  <div class="mf-panel">
+    <div class="mf-report-head">
+      <span class="mf-report-brand"><i class="pi pi-wallet"></i>MeuFinanceiro</span>
+      <span class="mf-report-meta">Gerado em {{ generatedAt | date: 'dd/MM/yyyy \'às\' HH:mm' }}</span>
+    </div>
+
+    <div class="mf-report-title">Gastos recorrentes ativos</div>
+
+    @if (items().length > 0) {
+      <table class="mf-report-table">
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Frequência</th>
+            <th class="mf-col-end">Valor atual</th>
+            <th>Próxima ocorrência</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.id) {
+            <tr>
+              <td>{{ item.description }}</td>
+              <td>{{ frequencyLabel(item.frequency) }}</td>
+              <td class="mf-col-end">{{ item.currentAmount | currency: 'BRL' }}</td>
+              <td>{{ item.nextOccurrences[0]?.date ? (item.nextOccurrences[0].date | date: 'dd/MM/yyyy') : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="mf-report-total">
+        <span>Total mensal equivalente</span>
+        <span>{{ monthlyTotal() | currency: 'BRL' }}</span>
+      </div>
+    }
+  </div>
+}

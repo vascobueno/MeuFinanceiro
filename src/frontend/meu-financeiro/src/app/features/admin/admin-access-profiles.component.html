@@ -1,0 +1,58 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-admin" class="mf-page-title-icon"></mf-icon>Perfis de acesso</h2>
+  <div class="mf-sub">Todos os membros de todos os grupos — ajuste o perfil de acesso sem entrar grupo por grupo.</div>
+</div>
+
+<div class="mf-filters-card">
+  <label class="mf-field-label">Buscar</label>
+  <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="search" (ngModelChange)="applyFilter()" placeholder="Nome, e-mail ou grupo" />
+</div>
+
+@if (actionError()) {
+  <div class="mf-form-error" role="alert">{{ actionError() }}</div>
+}
+
+<div class="mf-panel">
+  <mf-list-state
+    [loading]="loading()"
+    [error]="error()"
+    [empty]="!loading() && !error() && members().length === 0"
+    emptyMessage="Nenhum membro cadastrado ainda."
+    [onRetry]="load.bind(this)"
+  ></mf-list-state>
+
+  @if (!loading() && !error() && members().length > 0) {
+    <p-table [value]="filteredMembers()" styleClass="mf-members-table">
+      <ng-template #header>
+        <tr>
+          <th pSortableColumn="grupoName">Grupo <p-sort-icon field="grupoName" /></th>
+          <th pSortableColumn="name">Membro <p-sort-icon field="name" /></th>
+          <th pSortableColumn="role">Papel <p-sort-icon field="role" /></th>
+          <th>Acesso</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-m>
+        <tr>
+          <td>{{ m.grupoName }}</td>
+          <td>{{ m.name }} ({{ m.email }})</td>
+          <td>
+            <span class="mf-badge" [ngClass]="m.role === GrupoRole.Owner ? 'mf-badge-ok' : 'mf-badge-neutral'">
+              {{ m.role === GrupoRole.Owner ? 'Owner' : 'Member' }}
+            </span>
+          </td>
+          <td>
+            <p-select size="small"
+              class="mf-access-select"
+              [options]="accessProfileOptions"
+              optionLabel="label"
+              optionValue="value"
+              [ngModel]="m.accessProfile"
+              [disabled]="m.role === GrupoRole.Owner"
+              (onChange)="updateAccessProfile(m, $event.value)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</div>

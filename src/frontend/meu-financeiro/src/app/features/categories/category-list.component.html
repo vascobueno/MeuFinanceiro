@@ -1,0 +1,62 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-settings" class="mf-page-title-icon"></mf-icon>Categorias</h2>
+  <div class="mf-sub">Organize receitas e despesas por categoria e subcategoria.</div>
+</div>
+
+@if (authService.canWrite()) {
+  <div class="mf-card mf-inline-form">
+    <h6>Nova categoria</h6>
+    <div class="mf-inline-form-grid">
+      <div>
+        <label class="mf-field-label">Nome</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newName" />
+      </div>
+      <div>
+        <label class="mf-field-label">Tipo</label>
+        <p-select size="small" class="mf-field-input" [options]="typeOptions" optionLabel="label" optionValue="value" [(ngModel)]="newType" />
+      </div>
+      <button pButton type="button" [disabled]="saving()" (click)="addCategory()">Adicionar</button>
+    </div>
+  </div>
+}
+
+<mf-list-state [loading]="loading()" [error]="error()" [empty]="!loading() && !error() && categories().length === 0" emptyMessage="Nenhuma categoria cadastrada ainda." [onRetry]="load.bind(this)"></mf-list-state>
+
+@if (!loading() && !error()) {
+  <div class="mf-categories-grid">
+    @for (category of categories(); track category.id) {
+      <div class="mf-card mf-category-card">
+        <div class="mf-category-header">
+          <div>
+            <h6>{{ category.name }}</h6>
+            <span class="mf-badge" [ngClass]="category.type === CategoryType.Income ? 'mf-badge-ok' : 'mf-badge-bad'">
+              {{ category.type === CategoryType.Income ? 'Receita' : 'Despesa' }}
+            </span>
+          </div>
+          @if (authService.canWrite() && !category.isSystemDefault) {
+            <button pButton [outlined]="true" severity="danger" type="button" (click)="deleteCategory(category)">Excluir</button>
+          }
+        </div>
+
+        <ul class="mf-subcategory-list">
+          @for (sub of category.subcategories; track sub.id) {
+            <li>— {{ sub.name }}</li>
+          }
+        </ul>
+
+        @if (authService.canWrite()) {
+          <div class="mf-add-subcategory">
+            <input
+              pInputText pSize="small"
+              class="mf-add-subcategory-field"
+              placeholder="Nova subcategoria"
+              [ngModel]="subcategoryDrafts.get(category.id) ?? ''"
+              (ngModelChange)="subcategoryDrafts.set(category.id, $event)"
+            />
+            <button pButton [outlined]="true" type="button" (click)="addSubcategory(category)">+</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}

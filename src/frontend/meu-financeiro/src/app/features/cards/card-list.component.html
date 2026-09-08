@@ -1,0 +1,126 @@
+<p-confirm-dialog />
+
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title"><mf-icon name="mf-cards" class="mf-page-title-icon"></mf-icon>Cartões</h2>
+    <div class="mf-sub">Limites, utilização e faturas em cartões separados da conta.</div>
+  </div>
+  @if (authService.canWrite()) {
+    <button pButton type="button" (click)="openForm()">+ Novo cartão</button>
+  }
+</div>
+
+<div class="mf-stat-grid">
+  <mf-stat-card label="Limite total" [value]="totalLimit() | currency: 'BRL'" [hint]="totalItems() + ' cartão' + (totalItems() === 1 ? '' : 'ões')"></mf-stat-card>
+  <mf-stat-card label="Faturas abertas" [value]="openInvoicesTotal() | currency: 'BRL'" hint="próximos vencimentos" hintTone="negative"></mf-stat-card>
+  <mf-stat-card label="Limite disponível" [value]="availableLimit | currency: 'BRL'" hint="após faturas abertas" variant="hero"></mf-stat-card>
+</div>
+
+@if (showForm()) {
+  <div class="mf-card mf-inline-form">
+    <h6>Novo cartão</h6>
+    <div class="mf-inline-form-grid">
+      <div>
+        <label class="mf-field-label">Nome</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newCard.name" />
+      </div>
+      <div>
+        <label class="mf-field-label">Bandeira</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newCard.brand" />
+      </div>
+      <div>
+        <label class="mf-field-label">Dia fechamento</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" min="1" max="31" [(ngModel)]="newCard.closingDay" />
+      </div>
+      <div>
+        <label class="mf-field-label">Dia vencimento</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" min="1" max="31" [(ngModel)]="newCard.dueDay" />
+      </div>
+      <div>
+        <label class="mf-field-label">Limite</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="newCard.limit" />
+      </div>
+      <div class="mf-inline-form-actions">
+        <button pButton type="button" [disabled]="saving()" (click)="submit()">Salvar</button>
+        <button pButton [outlined]="true" type="button" (click)="closeForm()">Cancelar</button>
+      </div>
+    </div>
+    @if (formError()) {
+      <div class="mf-form-error">{{ formError() }}</div>
+    }
+  </div>
+}
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && cards().length === 0"
+      emptyMessage="Nenhum cartão cadastrado ainda."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && cards().length > 0) {
+      <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir de sortBy/sortDir
+           (que (onSort) também escreve) fecha um ciclo de reemissão infinita no p-table —
+           ver comentário completo em transaction-list.component.html. -->
+      <p-table
+        [value]="cards()"
+        [customSort]="true"
+        (onSort)="onSort($event)"
+        styleClass="mf-cards-table"
+      >
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="name">Nome <p-sort-icon field="name" /></th>
+            <th pSortableColumn="brand">Bandeira <p-sort-icon field="brand" /></th>
+            <th pSortableColumn="closingDay">Fechamento <p-sort-icon field="closingDay" /></th>
+            <th pSortableColumn="dueDay">Vencimento <p-sort-icon field="dueDay" /></th>
+            <th pSortableColumn="limit" class="mf-col-end">Limite <p-sort-icon field="limit" /></th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-card>
+          <tr>
+            <td>{{ card.name }}</td>
+            <td>{{ card.brand || '—' }}</td>
+            <td>Dia {{ card.closingDay }}</td>
+            <td>Dia {{ card.dueDay }}</td>
+            <td class="mf-col-end">{{ card.limit != null ? (card.limit | currency: 'BRL') : '—' }}</td>
+            <td>
+              <span class="mf-badge" [ngClass]="card.isActive ? 'mf-badge-ok' : 'mf-badge-neutral'">
+                {{ card.isActive ? 'Ativo' : 'Inativo' }}
+              </span>
+            </td>
+            <td class="mf-col-end">
+              @if (authService.canWrite()) {
+                <button
+                  type="button"
+                  class="mf-row-delete-icon"
+                  pTooltip="Excluir"
+                  tooltipPosition="top"
+                  [attr.aria-label]="'Excluir'"
+                  (click)="confirmDelete(card)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+
+    @if (!loading() && !error() && cards().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="page()"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>

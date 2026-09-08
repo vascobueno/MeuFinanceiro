@@ -1,0 +1,63 @@
+# Ambiente de desenvolvimento local do MeuFinanceiro.
+# Não usar em produção. Produção segue docs/19-deploy.md (qualquer VPS/PaaS/container,
+# PostgreSQL gerenciado ou self-hosted) + um serviço S3-compatible real (MinIO self-hosted,
+# Cloudflare R2, Backblaze B2, AWS S3 etc. — ver IFileStorageService/S3FileStorageService,
+# só troca a Storage:ServiceUrl).
+#
+# Uso:
+#   docker compose up -d
+#   docker compose down          # para os containers
+#   docker compose down -v       # para e apaga os dados locais
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: meufinanceiro-postgres
+    environment:
+      POSTGRES_DB: "MeuFinanceiro"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-DevPassword!2026}"
+    ports:
+      - "5432:5432"
+    volumes:
+      # A partir da imagem oficial 18+, o mount recomendado é /var/lib/postgresql (não mais
+      # .../data) — o entrypoint agora organiza os dados em subpastas por major version, ver
+      # https://github.com/docker-library/postgres/pull/1259.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d MeuFinanceiro"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Storage S3-compatible local (mesmo protocolo usado em produção — troca só a Storage:ServiceUrl,
+  # ver IFileStorageService/S3FileStorageService).
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: meufinanceiro-minio
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-minioadmin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-minioadmin123}"
+    command: "server /data --console-address \":9001\""
+    ports:
+      - "9000:9000" # API S3
+      - "9001:9001" # console web (login com as credenciais acima)
+    volumes:
+      - ./docker-data/minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+
+# Observações:
+# - Connection string local do PostgreSQL (dev):
+#     Host=localhost;Port=5432;Database=MeuFinanceiro;Username=postgres;Password=DevPassword!2026
+# - Config local do MinIO (Storage, appsettings.Development.json):
+#     ServiceUrl=http://localhost:9000, AccessKey/SecretKey = MINIO_ROOT_USER/PASSWORD acima
+#     (minioadmin/minioadmin123 por padrão). Console web em http://localhost:9001.
+# - Segredos (Jwt:Key, SMTP, Storage:* etc.): User Secrets do .NET em dev (dotnet user-secrets),
+#   variável de ambiente em produção. Ver docs/12-seguranca.md e docs/19-deploy.md.

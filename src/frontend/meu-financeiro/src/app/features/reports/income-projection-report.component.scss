@@ -1,0 +1,41 @@
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  padding: 1.25rem;
+}
+
+.mf-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.mf-report-table th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mf-muted);
+  padding: 0 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--mf-line);
+}
+.mf-report-table td {
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--mf-line);
+}
+.mf-report-table tr:last-child td {
+  border-bottom: none;
+}
+
+.mf-col-end {
+  text-align: right;
+}
+
+@media print {
+  .mf-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+}

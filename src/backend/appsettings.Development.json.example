@@ -1,0 +1,51 @@
+{
+  "_comment": "Copie este arquivo para dentro do projeto MeuFinanceiro.Api como 'appsettings.Development.json' (ele já está no .gitignore e nunca deve ser commitado).",
+
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=MeuFinanceiro;Username=postgres;Password=DevPassword!2026"
+  },
+
+  "_comment_storage": "Credenciais do MinIO local (docker-compose.yml) — trocar por outro serviço S3-compatible só muda ServiceUrl.",
+  "Storage": {
+    "ServiceUrl": "http://localhost:9000",
+    "AccessKey": "minioadmin",
+    "SecretKey": "minioadmin123"
+  },
+
+  "Jwt": {
+    "Issuer": "MeuFinanceiro.Api",
+    "Audience": "MeuFinanceiro.Frontend",
+    "Key": "GERE_UMA_CHAVE_LOCAL_COM_dotnet_user-secrets_NUNCA_COMMITAR",
+    "AccessTokenExpirationMinutes": 60,
+    "RefreshTokenExpirationDays": 7
+  },
+
+  "ApplicationInsights": {
+    "ConnectionString": ""
+  },
+
+  "Cors": {
+    "AllowedOrigins": [ "http://localhost:4200", "https://localhost:4200" ]
+  },
+
+  "App": {
+    "FrontendBaseUrl": "http://localhost:4200"
+  },
+
+  "_comment_smtp": "Opcional — sem Smtp:Host, o link de redefinição de senha só é logado no console (docs/23-configuracao-local.md).",
+  "Smtp": {
+    "Host": "",
+    "Port": 587,
+    "User": "",
+    "Password": "",
+    "FromEmail": "",
+    "FromName": "MeuFinanceiro"
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}

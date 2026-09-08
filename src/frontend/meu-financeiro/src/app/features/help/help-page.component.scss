@@ -1,0 +1,68 @@
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  padding: 1.25rem;
+}
+
+.mf-help-section-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mf-muted);
+  margin: 1.5rem 0 0.6rem;
+}
+.mf-help-section-title:first-of-type {
+  margin-top: 0;
+}
+
+.mf-help-text {
+  color: var(--mf-text);
+  margin: 0 0 0.5rem;
+  white-space: pre-line;
+}
+
+.mf-help-children {
+  margin-top: 0.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--mf-line);
+}
+.mf-help-child {
+  margin-bottom: 0.9rem;
+}
+.mf-help-child:last-child {
+  margin-bottom: 0;
+}
+.mf-help-child h5 {
+  margin: 0 0 0.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+@media print {
+  .mf-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  // Todos os painéis já abrem expandidos por padrão ([value]="section.entryPaths"), mas o
+  // p-accordion continua interativo (usuário pode recolher manualmente) — esta é uma rede de
+  // segurança pra impressão, igual já era com o mat-expansion-panel antes.
+  ::ng-deep .p-accordionpanel {
+    box-shadow: none !important;
+  }
+  ::ng-deep .p-accordioncontent,
+  ::ng-deep .p-accordioncontent-content {
+    display: block !important;
+    height: auto !important;
+    grid-template-rows: none !important;
+    visibility: visible !important;
+    overflow: visible !important;
+  }
+  ::ng-deep .p-accordionheader-toggle-icon {
+    display: none !important;
+  }
+}

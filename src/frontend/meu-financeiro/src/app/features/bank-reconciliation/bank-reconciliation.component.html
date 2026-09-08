@@ -1,0 +1,121 @@
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title"><mf-icon name="mf-reconciliation-account" class="mf-page-title-icon"></mf-icon>Conciliação bancária</h2>
+    <div class="mf-sub">Compare o extrato com o sistema e trate divergências.</div>
+  </div>
+  @if (authService.canWrite()) {
+    <button pButton type="button" (click)="showImportForm.set(!showImportForm())">Importar extrato</button>
+  }
+</div>
+
+@if (!loading() && !error() && items().length > 0) {
+  <div class="mf-stat-grid">
+    <mf-stat-card label="Conciliados" [value]="matchedCount.toString()" hint="itens" hintTone="positive"></mf-stat-card>
+    <mf-stat-card label="Possíveis" [value]="possibleCount.toString()" hint="revisão necessária"></mf-stat-card>
+    <mf-stat-card label="Sem correspondência" [value]="unmatchedCount.toString()" hint="requerem ação" hintTone="negative"></mf-stat-card>
+    <mf-stat-card label="Conciliação" [value]="matchedPercent + '%'" hint="dos itens carregados" variant="hero"></mf-stat-card>
+  </div>
+}
+
+@if (showImportForm()) {
+  <div class="mf-card mf-import-card">
+    <h6>Importar extrato bancário</h6>
+    <p class="mf-sub">
+      Cole um movimento por linha no formato <code>data;descrição;tipo;valor</code> (valor com sinal: positivo para
+      entrada, negativo para saída). Ex.: <code>2026-05-20;Aplicação CDB;INVESTMENT;-10000.00</code>
+    </p>
+
+    <div class="mf-import-grid">
+      <div>
+        <label class="mf-field-label">Conta</label>
+        <p-select size="small" class="mf-field-input" [options]="accounts()" optionLabel="name" optionValue="id" [(ngModel)]="importAccountId" />
+      </div>
+      <div>
+        <label class="mf-field-label">Início</label>
+        <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="referenceStart" />
+      </div>
+      <div>
+        <label class="mf-field-label">Fim</label>
+        <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="referenceEnd" />
+      </div>
+      <div>
+        <label class="mf-field-label">Saldo inicial</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="openingBalance" />
+      </div>
+      <div>
+        <label class="mf-field-label">Saldo final</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="closingBalance" />
+      </div>
+    </div>
+
+    <div class="mf-form-full">
+      <label class="mf-field-label">Movimentos</label>
+      <textarea pTextarea class="mf-field-input" rows="6" placeholder="2026-05-20;Aplicação CDB;INVESTMENT;-10000.00" [(ngModel)]="itemsRaw"></textarea>
+    </div>
+
+    @if (importResult()) {
+      <div class="mf-form-info">{{ importResult() }}</div>
+    }
+
+    <button pButton type="button" [disabled]="importing()" (click)="submitImport()">Importar</button>
+  </div>
+}
+
+<div class="mf-filters-card">
+  <div class="mf-filters-grid">
+    <div>
+      <label class="mf-field-label">Conta</label>
+      <p-select size="small" class="mf-field-input" [options]="accountFilterOptions()" optionLabel="name" optionValue="id" [(ngModel)]="selectedAccountId" (onChange)="load()" />
+    </div>
+    <div>
+      <label class="mf-field-label">Status</label>
+      <p-select size="small" class="mf-field-input" [options]="statusOptions" optionLabel="label" optionValue="value" [(ngModel)]="selectedStatus" (onChange)="load()" />
+    </div>
+  </div>
+</div>
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && items().length === 0"
+      emptyMessage="Nenhum item de extrato importado ainda."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && items().length > 0) {
+      <p-table [value]="items()" styleClass="mf-reconciliation-table">
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="itemDate">Data <p-sort-icon field="itemDate" /></th>
+            <th pSortableColumn="itemDescription">Descrição do extrato <p-sort-icon field="itemDescription" /></th>
+            <th pSortableColumn="itemAmount" class="mf-col-end">Valor <p-sort-icon field="itemAmount" /></th>
+            <th pSortableColumn="score">Score <p-sort-icon field="score" /></th>
+            <th pSortableColumn="status">Status <p-sort-icon field="status" /></th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-item>
+          <tr>
+            <td>{{ item.itemDate | date: 'dd/MM/yyyy' }}</td>
+            <td>{{ item.itemDescription }}</td>
+            <td class="mf-col-end">{{ item.itemAmount | currency: 'BRL' }}</td>
+            <td>{{ item.score }}</td>
+            <td><span class="mf-badge" [ngClass]="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td>
+            <td class="mf-col-end">
+              @if (authService.canWrite()) {
+                @if (item.status === 'Matched' || item.status === 'PossibleMatch') {
+                  <button pButton [outlined]="true" type="button" (click)="accept(item)">Aceitar</button>
+                }
+                @if (item.status === 'Matched' || item.status === 'ManuallyMatched') {
+                  <button pButton [outlined]="true" type="button" (click)="undo(item)">Desfazer</button>
+                }
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</div>

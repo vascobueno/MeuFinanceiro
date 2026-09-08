@@ -1,0 +1,62 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-audit" class="mf-page-title-icon"></mf-icon>Auditoria</h2>
+  <div class="mf-sub">Acessos e alterações de dados do seu grupo, filtráveis por período.</div>
+</div>
+
+<div class="mf-filter-bar">
+  <mf-date-range size="small" [range]="dateRange" (rangeChange)="onDateRangeChange($event)"></mf-date-range>
+  <div class="mf-filter-field">
+    <label class="mf-field-label">Tipo</label>
+    <p-select size="small" class="mf-field-input" [options]="actionOptions" optionLabel="label" optionValue="value" [(ngModel)]="action" (onChange)="onActionChange()" />
+  </div>
+</div>
+
+<div class="mf-panel">
+  <mf-list-state
+    [loading]="loading()"
+    [error]="error()"
+    [empty]="!loading() && !error() && entries().length === 0"
+    emptyMessage="Nenhum evento encontrado para os filtros selecionados."
+    [onRetry]="load.bind(this)"
+  ></mf-list-state>
+
+  @if (!loading() && !error() && entries().length > 0) {
+    <table class="mf-report-table">
+      <thead>
+        <tr>
+          <th>Quando</th>
+          <th>Quem</th>
+          <th>Ação</th>
+          <th>Entidade</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td>{{ entry.timestamp | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ entry.userName ?? '—' }}</td>
+            <td>
+              <span
+                class="mf-badge"
+                [ngClass]="entry.action === 'LoginFailed' ? 'mf-badge-bad' : entry.action === 'Login' ? 'mf-badge-ok' : 'mf-badge-neutral'"
+              >
+                {{ actionLabel(entry.action) }}
+              </span>
+            </td>
+            <td>{{ entry.entityName !== 'ApplicationUser' ? entry.entityName : '—' }}</td>
+            <td>{{ entry.ipAddress ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <mf-pagination
+      class="mf-pagination-block"
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [totalItems]="totalItems()"
+      (pageChange)="onPageChange($event)"
+    ></mf-pagination>
+  }
+</div>

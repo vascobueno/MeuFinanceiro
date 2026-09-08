@@ -1,0 +1,24 @@
+# 01 — Requisitos Funcionais
+
+- RF001 Login
+- RF002 Contas correntes
+- RF003 Cartões
+- RF004 Lançamentos
+- RF005 Autocomplete de descrição por prefixo
+- RF006 Recorrências
+- RF007 Alteração de recorrência por data
+- RF008 Parcelamentos
+- RF009 Conciliação bancária
+- RF010 Conciliação de cartões
+- RF011 Investimentos
+- RF012 Projeção financeira
+- RF013 Filtros, ordenação e paginação
+- RF014 Auditoria
+- RF015 Migração inicial do Excel
+- RF016 Grupo multi-usuário (Owner convida/remove Member, ou cria a conta direto com senha
+  temporária por e-mail; dados compartilhados)
+- RF017 Administrador do sistema (gestão de todos os grupos)
+- RF018 Perfis de acesso por membro (Completo/Editor/Visualizador)
+- RF019 Relatórios imprimíveis/PDF (projeção de receitas, gastos recorrentes, auditoria)
+- RF020 Skins de cores (7 temas visuais selecionáveis)
+- RF021 Recuperação de senha (link por e-mail, sem revelar se a conta existe)

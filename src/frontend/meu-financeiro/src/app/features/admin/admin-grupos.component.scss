@@ -1,0 +1,20 @@
+.mf-list-header {
+  margin-bottom: 1rem;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.mf-grupos-table {
+  width: 100%;
+}
+
+.mf-col-end {
+  text-align: right;
+}

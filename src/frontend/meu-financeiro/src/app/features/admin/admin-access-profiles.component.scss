@@ -1,0 +1,39 @@
+.mf-list-header {
+  margin-bottom: 1rem;
+}
+
+.mf-filters-card {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  max-width: 360px;
+}
+
+.mf-form-error {
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--mf-red);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.mf-members-table {
+  width: 100%;
+}
+
+.mf-access-select {
+  width: 160px;
+  margin-bottom: -1.25em;
+}

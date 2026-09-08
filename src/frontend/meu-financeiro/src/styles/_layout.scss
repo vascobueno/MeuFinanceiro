@@ -1,0 +1,297 @@
+// MeuFinanceiro — layout/shell (docs/14-angular.md).
+// Migrado de mat-sidenav-container/mat-toolbar/mat-nav-list pra PrimeNG + Tailwind
+// (docs/migracao-primeng/00-plano.md, UI-02.1) — reescrito do zero, não adaptado. A sidebar
+// desktop agora é um <aside> comum (flex sibling do conteúdo, sem overlay), então o
+// conteúdo reflui naturalmente ao recolher/expandir — sem precisar do hack de margin-left
+// que o CDK sidenav exigia antes. Classes de navegação (.mf-nav-*) são globais (não
+// aninhadas sob .mf-sidenav) porque o mesmo template de navegação é reaproveitado dentro do
+// <aside> (desktop) e do p-drawer (mobile).
+@use 'tokens';
+
+.mf-shell-container {
+  display: flex;
+  height: 100vh;
+}
+
+.mf-sidenav {
+  flex: none;
+  width: var(--mf-sidebar-width);
+  background: linear-gradient(180deg, #efe9e1, #ddd3c4);
+  border-right: 1px solid var(--mf-line);
+  padding: 0.75rem 0.6rem;
+  overflow-y: auto;
+  transition: width 0.2s ease;
+}
+.mf-sidenav.mf-collapsed {
+  width: var(--mf-sidebar-width-collapsed);
+  padding: 0.75rem 0.5rem;
+  overflow: visible;
+}
+
+// Painel do p-drawer no mobile: mesma identidade visual da sidebar desktop. Sem ::ng-deep
+// aqui — esse pseudo-seletor só tem efeito dentro do stylesheet de um componente Angular
+// (o build remove o "::ng-deep" e ajusta o seletor pro encapsulamento); num stylesheet
+// global como este (_layout.scss, importado direto em styles.scss) ele nunca é processado,
+// então o navegador recebe "::ng-deep" literal — um pseudo-seletor inválido — e descarta a
+// regra inteira. Achado via QA visual (o painel do drawer mobile ficava branco, sem a
+// identidade visual da sidebar).
+.mf-sidenav-drawer .p-drawer-content {
+  background: linear-gradient(180deg, #efe9e1, #ddd3c4);
+  padding: 0.75rem 0.6rem;
+}
+.mf-sidenav-drawer .p-drawer-header {
+  background: #efe9e1;
+  padding: 0.5rem;
+}
+.mf-sidenav-drawer.p-drawer {
+  width: var(--mf-sidebar-width);
+}
+
+.mf-shell-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mf-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--mf-text);
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.mf-collapsed .mf-brand {
+  justify-content: center;
+}
+.mf-collapsed .mf-brand span {
+  display: none;
+}
+
+.mf-brand-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.mf-sidebar-toggle {
+  margin-left: auto;
+  color: var(--mf-muted);
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+.mf-collapsed .mf-sidebar-toggle {
+  margin-left: 0;
+  position: absolute;
+  top: 0.6rem;
+  right: -12px;
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: 50%;
+  box-shadow: var(--mf-shadow);
+}
+
+.mf-nav-section {
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: var(--mf-muted);
+  padding: 0 0.5rem;
+  margin: 0.6rem 0 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.mf-nav-section:first-of-type {
+  margin-top: 0.25rem;
+}
+.mf-collapsed .mf-nav-section {
+  height: 1px;
+  margin: 0.5rem 0;
+  padding: 0;
+  text-indent: -9999px;
+  border-top: 1px solid var(--mf-line);
+}
+
+// Cabeçalho de seção clicável (Financeiro, Conciliação, Patrimônio, Relatórios, Sistema,
+// Administração) — mesma tipografia de .mf-nav-section, só que interativo. No rail (ícones),
+// vira o mesmo traço divisório de 1px que .mf-nav-section já tinha, sem hierarquia clicável.
+.mf-nav-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: var(--mf-muted);
+  padding: 0 0.5rem;
+  margin: 0.6rem 0 0.15rem;
+  border-radius: 4px;
+}
+.mf-nav-section-toggle:hover {
+  color: var(--mf-text);
+}
+.mf-nav-section-toggle:focus-visible {
+  outline: 2px solid var(--mf-primary);
+  outline-offset: 1px;
+}
+.mf-collapsed .mf-nav-section-toggle {
+  height: 1px;
+  min-height: 0;
+  margin: 0.5rem 0;
+  padding: 0;
+  text-indent: -9999px;
+  border-top: 1px solid var(--mf-line);
+  pointer-events: none;
+}
+
+.mf-nav-chevron {
+  flex: none;
+  font-size: 0.7rem;
+  transition: transform 0.15s ease;
+}
+.mf-nav-chevron.mf-open {
+  transform: rotate(90deg);
+}
+.mf-collapsed .mf-nav-chevron {
+  display: none;
+}
+
+// Recolhimento CSS-only (sem depender de módulo de animação): max-height generoso o
+// bastante pra caber a maior seção (Financeiro, 6 itens) quando aberta, 0 quando fechada. No
+// rail (.mf-collapsed), sempre visível — lá não há cabeçalho clicável, cada seção sempre
+// mostra os ícones.
+.mf-nav-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+  padding: 2px 0;
+}
+.mf-nav-list.mf-nav-collapsed {
+  max-height: 0;
+}
+.mf-collapsed .mf-nav-list {
+  max-height: none;
+}
+
+.mf-collapsed .mf-nav-label {
+  display: none;
+}
+.mf-collapsed .mf-nav-link {
+  justify-content: center;
+}
+
+.mf-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 38px;
+  padding: 0 0.6rem;
+  border-radius: 8px;
+  margin-bottom: 1px;
+  color: var(--mf-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+.mf-nav-link mf-icon {
+  color: var(--mf-muted);
+  flex: none;
+}
+.mf-nav-link:hover {
+  color: var(--mf-text);
+  // Overlay translúcido em vez de um tom fixo: sempre fica mais claro que o fundo por trás,
+  // independente de onde o item cai no degradê do sidebar.
+  background: rgba(255, 255, 255, 0.65);
+}
+.mf-nav-link:hover mf-icon {
+  color: var(--mf-text);
+}
+.mf-nav-link.mf-active {
+  color: var(--mf-primary);
+  font-weight: 600;
+  background: rgba(223, 88, 48, 0.1);
+}
+.mf-nav-link.mf-active mf-icon {
+  color: var(--mf-primary);
+}
+
+.mf-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 48px;
+  padding: 0 1rem;
+  background: #fff;
+  color: var(--mf-text);
+  border-bottom: 1px solid var(--mf-line);
+}
+
+.mf-breadcrumb {
+  color: var(--mf-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.mf-breadcrumb b {
+  color: var(--mf-text);
+}
+.mf-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+.mf-breadcrumb a:hover {
+  color: var(--mf-primary);
+  text-decoration: underline;
+}
+
+.mf-help-button {
+  color: var(--mf-muted);
+}
+
+.mf-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.mf-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f7f8fa;
+  border: 1px solid var(--mf-line);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  width: 240px;
+  color: var(--mf-muted);
+  font-size: 0.85rem;
+}
+.mf-search input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font: inherit;
+}
+
+.mf-user {
+  color: var(--mf-muted);
+  font-size: 0.85rem;
+}
+
+.mf-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1.5rem;
+  max-width: 1550px;
+  margin: 0 auto;
+  width: 100%;
+}

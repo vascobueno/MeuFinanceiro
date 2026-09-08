@@ -1,0 +1,154 @@
+// ViewEncapsulation.None (ver intro-logo.component.ts) — o conteúdo do SVG é injetado via
+// innerHTML e não recebe o atributo _ngcontent que o encapsulamento padrão usaria pra aplicar
+// estes estilos com escopo, então as regras abaixo são globais de propósito. `:host` continua
+// funcionando normalmente (é resolvido em tempo de compilação, independe do encapsulamento).
+:host {
+  display: inline-block;
+  height: 100%;
+}
+
+.mf-intro-stage {
+  display: inline-block;
+  height: 100%;
+}
+
+.mf-intro-stage svg {
+  display: block;
+  height: 100%;
+  width: auto;
+}
+
+// Coordenadas de transform-origin em unidades do viewBox do logo.svg (0 0 1024 1024), não
+// pixels de tela — cada objeto pivota ao redor do próprio centro pra não "voar" a partir do
+// canto do SVG. Calculadas a partir do bounding box real de cada grupo de paths.
+.mf-intro-playing .mf-p-ring {
+  opacity: 0;
+  transform-origin: 520px 431px;
+  animation: mf-ring-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0s forwards;
+}
+.mf-intro-playing .mf-p-wallet {
+  opacity: 0;
+  transform-origin: 526px 354px;
+  animation: mf-pop-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+}
+.mf-intro-playing .mf-p-cash {
+  opacity: 0;
+  transform-origin: 440px 238px;
+  animation: mf-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+}
+.mf-intro-playing .mf-p-coin {
+  opacity: 0;
+  transform-origin: 566px 287px;
+  animation: mf-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.65s forwards;
+}
+.mf-intro-playing .mf-p-arrow {
+  opacity: 0;
+  transform-origin: 674px 245px;
+  animation: mf-shoot-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.8s forwards;
+}
+.mf-intro-playing .mf-p-bars {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: mf-grow-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.95s forwards;
+}
+.mf-intro-playing .mf-p-wm-bars,
+.mf-intro-playing .mf-p-wm-meu {
+  opacity: 0;
+  animation: mf-fade-up 0.45s ease-out 1.35s forwards;
+}
+.mf-intro-playing .mf-p-wm-financeiro {
+  opacity: 0;
+  animation: mf-fade-up 0.45s ease-out 1.5s forwards;
+}
+.mf-intro-playing .mf-p-wm-tagline {
+  opacity: 0;
+  animation: mf-fade-up 0.4s ease-out 1.7s forwards;
+}
+
+@keyframes mf-ring-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-15deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes mf-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes mf-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mf-shoot-in {
+  0% {
+    opacity: 0;
+    transform: translate(-40px, 40px) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes mf-grow-up {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes mf-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-intro-playing .mf-p-ring,
+  .mf-intro-playing .mf-p-wallet,
+  .mf-intro-playing .mf-p-cash,
+  .mf-intro-playing .mf-p-coin,
+  .mf-intro-playing .mf-p-arrow,
+  .mf-intro-playing .mf-p-bars,
+  .mf-intro-playing .mf-p-wm-bars,
+  .mf-intro-playing .mf-p-wm-meu,
+  .mf-intro-playing .mf-p-wm-financeiro,
+  .mf-intro-playing .mf-p-wm-tagline {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

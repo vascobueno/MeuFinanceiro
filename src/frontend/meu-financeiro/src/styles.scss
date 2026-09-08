@@ -1,0 +1,208 @@
+// Estilos globais do MeuFinanceiro (Angular + PrimeNG + Tailwind — docs/14-angular.md).
+// Tokens/layout/financeiro ficam nos módulos de src/styles/; este arquivo é o ponto de
+// entrada (V5.1, .github/copilot-instructions.md seção 5) mais utilitários compartilhados
+// (título de página, badges de status, empty state) usados por várias telas.
+@use 'styles/tokens';
+@use 'styles/layout';
+@use 'styles/finance';
+
+// html precisa de height:100% pro layout do shell (aside + conteúdo, ambos 100vh) funcionar;
+// sem isso a sidebar fixa não teria uma altura de referência pra se ancorar.
+html {
+  height: 100%;
+}
+
+body {
+  // Tema claro (docs/screens/*/mockup.html não define modo escuro nesta versão).
+  color-scheme: light;
+  background-color: var(--mf-bg);
+  color: var(--mf-text);
+  margin: 0;
+  height: 100%;
+  font-family: Inter, system-ui, sans-serif;
+  // Valores equivalentes ao token de tipografia do Material que este body herdava antes
+  // (--mat-sys-body-medium, removido na Fase 6 junto com o resto do Angular Material) —
+  // hardcoded aqui porque deixou de existir uma fonte única de verdade pra esse valor.
+  font-size: 14px;
+  line-height: 20px;
+}
+
+// Sem esse reset, o tamanho padrão do navegador para h5/h6 (0.83em/0.67em) fica MENOR que o
+// body, quebrando os títulos de seção usados dentro de mat-card em várias telas.
+h5,
+h6 {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  color: var(--mf-text);
+}
+h5 {
+  font-size: 1.15rem;
+}
+h6 {
+  font-size: 1rem;
+}
+
+.mf-page-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.mf-page-title-icon {
+  color: var(--mf-primary);
+  width: 1.3em;
+  height: 1.3em;
+  font-size: 1.3em;
+  flex: none;
+}
+
+.mf-sub {
+  color: var(--mf-muted);
+  font-size: 0.8rem;
+}
+
+// Badges semânticos (docs/screens): ok=conciliado/sucesso, warn=atenção, bad=divergência, neutral=informativo.
+.mf-badge {
+  display: inline-block;
+  border-radius: 20px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.mf-badge-ok {
+  background: #e3f3ec;
+  color: #087957;
+}
+.mf-badge-warn {
+  background: #f6ecd9;
+  color: #8f5b1f;
+}
+.mf-badge-bad {
+  background: #f7e3e0;
+  color: #a33226;
+}
+.mf-badge-neutral {
+  background: #f0ece5;
+  color: #8b8175;
+}
+
+// Campo de senha com botão de mostrar/ocultar (telas de auth, Fase 4) — PrimeNG (pPassword)
+// não tem um slot de "suffix" dentro do campo como o mat-form-field tinha, então o botão é
+// posicionado por cima do input via position:absolute dentro deste wrapper relative.
+.mf-password-field {
+  position: relative;
+}
+// Especificidade ".mf-password-field .mf-password-toggle" (não só ".mf-password-toggle")
+// de propósito: o CSS do próprio PrimeNG (.p-button) também define position:relative — pra
+// suportar o efeito ripple — com a mesma especificidade de uma classe só; como o estilo do
+// PrimeNG é injetado em runtime (depois desta folha global), ele venceria por ordem de
+// origem se a especificidade empatasse. Achado via QA visual (o botão aparecia fora do
+// campo, empurrado pro fluxo normal do documento, em vez de sobreposto).
+.mf-password-field .mf-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  color: var(--mf-muted);
+  width: 32px;
+  height: 32px;
+}
+.mf-password-field input {
+  width: 100%;
+  padding-right: 2.25rem;
+}
+
+.mf-empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--mf-muted);
+}
+
+// Rótulo estático acima de campo PrimeNG (InputText/Select/etc.) — substitui o
+// floatLabel:'always' do Material (docs/migracao-primeng/00-plano.md, Fase 3). Usado em
+// telas simples que não precisam de validação/erro inline por campo.
+.mf-field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--mf-muted);
+  margin-bottom: 0.3rem;
+}
+.mf-field-input {
+  display: block;
+  width: 100%;
+}
+// Mensagem de erro de validação inline abaixo de um campo (Fase 4 — telas de auth).
+.mf-field-error {
+  display: block;
+  color: var(--mf-red);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+// Relatórios imprimíveis (Parte 2 do plano): a tela normal continua dentro do Shell
+// (sidebar/toolbar visíveis), e o @media print esconde a casca só na hora de imprimir/
+// exportar PDF — sem precisar de uma rota "sem layout" separada.
+.mf-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.mf-report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--mf-text);
+  padding-bottom: 0.9rem;
+  margin-bottom: 1.1rem;
+}
+.mf-report-head .mf-report-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+}
+.mf-report-head .mf-report-brand .pi {
+  color: var(--mf-primary);
+}
+.mf-report-head .mf-report-meta {
+  text-align: right;
+  font-size: 0.7rem;
+  color: var(--mf-muted);
+}
+
+.mf-report-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0 0 0.9rem;
+}
+
+.mf-report-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--mf-bg);
+  border: 1px solid var(--mf-line);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-top: 0.9rem;
+  font-weight: 700;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .mf-sidenav,
+  .mf-toolbar {
+    display: none !important;
+  }
+  .mf-content {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+}

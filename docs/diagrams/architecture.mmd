@@ -1,0 +1,11 @@
+flowchart TD
+DEV[Visual Studio / VS Code] --> GH[GitHub]
+GH --> COP[GitHub Copilot]
+GH --> CI[GitHub Actions - build e testes]
+CI --> HOST[VPS / PaaS / container - deploy manual]
+HOST --> PROXY[Reverse proxy - Nginx/Caddy/Traefik]
+PROXY --> WEB[Build estático Angular]
+PROXY --> API[ASP.NET Core API]
+API --> SQL[PostgreSQL]
+API --> BLOB[MinIO / S3-compatible]
+API --> AI[Application Insights - opcional]

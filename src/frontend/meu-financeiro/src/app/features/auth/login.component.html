@@ -1,0 +1,90 @@
+<div class="mf-login-page">
+  <div class="mf-card mf-login-card">
+    <div class="mf-login-brand">
+      <mf-intro-logo class="mf-login-logo" />
+    </div>
+
+    <h1 class="mf-login-title">Bem-vindo de volta</h1>
+    <p class="mf-sub mf-login-subtitle">Acesse sua vida financeira em um só lugar.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="mf-login-field">
+        <label class="mf-field-label">Nome de usuário</label>
+        <input pInputText pSize="small" class="mf-field-input" type="text" formControlName="username" autocomplete="username" placeholder="seu.usuario" />
+        @if (form.controls.username.invalid && form.controls.username.touched) {
+          <small class="mf-field-error">Informe um nome de usuário válido.</small>
+        }
+      </div>
+
+      <div class="mf-login-field">
+        <label class="mf-field-label">Senha</label>
+        <div class="mf-password-field">
+          <input
+            pPassword pSize="small"
+            [feedback]="false"
+            class="mf-field-input"
+            [showPassword]="!hidePassword()"
+            formControlName="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+          />
+          <button
+            pButton
+            [text]="true"
+            [rounded]="true"
+            [iconOnly]="true"
+            type="button"
+            class="mf-password-toggle"
+            (click)="hidePassword.set(!hidePassword())"
+            [attr.aria-label]="hidePassword() ? 'Mostrar senha' : 'Ocultar senha'"
+            [attr.aria-pressed]="!hidePassword()"
+          >
+            <i class="pi" [ngClass]="hidePassword() ? 'pi-eye-slash' : 'pi-eye'"></i>
+          </button>
+        </div>
+        @if (form.controls.password.invalid && form.controls.password.touched) {
+          <small class="mf-field-error">A senha deve ter ao menos 6 caracteres.</small>
+        }
+      </div>
+
+      <div class="mf-login-row">
+        <span class="mf-login-remember">
+          <p-checkbox [binary]="true" [disabled]="true" inputId="remember" />
+          <label for="remember">Lembrar de mim</label>
+        </span>
+        <a routerLink="/esqueci-senha">Esqueci minha senha</a>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="mf-login-error" role="alert">
+          {{ errorMessage() }}
+          @if (showResendConfirmation() && !resendConfirmationSent()) {
+            <button pButton [text]="true" type="button" [disabled]="resendingConfirmation()" (click)="resendConfirmation()">
+              Reenviar confirmação
+            </button>
+          }
+        </div>
+      }
+
+      @if (resendConfirmationSent()) {
+        <div class="mf-login-info" role="status">
+          Se a conta existir e ainda não tiver sido confirmada, reenviamos o link de confirmação.
+        </div>
+      }
+
+      <button pButton type="submit" class="mf-login-submit" [disabled]="loading()">
+        @if (loading()) {
+          <p-progress-spinner styleClass="mf-login-spinner" strokeWidth="4" />
+        }
+        Entrar
+      </button>
+    </form>
+
+    <div class="mf-login-row mf-login-row-center">
+      <span class="mf-sub">Não tem conta?</span>
+      <a routerLink="/registrar">Cadastre-se</a>
+    </div>
+
+    <div class="mf-login-footer">Conexão protegida • Seus dados permanecem privados</div>
+  </div>
+</div>

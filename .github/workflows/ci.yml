@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Unit tests
+        run: dotnet test tests/backend/MeuFinanceiro.Domain.UnitTests --no-build --configuration Release --filter "Category=Unit"
+
+      - name: Integration tests
+        run: dotnet test tests/backend/MeuFinanceiro.Application.IntegrationTests --no-build --configuration Release --filter "Category=Integration"
+
+      - name: Verificar dependências vulneráveis (.NET)
+        run: dotnet list src/backend/MeuFinanceiro.Api package --vulnerable --include-transitive
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/frontend/meu-financeiro
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/frontend/meu-financeiro/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Verificar dependências vulneráveis (npm)
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Test
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Build
+        run: npm run build

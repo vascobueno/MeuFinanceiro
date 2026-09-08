@@ -1,0 +1,100 @@
+.mf-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.mf-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  max-width: 700px;
+}
+
+// Fundo/borda/raio vêm da classe global .mf-card (styles/_finance.scss) — só a sombra é
+// específica desta tela (o painel principal .mf-panel abaixo também tem sombra própria).
+.mf-inline-form {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--mf-shadow);
+}
+
+.mf-inline-form h6 {
+  margin-bottom: 1rem;
+}
+
+.mf-inline-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.mf-inline-form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mf-form-error {
+  color: var(--mf-red);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  overflow: hidden;
+}
+
+.mf-panel-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--mf-line);
+}
+
+.mf-panel-body {
+  padding: 1rem;
+}
+
+.mf-accounts-table {
+  width: 100%;
+}
+
+.mf-col-end {
+  text-align: right;
+}
+
+.mf-row-delete-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  font-size: 1rem;
+  color: var(--mf-red);
+  cursor: pointer;
+}
+.mf-row-delete-icon:hover {
+  opacity: 0.7;
+}
+
+.mf-pagination-block {
+  display: block;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .mf-stat-grid {
+    grid-template-columns: 1fr;
+  }
+  .mf-inline-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

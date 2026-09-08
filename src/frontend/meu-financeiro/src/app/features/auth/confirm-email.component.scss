@@ -1,0 +1,87 @@
+.mf-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 20% 20%, #fbe3d5, var(--mf-bg) 45%);
+}
+
+.mf-login-card {
+  width: 410px;
+  padding: 1.5rem;
+  border-radius: 1rem;
+}
+
+.mf-login-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.mf-login-logo {
+  width: auto;
+  height: 300px;
+}
+
+.mf-login-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+
+.mf-login-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mf-login-row-center {
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  margin-bottom: 0;
+}
+
+.mf-login-row-center a {
+  color: var(--mf-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+.mf-login-row-center a:hover {
+  text-decoration: underline;
+}
+
+.mf-login-error {
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--mf-red);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.mf-login-info {
+  background: rgba(31, 157, 107, 0.1);
+  color: var(--mf-green);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+}
+
+.mf-login-loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+.mf-login-loading-spinner {
+  width: 32px;
+  height: 32px;
+}
+
+.mf-login-footer {
+  text-align: center;
+  color: var(--mf-muted);
+  font-size: 0.7rem;
+  margin-top: 1rem;
+}

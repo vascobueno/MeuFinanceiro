@@ -1,0 +1,39 @@
+<div class="mf-report-actions no-print">
+  <button pButton [outlined]="true" type="button" (click)="print()">
+    <i class="pi pi-print"></i>
+    Imprimir
+  </button>
+</div>
+
+<div class="mf-panel mf-help-page">
+  <div class="mf-report-head">
+    <span class="mf-report-brand"><i class="pi pi-wallet"></i>MeuFinanceiro</span>
+    <span class="mf-report-meta">Guia rápido de todas as telas</span>
+  </div>
+
+  @for (section of sections(); track section.name) {
+    <h3 class="mf-help-section-title">{{ section.name }}</h3>
+
+    <p-accordion [multiple]="true" [value]="section.entryPaths">
+      @for (entry of section.entries; track entry.path) {
+        <p-accordion-panel [value]="entry.path">
+          <p-accordion-header>{{ entry.title }}</p-accordion-header>
+          <p-accordion-content>
+            <p class="mf-help-text">{{ entry.help }}</p>
+
+            @if (entry.children.length > 0) {
+              <div class="mf-help-children">
+                @for (child of entry.children; track child.path) {
+                  <div class="mf-help-child">
+                    <h5>{{ child.title }}</h5>
+                    <p class="mf-help-text">{{ child.help }}</p>
+                  </div>
+                }
+              </div>
+            }
+          </p-accordion-content>
+        </p-accordion-panel>
+      }
+    </p-accordion>
+  }
+</div>

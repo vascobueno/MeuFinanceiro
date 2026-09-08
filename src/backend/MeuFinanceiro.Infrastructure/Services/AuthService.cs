@@ -1,0 +1,347 @@
+using System.Net;
+using MeuFinanceiro.Application.Auth;
+using MeuFinanceiro.Application.Common.Exceptions;
+using MeuFinanceiro.Application.Common.Interfaces;
+using MeuFinanceiro.Application.Grupos;
+using MeuFinanceiro.Domain.Entities;
+using MeuFinanceiro.Domain.Enums;
+using MeuFinanceiro.Infrastructure.Identity;
+using MeuFinanceiro.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+
+namespace MeuFinanceiro.Infrastructure.Services;
+
+public class AuthService : IAuthService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly ITokenService _tokenService;
+    private readonly IGrupoService _grupoService;
+    private readonly IAuditService _auditService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly AppDbContext _db;
+    private readonly IEmailSender _emailSender;
+    private readonly IConfiguration _configuration;
+    private readonly ICurrentUserService _currentUser;
+    private readonly ICaptchaVerifier _captchaVerifier;
+
+    public AuthService(
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
+        ITokenService tokenService,
+        IGrupoService grupoService,
+        IAuditService auditService,
+        IHttpContextAccessor httpContextAccessor,
+        AppDbContext db,
+        IEmailSender emailSender,
+        IConfiguration configuration,
+        ICurrentUserService currentUser,
+        ICaptchaVerifier captchaVerifier)
+    {
+        _userManager = userManager;
+        _signInManager = signInManager;
+        _tokenService = tokenService;
+        _grupoService = grupoService;
+        _auditService = auditService;
+        _httpContextAccessor = httpContextAccessor;
+        _db = db;
+        _emailSender = emailSender;
+        _configuration = configuration;
+        _currentUser = currentUser;
+        _captchaVerifier = captchaVerifier;
+    }
+
+    public async Task<RegisterResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
+    {
+        if (!await _captchaVerifier.VerifyAsync(request.CaptchaToken, ct))
+            throw new BusinessRuleException("captcha-invalido", "Verificação de segurança falhou. Tente novamente.");
+
+        if (!UsernamePolicy.Pattern.IsMatch(request.Username))
+            throw new BusinessRuleException("usuario-invalido", "Nome de usuário deve ter de 3 a 30 caracteres (letras, números, ., _ ou -).");
+
+        var existingUsername = await _userManager.FindByNameAsync(request.Username);
+        if (existingUsername is not null)
+            throw new BusinessRuleException("usuario-em-uso", "Já existe uma conta com este nome de usuário.");
+
+        var existing = await _userManager.FindByEmailAsync(request.Email);
+        if (existing is not null)
+            throw new BusinessRuleException("email-em-uso", "Já existe um usuário cadastrado com este e-mail.");
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Username,
+            Email = request.Email,
+            Name = request.Name
+        };
+
+        async Task CreateUserAndGrupoAsync()
+        {
+            var result = await _userManager.CreateAsync(user, request.Password);
+            if (!result.Succeeded)
+                throw new BusinessRuleException("cadastro-invalido", string.Join(" ", result.Errors.Select(e => e.Description)));
+
+            await _grupoService.CreateForNewUserAsync(user.Id, user.Name, ct);
+        }
+
+        // Transação explícita: um usuário nunca deve existir sem grupo. Sem isso, uma
+        // falha ao criar o Grupo depois de UserManager.CreateAsync ter sucesso deixaria um
+        // usuário órfão. CreateExecutionStrategy é necessário porque o Npgsql pode ter retry-
+        // on-failure habilitado, que exige que a transação seja aberta dentro da strategy.
+        // IsRelational() só é falso no provider InMemory usado pelos testes de integração, que
+        // não suporta transação nenhuma — nesse caso as duas operações rodam sem transação
+        // (é exatamente o que a suíte de testes já espera).
+        if (_db.Database.IsRelational())
+        {
+            var strategy = _db.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+                await CreateUserAndGrupoAsync();
+                await transaction.CommitAsync(ct);
+            });
+        }
+        else
+        {
+            await CreateUserAndGrupoAsync();
+        }
+
+        await SendEmailConfirmationAsync(user, ct);
+
+        return new RegisterResponse("Enviamos um link de confirmação para o seu e-mail. Confirme antes de entrar.");
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByNameAsync(request.Username);
+        var signInResult = user is null
+            ? SignInResult.Failed
+            : await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+
+        if (!signInResult.Succeeded)
+        {
+            // Grupo só é conhecido se o usuário existir (senha errada) — nome de usuário
+            // inexistente não tem grupo nenhum pra associar ao evento.
+            Guid? grupoId = null;
+            if (user is not null)
+                grupoId = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
+
+            // Mesma mensagem pra senha errada e conta bloqueada — não revela a um atacante
+            // que acertou o username e só está bloqueado por lockout (evita enumeração).
+            var action = signInResult.IsLockedOut ? "LoginLockedOut" : "LoginFailed";
+            await _auditService.LogAccessAsync(action, user?.Id, grupoId, GetClientIp(), GetUserAgent(), ct);
+            throw new UnauthorizedAccessException("Nome de usuário ou senha inválidos.");
+        }
+
+        // signInResult.Succeeded só é possível quando user não é nulo (SignInResult.Failed é
+        // usado explicitamente no ramo user is null, acima).
+        // MustChangePassword é a exceção: contas criadas pelo Owner (GrupoService.CreateMemberAsync)
+        // também nascem com EmailConfirmed = false, mas aqui a senha temporária recebida por
+        // e-mail já prova o recebimento — o login é liberado pra chegar até a troca de senha
+        // obrigatória, que é quem confirma o e-mail nesse fluxo (AuthService.ChangePasswordAsync).
+        if (!user!.EmailConfirmed && !user.MustChangePassword)
+        {
+            var grupoIdNaoConfirmado = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
+            await _auditService.LogAccessAsync("LoginBlockedEmailNaoConfirmado", user.Id, grupoIdNaoConfirmado, GetClientIp(), GetUserAgent(), ct);
+            throw new BusinessRuleException("email-nao-confirmado", "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada ou peça um novo link.");
+        }
+
+        var response = await IssueTokensAsync(user, ct);
+        await _auditService.LogAccessAsync("Login", user!.Id, response.User.GrupoId, GetClientIp(), GetUserAgent(), ct);
+        return response;
+    }
+
+    private string? GetClientIp() => _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+    private string? GetUserAgent() => _httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString();
+
+    public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken ct = default)
+    {
+        var hash = _tokenService.HashRefreshToken(request.RefreshToken);
+        var stored = await _db.RefreshTokens.Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.TokenHash == hash, ct);
+
+        if (stored is null || !stored.IsActive || stored.User is null)
+            throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
+
+        stored.RevokedAt = DateTime.UtcNow;
+        var response = await IssueTokensAsync(stored.User, ct);
+        return response;
+    }
+
+    public async Task RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
+    {
+        var hash = _tokenService.HashRefreshToken(refreshToken);
+        var stored = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash, ct);
+        if (stored is not null)
+        {
+            stored.RevokedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
+    private string GetFrontendBaseUrl()
+    {
+        // "??" só cobre valor ausente — appsettings.json comitado tem App:FrontendBaseUrl
+        // como string vazia (placeholder pra produção), que "??" não substitui, gerando
+        // um link relativo quebrado sempre que não há um appsettings.Development.json
+        // preenchendo por cima (exatamente o caso de uma checkout limpa, ex.: CI).
+        var configured = _configuration["App:FrontendBaseUrl"];
+        return string.IsNullOrWhiteSpace(configured) ? "http://localhost:4200" : configured;
+    }
+
+    private async Task SendEmailConfirmationAsync(ApplicationUser user, CancellationToken ct)
+    {
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var link = $"{GetFrontendBaseUrl()}/confirmar-email?email={WebUtility.UrlEncode(user.Email)}&token={WebUtility.UrlEncode(token)}";
+
+        var body = $"""
+            <p>Olá, {user.Name}.</p>
+            <p>Confirme seu e-mail pra ativar sua conta no MeuFinanceiro. Clique no link abaixo:</p>
+            <p><a href="{link}">{link}</a></p>
+            <p>Se você não pediu esse cadastro, pode ignorar este e-mail.</p>
+            """;
+        await _emailSender.SendAsync(user.Email!, "Confirme seu e-mail — MeuFinanceiro", body, ct);
+    }
+
+    public async Task ConfirmEmailAsync(ConfirmEmailRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        var result = user is null ? null : await _userManager.ConfirmEmailAsync(user, request.Token);
+
+        if (user is null || !result!.Succeeded)
+            // Mesma mensagem pra "e-mail não existe" e "token inválido/expirado" — evita enumeração.
+            throw new BusinessRuleException("token-invalido", "Link de confirmação inválido ou expirado.");
+
+        var grupoId = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
+        await _auditService.LogAccessAsync("EmailConfirmed", user.Id, grupoId, GetClientIp(), GetUserAgent(), ct);
+    }
+
+    public async Task ResendConfirmationAsync(ResendConfirmationRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByNameAsync(request.Username);
+        if (user is not null && !user.EmailConfirmed)
+            await SendEmailConfirmationAsync(user, ct);
+
+        // Sempre a mesma resposta, exista ou não a conta, ou já esteja confirmada — evita
+        // enumeração de contas (mesmo raciocínio de ForgotPasswordAsync).
+    }
+
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct = default)
+    {
+        if (!await _captchaVerifier.VerifyAsync(request.CaptchaToken, ct))
+            throw new BusinessRuleException("captcha-invalido", "Verificação de segurança falhou. Tente novamente.");
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        // Grupo só é conhecido se o usuário existir — mesmo padrão de LoginAsync pra
+        // e-mail inexistente. Sempre audita a tentativa, exista ou não a conta.
+        Guid? grupoId = null;
+        if (user is not null)
+        {
+            grupoId = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var link = $"{GetFrontendBaseUrl()}/redefinir-senha?email={WebUtility.UrlEncode(user.Email)}&token={WebUtility.UrlEncode(token)}";
+
+            var body = $"""
+                <p>Olá, {user.Name}.</p>
+                <p>Recebemos um pedido para redefinir sua senha no MeuFinanceiro. Clique no link abaixo pra escolher uma nova senha (válido por 1 hora):</p>
+                <p><a href="{link}">{link}</a></p>
+                <p>Se você não pediu isso, pode ignorar este e-mail.</p>
+                """;
+            await _emailSender.SendAsync(user.Email!, "Redefinir senha — MeuFinanceiro", body, ct);
+        }
+
+        // Sempre a mesma ação/resposta, exista ou não o e-mail — evita enumeração de contas
+        // (docs/12-seguranca.md).
+        await _auditService.LogAccessAsync("ForgotPasswordRequested", user?.Id, grupoId, GetClientIp(), GetUserAgent(), ct);
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        var result = user is null ? null : await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+
+        if (user is null || !result!.Succeeded)
+        {
+            // Mesma mensagem tanto pra "e-mail não existe" quanto pra "token inválido/expirado"
+            // — não dá pra saber qual dos dois aconteceu (evita enumeração de contas). Falha de
+            // política de senha (senha nova fraca) tem sua própria mensagem, vinda do Identity,
+            // que não vaza nada sobre a conta.
+            var isWeakPassword = result?.Errors.Any(e => e.Code is not ("InvalidToken")) ?? false;
+            if (isWeakPassword)
+                throw new BusinessRuleException("senha-invalida", string.Join(" ", result!.Errors.Select(e => e.Description)));
+
+            throw new BusinessRuleException("token-invalido", "Link de redefinição inválido ou expirado.");
+        }
+
+        var activeTokens = await _db.RefreshTokens.Where(rt => rt.UserId == user.Id && rt.RevokedAt == null).ToListAsync(ct);
+        foreach (var token in activeTokens)
+            token.RevokedAt = DateTime.UtcNow;
+
+        var grupoId = (await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct))?.GrupoId;
+        await _auditService.LogAccessAsync("PasswordResetCompleted", user.Id, grupoId, GetClientIp(), GetUserAgent(), ct);
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(_currentUser.UserId.ToString())
+            ?? throw new UnauthorizedAccessException();
+
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+            throw new BusinessRuleException("senha-invalida", string.Join(" ", result.Errors.Select(e => e.Description)));
+
+        user.MustChangePassword = false;
+        if (!user.EmailConfirmed) user.EmailConfirmed = true;
+        await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<UserResponse> GetCurrentUserAsync(CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(_currentUser.UserId.ToString())
+            ?? throw new UnauthorizedAccessException();
+
+        // Busca no momento da chamada (não fica em cache) — mudanças de papel/grupo refletem
+        // em até o TTL do access token, igual a qualquer outro dado do token.
+        var membership = await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct)
+            ?? throw new InvalidOperationException($"Usuário {user.Id} não possui grupo associado.");
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return BuildUserResponse(user, membership, roles);
+    }
+
+    private static UserResponse BuildUserResponse(ApplicationUser user, GrupoMember membership, IList<string> roles)
+    {
+        var effectiveAccessProfile = membership.Role == GrupoRole.Owner ? GrupoAccessProfile.Completo : membership.AccessProfile;
+        return new UserResponse(user.Id, user.Name, user.Email!, membership.GrupoId, membership.Role, effectiveAccessProfile, roles.Contains(IdentitySeeder.AdministratorRole), user.MustChangePassword);
+    }
+
+    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken ct)
+    {
+        // Busca no momento da emissão (não fica em cache) — mudanças de papel/grupo
+        // refletem em até o TTL do access token, igual a qualquer outro dado do token.
+        var membership = await _db.GrupoMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == user.Id, ct)
+            ?? throw new InvalidOperationException($"Usuário {user.Id} não possui grupo associado.");
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var (accessToken, accessExpiresAt) = _tokenService.GenerateAccessToken(
+            user.Id, user.Email!, user.Name, membership.GrupoId, membership.Role, membership.AccessProfile, roles);
+        var (refreshToken, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
+
+        _db.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = user.Id,
+            TokenHash = _tokenService.HashRefreshToken(refreshToken),
+            ExpiresAt = refreshExpiresAt
+        });
+        await _db.SaveChangesAsync(ct);
+
+        return new AuthResponse(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt, BuildUserResponse(user, membership, roles));
+    }
+}

@@ -1,0 +1,62 @@
+<div class="mf-form-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-recurring" class="mf-page-title-icon"></mf-icon>Recorrência</h2>
+  <div class="mf-sub">Altere o valor a partir de uma data sem afetar o histórico.</div>
+</div>
+
+@if (loading()) {
+  <div class="mf-loading-spinner">
+    <p-progress-spinner styleClass="mf-loading-spinner-icon" strokeWidth="4" />
+  </div>
+}
+
+@if (!loading() && error() && !recurring()) {
+  <div class="mf-form-error" role="alert">{{ error() }}</div>
+}
+
+@if (!loading() && recurring(); as r) {
+  <div class="mf-card mf-form-card">
+    <form (ngSubmit)="submit()">
+      <div class="mf-form-grid mf-grid-3">
+        <div>
+          <label class="mf-field-label">Descrição</label>
+          <input pInputText pSize="small" class="mf-field-input" [value]="r.description" disabled />
+        </div>
+        <div>
+          <label class="mf-field-label">Valor atual</label>
+          <input pInputText pSize="small" class="mf-field-input" [value]="r.currentAmount | currency: 'BRL'" disabled />
+        </div>
+        <div>
+          <label class="mf-field-label">Periodicidade</label>
+          <p-select size="small" class="mf-field-input" [options]="frequencyOptions" optionLabel="label" optionValue="value" [ngModel]="r.frequency" name="frequency" [disabled]="true" />
+        </div>
+      </div>
+
+      <div class="mf-form-grid mf-grid-2">
+        <mf-money-input [(ngModel)]="newAmount" name="newAmount" label="Novo valor"></mf-money-input>
+        <div>
+          <label class="mf-field-label">A partir de</label>
+          <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="effectiveFrom" name="effectiveFrom" />
+        </div>
+      </div>
+
+      <div class="mf-form-info">Ocorrências anteriores e conciliadas permanecem inalteradas.</div>
+
+      @if (error()) {
+        <div class="mf-form-error" role="alert">{{ error() }}</div>
+      }
+      @if (success()) {
+        <div class="mf-form-success" role="status">{{ success() }}</div>
+      }
+
+      <div class="mf-form-actions">
+        <button pButton type="submit" [disabled]="saving()">
+          @if (saving()) {
+            <p-progress-spinner styleClass="mf-inline-spinner" strokeWidth="4" />
+          }
+          Salvar nova versão
+        </button>
+        <button pButton [text]="true" type="button" (click)="back()">Voltar</button>
+      </div>
+    </form>
+  </div>
+}

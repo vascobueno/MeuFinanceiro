@@ -1,0 +1,78 @@
+<div class="mf-dashboard-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-dashboard" class="mf-page-title-icon"></mf-icon>Visão geral</h2>
+  <div class="mf-sub">Caixa, patrimônio e compromissos em uma única leitura.</div>
+</div>
+
+<mf-list-state [loading]="loading()" [error]="error()" [empty]="false" [onRetry]="load.bind(this)"></mf-list-state>
+
+@if (!loading() && !error()) {
+  <div class="mf-dashboard-kpis">
+    <mf-stat-card label="Saldo em contas" [value]="formatCurrency(accountsBalance())"></mf-stat-card>
+    <mf-stat-card label="Investimentos" [value]="formatCurrency(investmentsBalance())"></mf-stat-card>
+    <mf-stat-card
+      label="Patrimônio financeiro"
+      [value]="formatCurrency(netWorth)"
+      hint="contas + investimentos"
+      variant="hero"
+    ></mf-stat-card>
+    <mf-stat-card
+      label="Compromissos • 30 dias"
+      [value]="formatCurrency(commitments30d())"
+      [hint]="commitmentsCount() + ' movimentos previstos'"
+    ></mf-stat-card>
+  </div>
+
+  <div class="mf-dashboard-panels">
+    <div class="mf-card mf-panel">
+      <div class="mf-panel-header">
+        <div>
+          <b>Evolução do caixa</b>
+          <div class="mf-sub">Saldo em contas — hoje, +30 e +60 dias</div>
+        </div>
+        <span class="mf-badge mf-badge-neutral">Projeção</span>
+      </div>
+      <div class="mf-cash-chart">
+        @for (point of cashEvolution(); track point.label) {
+          <div class="mf-cash-bar-col">
+            <span class="mf-cash-bar-value">{{ formatCurrency(point.value) }}</span>
+            <div class="mf-cash-bar" [style.height.%]="(point.value / maxCashPoint()) * 100"></div>
+            <span class="mf-sub">{{ point.label }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="mf-card mf-panel">
+      <div class="mf-panel-header">
+        <b>Próximos movimentos</b>
+        <span class="mf-badge mf-badge-neutral">30 dias</span>
+      </div>
+      <div class="mf-panel-body">
+        <mf-timeline [events]="upcomingEvents()"></mf-timeline>
+        @if (upcomingEvents().length === 0) {
+          <p class="mf-empty-inline mf-sub">Nenhum movimento previsto nos próximos 30 dias.</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (expenseSummary().length > 0) {
+    <div class="mf-card mf-panel mf-dashboard-expenses">
+      <div class="mf-panel-header">
+        <b>Resumo de despesas do mês</b>
+        <a routerLink="/lancamentos" class="mf-sub">Ver detalhes</a>
+      </div>
+      <div class="mf-expense-grid">
+        @for (category of expenseSummary(); track category.name) {
+          <div>
+            <div class="mf-stat-label">{{ category.name }}</div>
+            <b>{{ formatCurrency(category.amount) }}</b>
+            <div class="mf-expense-bar-track">
+              <div class="mf-expense-bar-fill" [style.width.%]="category.percentOfTop"></div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+}

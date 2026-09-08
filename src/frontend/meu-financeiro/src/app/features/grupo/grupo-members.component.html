@@ -1,0 +1,92 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title">
+    <mf-icon name="mf-settings" class="mf-page-title-icon"></mf-icon>
+    {{ grupoId ? (grupo()?.name ?? 'Membros') : 'Membros da família' }}
+  </h2>
+  <div class="mf-sub">Quem tem acesso a estes dados financeiros, e com qual papel.</div>
+</div>
+
+@if (canManage) {
+  <div class="mf-card mf-inline-form">
+    <h6>Adicionar membro</h6>
+    <div class="mf-inline-form-grid">
+      <div>
+        <label class="mf-field-label">E-mail</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newEmail" placeholder="nome@exemplo.com" />
+      </div>
+      <div>
+        <label class="mf-field-label">Papel</label>
+        <p-select size="small" class="mf-field-input" [options]="roleOptions" optionLabel="label" optionValue="value" [(ngModel)]="newRole" />
+      </div>
+      <button pButton type="button" [disabled]="saving()" (click)="addMember()">Adicionar</button>
+    </div>
+  </div>
+
+  <div class="mf-card mf-inline-form">
+    <h6>Criar novo usuário</h6>
+    <p class="mf-sub">Para quem ainda não tem conta — o sistema envia uma senha temporária por e-mail.</p>
+    <div class="mf-inline-form-grid">
+      <div>
+        <label class="mf-field-label">Nome</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newMember.name" placeholder="Nome completo" />
+      </div>
+      <div>
+        <label class="mf-field-label">Nome de usuário</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newMember.username" placeholder="seu.usuario" />
+      </div>
+      <div>
+        <label class="mf-field-label">E-mail</label>
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newMember.email" placeholder="nome@exemplo.com" />
+      </div>
+      <div>
+        <label class="mf-field-label">Papel</label>
+        <p-select size="small" class="mf-field-input" [options]="roleOptions" optionLabel="label" optionValue="value" [(ngModel)]="newMember.role" />
+      </div>
+      <button pButton type="button" [disabled]="creatingMember()" (click)="createMember()">Criar e enviar senha</button>
+    </div>
+  </div>
+}
+
+@if (actionError()) {
+  <div class="mf-form-error" role="alert">{{ actionError() }}</div>
+}
+
+<mf-list-state
+  [loading]="loading()"
+  [error]="loadError()"
+  [empty]="!loading() && !loadError() && (grupo()?.members?.length ?? 0) === 0"
+  emptyMessage="Nenhum membro encontrado."
+  [onRetry]="load.bind(this)"
+></mf-list-state>
+
+@if (!loading() && grupo(); as h) {
+  <div class="mf-card mf-members-card">
+    @for (member of h.members; track member.userId) {
+      <div class="mf-member-row">
+        <div class="mf-member-avatar">{{ member.name.charAt(0).toUpperCase() }}</div>
+        <div class="mf-member-info">
+          <div class="mf-member-name">{{ member.name }}</div>
+          <div class="mf-member-email">{{ member.email }}</div>
+        </div>
+        <span class="mf-badge" [ngClass]="member.role === GrupoRole.Owner ? 'mf-badge-ok' : 'mf-badge-neutral'">
+          {{ member.role === GrupoRole.Owner ? 'Owner' : 'Member' }}
+        </span>
+        @if (canManage) {
+          <div>
+            <label class="mf-field-label">Acesso</label>
+            <p-select size="small"
+              class="mf-member-profile"
+              [options]="accessProfileOptions"
+              optionLabel="label"
+              optionValue="value"
+              [ngModel]="member.accessProfile"
+              [disabled]="member.role === GrupoRole.Owner"
+              (onChange)="updateAccessProfile(member, $event.value)"
+            />
+          </div>
+          <button pButton [outlined]="true" severity="danger" type="button" (click)="removeMember(member.userId)">Remover</button>
+        }
+      </div>
+    }
+  </div>
+}

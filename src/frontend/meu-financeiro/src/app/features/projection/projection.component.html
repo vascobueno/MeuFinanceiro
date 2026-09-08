@@ -1,0 +1,61 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-projection" class="mf-page-title-icon"></mf-icon>Projeção financeira</h2>
+  <div class="mf-sub">Consulte qualquer data futura com contas e investimentos separados.</div>
+</div>
+
+<div class="mf-card mf-filters-card">
+  <div class="mf-filters-row">
+    <div>
+      <label class="mf-field-label">Projetar até</label>
+      <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="targetDate" />
+    </div>
+    <button pButton type="button" (click)="load()">Calcular</button>
+  </div>
+</div>
+
+<mf-list-state [loading]="loading()" [error]="error()" [empty]="false" [onRetry]="load.bind(this)"></mf-list-state>
+
+@if (!loading() && !error() && projection(); as p) {
+  @if (p.hasNegativeAccountsBalance) {
+    <div class="mf-form-warning">
+      ⚠️ O saldo projetado das contas fica negativo em algum momento até {{ p.date | date: 'dd/MM/yyyy' }}.
+    </div>
+  }
+
+  <div class="mf-stat-grid">
+    <mf-stat-card label="Saldo projetado — contas" [value]="p.projectedAccountsBalance | currency: 'BRL'" hint="sem investimentos" [hintTone]="p.projectedAccountsBalance < 0 ? 'negative' : 'neutral'"></mf-stat-card>
+    <mf-stat-card label="Saldo atual (contas)" [value]="p.currentAccountsBalance | currency: 'BRL'"></mf-stat-card>
+    <mf-stat-card label="Investimentos" [value]="p.investmentsBalance | currency: 'BRL'" hint="posição projetada"></mf-stat-card>
+    <mf-stat-card label="Patrimônio projetado" [value]="p.projectedNetWorth | currency: 'BRL'" hint="contas + investimentos" variant="hero"></mf-stat-card>
+  </div>
+
+  <div class="mf-card mf-panel">
+    <h6>Composição cronológica</h6>
+    <mf-list-state [loading]="false" [error]="null" [empty]="p.timeline.length === 0" emptyMessage="Nenhuma movimentação futura encontrada até esta data."></mf-list-state>
+
+    @if (p.timeline.length > 0) {
+      <p-table [value]="p.timeline" styleClass="mf-timeline-table">
+        <ng-template #header>
+          <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th class="mf-col-end">Valor</th>
+            <th>Origem</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-entry>
+          <tr>
+            <td>{{ entry.date | date: 'dd/MM/yyyy' }}</td>
+            <td>{{ entry.description }}</td>
+            <td class="mf-col-end" [class.mf-text-negative]="entry.amount < 0">{{ entry.amount | currency: 'BRL' }}</td>
+            <td>
+              <span class="mf-badge" [ngClass]="entry.isProjected ? 'mf-badge-neutral' : 'mf-badge-ok'">
+                {{ entry.isProjected ? 'Projetado (recorrência)' : 'Já registrado' }}
+              </span>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+}

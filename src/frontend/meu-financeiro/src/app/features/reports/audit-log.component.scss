@@ -1,0 +1,58 @@
+.mf-list-header {
+  margin-bottom: 1rem;
+}
+
+.mf-filter-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.mf-filter-bar mf-date-range {
+  min-width: 260px;
+}
+.mf-filter-bar .mf-filter-field {
+  min-width: 180px;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  padding: 1rem;
+}
+
+.mf-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.mf-report-table th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mf-muted);
+  padding: 0 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--mf-line);
+}
+.mf-report-table td {
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--mf-line);
+}
+.mf-report-table tr:last-child td {
+  border-bottom: none;
+}
+
+.mf-pagination-block {
+  display: block;
+  margin-top: 1rem;
+}
+
+@media (max-width: 700px) {
+  .mf-filter-bar {
+    flex-direction: column;
+  }
+}

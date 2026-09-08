@@ -1,0 +1,75 @@
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title"><mf-icon name="mf-recurring" class="mf-page-title-icon"></mf-icon>Recorrências</h2>
+    <div class="mf-sub">Lançamentos recorrentes cadastrados a partir de um lançamento.</div>
+  </div>
+</div>
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && recurrences().length === 0"
+      emptyMessage="Nenhuma recorrência cadastrada ainda. Crie um lançamento no modo Recorrência para começar."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && recurrences().length > 0) {
+      <p-table [value]="recurrences()" styleClass="mf-recurring-table">
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="description">Descrição <p-sort-icon field="description" /></th>
+            <th pSortableColumn="type">Tipo <p-sort-icon field="type" /></th>
+            <th>Origem</th>
+            <th pSortableColumn="frequency">Frequência <p-sort-icon field="frequency" /></th>
+            <th pSortableColumn="currentAmount" class="mf-col-end">Valor atual <p-sort-icon field="currentAmount" /></th>
+            <th pSortableColumn="startDate">Início <p-sort-icon field="startDate" /></th>
+            <th>Próximas ocorrências</th>
+            <th pSortableColumn="isActive">Status <p-sort-icon field="isActive" /></th>
+            <th></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-r>
+          <tr>
+            <td>{{ r.description }}</td>
+            <td>{{ r.type === TransactionType.Income ? 'Receita' : 'Despesa' }}</td>
+            <td>{{ r.accountName || r.creditCardName || '—' }}</td>
+            <td>{{ frequencyLabel(r.frequency) }}</td>
+            <td class="mf-col-end">{{ r.currentAmount | currency: 'BRL' }}</td>
+            <td>{{ r.startDate | date: 'dd/MM/yyyy' }}</td>
+            <td>
+              @if (r.nextOccurrences.length > 0) {
+                <span class="mf-sub">
+                  @for (occ of r.nextOccurrences; track occ.date; let last = $last) {
+                    {{ occ.date | date: 'dd/MM/yyyy' }}{{ last ? '' : ', ' }}
+                  }
+                </span>
+              } @else {
+                <span class="mf-sub">—</span>
+              }
+            </td>
+            <td>
+              <span class="mf-badge" [ngClass]="r.isActive ? 'mf-badge-ok' : 'mf-badge-neutral'">
+                {{ r.isActive ? 'Ativa' : 'Inativa' }}
+              </span>
+            </td>
+            <td class="mf-col-end">
+              @if (authService.canWrite()) {
+                <a
+                  class="mf-row-edit-icon"
+                  pTooltip="Editar"
+                  tooltipPosition="top"
+                  [attr.aria-label]="'Editar'"
+                  [routerLink]="['/recorrencia', r.id]"
+                >
+                  <i class="pi pi-pencil"></i>
+                </a>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</div>

@@ -1,0 +1,201 @@
+<ng-template #navContent>
+  <div class="mf-brand">
+    <img src="logo-icon.svg" alt="" class="mf-brand-icon" />
+    <span>MeuFinanceiro</span>
+    @if (!isMobile()) {
+      <button
+        pButton
+        type="button"
+        [text]="true"
+        [rounded]="true"
+        [iconOnly]="true"
+        class="mf-sidebar-toggle"
+        (click)="toggleCollapsed()"
+        [attr.aria-label]="collapsed() ? 'Expandir menu' : 'Recolher menu'"
+        [pTooltip]="collapsed() ? 'Expandir menu' : 'Recolher menu'"
+        tooltipPosition="right"
+      >
+        <i class="pi" [ngClass]="collapsed() ? 'pi-chevron-right' : 'pi-chevron-left'"></i>
+      </button>
+    }
+  </div>
+
+  <div class="mf-nav-section">Principal</div>
+  <nav class="mf-nav-list">
+    <a class="mf-nav-link" routerLink="/dashboard" routerLinkActive="mf-active" pTooltip="Dashboard" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-dashboard" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Dashboard</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/ajuda" routerLinkActive="mf-active" pTooltip="Ajuda" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-help" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Ajuda</span>
+    </a>
+  </nav>
+
+  <button type="button" class="mf-nav-section-toggle" (click)="toggleSection('Financeiro')" [attr.aria-expanded]="isSectionExpanded('Financeiro')">
+    <span>Financeiro</span>
+    <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Financeiro')"></i>
+  </button>
+  <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Financeiro') && !isCollapsedDesktop()">
+    <a class="mf-nav-link" routerLink="/lancamentos" routerLinkActive="mf-active" pTooltip="Lançamentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-transactions" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Lançamentos</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/recorrencia" routerLinkActive="mf-active" pTooltip="Recorrências" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-recurring" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Recorrências</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/parcelamento" routerLinkActive="mf-active" pTooltip="Parcelamentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-installments" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Parcelamentos</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/contas" routerLinkActive="mf-active" pTooltip="Contas" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-accounts" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Contas</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/cartoes" routerLinkActive="mf-active" pTooltip="Cartões" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-cards" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Cartões</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/faturas" routerLinkActive="mf-active" pTooltip="Faturas" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-invoices" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Faturas</span>
+    </a>
+  </nav>
+
+  <button type="button" class="mf-nav-section-toggle" (click)="toggleSection('Conciliação')" [attr.aria-expanded]="isSectionExpanded('Conciliação')">
+    <span>Conciliação</span>
+    <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Conciliação')"></i>
+  </button>
+  <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Conciliação') && !isCollapsedDesktop()">
+    <a class="mf-nav-link" routerLink="/conciliacao-conta" routerLinkActive="mf-active" pTooltip="Conta corrente" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-reconciliation-account" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Conta corrente</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/conciliacao-cartao" routerLinkActive="mf-active" pTooltip="Cartão" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-reconciliation-card" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Cartão</span>
+    </a>
+  </nav>
+
+  <button type="button" class="mf-nav-section-toggle" (click)="toggleSection('Patrimônio')" [attr.aria-expanded]="isSectionExpanded('Patrimônio')">
+    <span>Patrimônio</span>
+    <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Patrimônio')"></i>
+  </button>
+  <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Patrimônio') && !isCollapsedDesktop()">
+    <a class="mf-nav-link" routerLink="/investimentos" routerLinkActive="mf-active" pTooltip="Investimentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-investments" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Investimentos</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/projecao" routerLinkActive="mf-active" pTooltip="Projeção" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-projection" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Projeção</span>
+    </a>
+  </nav>
+
+  <button type="button" class="mf-nav-section-toggle" (click)="toggleSection('Relatórios')" [attr.aria-expanded]="isSectionExpanded('Relatórios')">
+    <span>Relatórios</span>
+    <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Relatórios')"></i>
+  </button>
+  <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Relatórios') && !isCollapsedDesktop()">
+    <a class="mf-nav-link" routerLink="/relatorios/projecao-receitas" routerLinkActive="mf-active" pTooltip="Projeção de receitas" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-projection" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Projeção de receitas</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/relatorios/gastos-recorrentes" routerLinkActive="mf-active" pTooltip="Gastos recorrentes" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-recurring" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Gastos recorrentes</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/relatorios/auditoria" routerLinkActive="mf-active" pTooltip="Auditoria" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-audit" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Auditoria</span>
+    </a>
+  </nav>
+
+  @if (authService.hasFullAccess()) {
+    <button type="button" class="mf-nav-section-toggle" (click)="toggleSection('Sistema')" [attr.aria-expanded]="isSectionExpanded('Sistema')">
+      <span>Sistema</span>
+      <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Sistema')"></i>
+    </button>
+    <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Sistema') && !isCollapsedDesktop()">
+      <a class="mf-nav-link" routerLink="/configuracoes" routerLinkActive="mf-active" pTooltip="Configurações" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+        <mf-icon name="mf-settings" class="mf-nav-icon"></mf-icon>
+        <span class="mf-nav-label">Configurações</span>
+      </a>
+    </nav>
+  }
+
+  @if (authService.currentUser()?.isAdministrator) {
+    <button type="button" class="mf-nav-section-toggle" (click)="toggleSection('Administração')" [attr.aria-expanded]="isSectionExpanded('Administração')">
+      <span>Administração</span>
+      <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Administração')"></i>
+    </button>
+    <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Administração') && !isCollapsedDesktop()">
+      <a class="mf-nav-link" routerLink="/admin/grupos" routerLinkActive="mf-active" pTooltip="Grupos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+        <mf-icon name="mf-admin" class="mf-nav-icon"></mf-icon>
+        <span class="mf-nav-label">Grupos</span>
+      </a>
+      <a class="mf-nav-link" routerLink="/admin/perfis-acesso" routerLinkActive="mf-active" pTooltip="Perfis de acesso" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+        <mf-icon name="mf-admin" class="mf-nav-icon"></mf-icon>
+        <span class="mf-nav-label">Perfis de acesso</span>
+      </a>
+    </nav>
+  }
+</ng-template>
+
+<div class="mf-shell-container">
+  @if (!isMobile()) {
+    <aside class="mf-sidenav" [class.mf-collapsed]="isCollapsedDesktop()">
+      <ng-container [ngTemplateOutlet]="navContent"></ng-container>
+    </aside>
+  }
+
+  <p-drawer [(visible)]="mobileDrawerOpen" position="left" [modal]="true" styleClass="mf-sidenav-drawer">
+    <ng-container [ngTemplateOutlet]="navContent"></ng-container>
+  </p-drawer>
+
+  <div class="mf-shell-content">
+    <header class="mf-toolbar">
+      @if (isMobile()) {
+        <button pButton type="button" [text]="true" [rounded]="true" [iconOnly]="true" (click)="mobileDrawerOpen.set(true)" aria-label="Abrir menu">
+          <i class="pi pi-bars"></i>
+        </button>
+      }
+      <span class="mf-breadcrumb">
+        <a routerLink="/dashboard">MeuFinanceiro</a>
+        @if (breadcrumbParent(); as parent) {
+          / <a [routerLink]="parent.path">{{ parent.title }}</a>
+        }
+        / <b>{{ pageTitle() }}</b>
+      </span>
+      <button
+        pButton
+        type="button"
+        [text]="true"
+        [rounded]="true"
+        [iconOnly]="true"
+        class="mf-help-button"
+        (click)="openHelp()"
+        [attr.aria-label]="'Ajuda: ' + pageTitle()"
+        [pTooltip]="'Ajuda: ' + pageTitle()"
+      >
+        <i class="pi pi-question-circle"></i>
+      </button>
+      <span class="mf-toolbar-spacer"></span>
+      @if (!isMobile()) {
+        <div class="mf-search">
+          <i class="pi pi-search"></i>
+          <input type="text" placeholder="Pesquisar..." disabled />
+        </div>
+      }
+      @if (authService.currentUser(); as user) {
+        <span class="mf-user">{{ user.name }}</span>
+      }
+      <button pButton type="button" [outlined]="true" (click)="logout()">Sair</button>
+    </header>
+
+    <main class="mf-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
