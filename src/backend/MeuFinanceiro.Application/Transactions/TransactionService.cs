@@ -219,7 +219,18 @@ public class TransactionService : ITransactionService
             };
             _db.Installments.Add(installment);
 
-            var transaction = BuildTransaction(request with { TransactionDate = installment.DueDate, Amount = installment.Amount }, merchantId);
+            // O "(n/total)" vai na própria descrição gravada, não só na montagem da tela de
+            // Lançamentos: assim a parcela continua identificável na fatura do cartão, na
+            // conciliação e em qualquer outro lugar que mostre a descrição. O merchantId acima
+            // é resolvido a partir da descrição base, então o autocomplete não recebe sufixos.
+            var transaction = BuildTransaction(
+                request with
+                {
+                    TransactionDate = installment.DueDate,
+                    Amount = installment.Amount,
+                    Description = $"{request.Description} ({installment.Number}/{installmentRequest.InstallmentCount})"
+                },
+                merchantId);
             transaction.InstallmentId = installment.Id;
             installment.FinancialTransactionId = transaction.Id;
 

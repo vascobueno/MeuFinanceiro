@@ -148,10 +148,10 @@
           <tr [routerLink]="['/lancamentos', transaction.id]" class="mf-clickable-row">
             <td>{{ transaction.transactionDate | date: 'dd/MM/yyyy' }}</td>
             <td>
+              <!-- O "(n/total)" da parcela já vem gravado na própria descrição pelo backend
+                   (TransactionService.CreateInstallmentPlanAsync), pra continuar visível na
+                   fatura e na conciliação — não concatenar aqui, senão duplica. -->
               {{ transaction.description }}
-              @if (transaction.installmentNumber) {
-                <span class="mf-sub">({{ transaction.installmentNumber }}/{{ transaction.installmentCount }})</span>
-              }
               @if (transaction.notes) {
                 <span
                   class="mf-sub"
