@@ -203,6 +203,91 @@ Vale registrar, porque quase viraram falso positivo:
 
 Teste que passa sem exercitar o que deveria é pior que teste ausente: dá confiança falsa.
 
+---
+
+# Rodada 8 (final) — Parte D
+
+## Resultado consolidado
+
+| Endpoint | Baseline | Final | Ganho |
+|---|---:|---:|---|
+| `GET /accounts` | 49 ms · **12 queries** · 2 KB | **15 ms · 3 queries** | -69% |
+| `GET /transactions` | 18 ms · 7 KB | 16 ms · 7 KB | — |
+| `GET /transactions` (busca) | 46 ms | 46 ms | — |
+| `GET /projection` +30d | 178 ms · 771 KB | **98 ms** · 771 KB | -45% |
+| `GET /projection` +60d | 181 ms (p95 **320**) · 1523 KB | **112 ms** (p95 185) | -38% |
+| `GET /audit` | 35 ms | **15 ms** | -57% |
+| `GET /installment-plans` | 15 ms | 17 ms | — |
+| `GET /recurring-transactions` | 175 ms · **2237 KB** | **17 ms · 9 KB** | **-90% / -99,6%** |
+| **Dashboard** | 208 ms · **2343 KB** · ~20 queries | **117 ms · 50 KB · ~11** | -44% / **-98%** |
+
+Metas do C4: p95 < 300 ms em todas as listagens ✅ · Dashboard < 1 s ✅ (117 ms) ·
+`/accounts` em 2-3 queries ✅ · auditoria em Index Scan ✅.
+
+## Veredito sobre stored procedure — agora com medição
+
+**Segue não se justificando para performance.** O experimento decisivo foi decompor o endpoint mais
+lento que sobrou, a projeção de 60 dias (~241 ms):
+
+| Camada | Custo |
+|---|---:|
+| SQL (carregar 5.000 recorrências + versões) | **3,9 ms** |
+| Serializar 1,5 MB de linha do tempo | **~0 ms** (241 ms com timeline completa vs 256 ms sem — dentro do ruído) |
+| **C# — expansão das recorrências** | **~237 ms** |
+
+O banco responde em 4 ms. Os outros 98% do tempo são aritmética de calendário em C#. Uma procedure
+teria de reimplementar em PL/pgSQL a lógica de frequência **e** a seleção de versão vigente da
+regra 13, para economizar 4 ms — num projeto sem testes. É a ferramenta errada para este gargalo.
+
+Os ganhos reais vieram de: corrigir um laço com `await` dentro (item 1), paginar (item 2), parar de
+trafegar o que ninguém usa (item 3) e **um índice** (item 6). Nenhum exigiu SQL cru.
+
+A única procedure que chegou a se justificar nesta análise não era por velocidade, e sim por
+**integridade**: um trigger de invalidação do fechamento, que operação em lote e script SQL não
+conseguiriam burlar. Optou-se pelo hook em C# — ver o ponto cego documentado na rodada 7.
+
+## O que sobrou, e por que não foi mexido
+
+### 1. Expansão de recorrências: O(recorrências × idade) — **achado importante**
+
+`RecurrenceOccurrenceCalculator.EnumerateUntil` começa o cursor na `StartDate` e avança **um período
+por vez**, descartando tudo anterior a hoje. Para uma recorrência semanal de 3 anos atrás são ~156
+iterações inúteis antes da primeira útil; com 5.000 recorrências, centenas de milhares. São os
+237 ms acima, e o custo **cresce indefinidamente com a idade** da recorrência.
+
+A correção óbvia — pular direto para a primeira ocorrência após hoje — **muda o resultado**:
+
+```
+recorrência que começa em 2026-01-31
+  avançando mês a mês : 2026-04-28   (o clamp de fevereiro é composto e nunca volta ao dia 31)
+  pulando 3 meses     : 2026-04-30   (preserva o dia de origem)
+```
+
+Ou seja, hoje uma conta que vence todo dia 31 **degrada permanentemente para o dia 28** depois da
+primeira passagem por fevereiro. Isso é discutivelmente um bug de negócio — mas corrigi-lo muda
+datas de vencimento projetadas, o que é decisão de produto, não de performance. **Fica em aberto,
+com a pergunta anexada.**
+
+### 2. Busca por descrição — dentro da meta
+
+`lower("Description") LIKE '%...%'` faz `Seq Scan` (11,6 ms no banco, 46 ms no endpoint). Um índice
+GIN `pg_trgm` resolveria, mas p95 de 60 ms contra meta de 300 ms **não justifica** adicionar uma
+extensão do Postgres. Registrado para quando o volume crescer.
+
+### 3. Tela de Projeção ainda recebe 1,5 MB
+
+O Dashboard foi resolvido, mas a tela de Projeção exibe a linha do tempo inteira num `p-table` —
+com esta massa, ~10 mil linhas. É problema de usabilidade antes de ser de performance (ninguém lê
+10 mil linhas); a solução é paginar ou agregar por dia, e isso é decisão de UX.
+
+### Critério de parada aplicado
+
+Itens **não** implementados por estarem dentro da meta: chamada dupla da projeção no Dashboard
+(item 5), índice trigram na busca, paginação da tela de Projeção. Cada um tem a linha de medição
+que justifica a decisão acima.
+
+---
+
 ### Ajuste de rumo
 
 O baseline reordena prioridades em relação ao plano. Entram na Parte D, por evidência:
