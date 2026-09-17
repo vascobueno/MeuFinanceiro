@@ -66,7 +66,9 @@ export class AccountListComponent implements OnInit {
   readonly showForm = signal(false);
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
+  readonly editingId = signal<string | null>(null);
   readonly newAccount: CreateAccountRequest = { name: '', bank: '', type: AccountType.Checking, initialBalance: 0 };
+  private editingIsActive = true;
 
   constructor(
     private readonly accountService: AccountService,
@@ -118,12 +120,29 @@ export class AccountListComponent implements OnInit {
   }
 
   openForm(): void {
+    this.editingId.set(null);
+    this.newAccount.name = '';
+    this.newAccount.bank = '';
+    this.newAccount.type = AccountType.Checking;
+    this.newAccount.initialBalance = 0;
+    this.showForm.set(true);
+    this.formError.set(null);
+  }
+
+  edit(account: Account): void {
+    this.editingId.set(account.id);
+    this.editingIsActive = account.isActive;
+    this.newAccount.name = account.name;
+    this.newAccount.bank = account.bank ?? '';
+    this.newAccount.type = account.type;
+    this.newAccount.initialBalance = account.initialBalance;
     this.showForm.set(true);
     this.formError.set(null);
   }
 
   closeForm(): void {
     this.showForm.set(false);
+    this.editingId.set(null);
   }
 
   submit(): void {
@@ -135,10 +154,22 @@ export class AccountListComponent implements OnInit {
     this.saving.set(true);
     this.formError.set(null);
 
-    this.accountService.create(this.newAccount).subscribe({
+    const editingId = this.editingId();
+    const request$ = editingId
+      ? this.accountService.update(editingId, {
+          name: this.newAccount.name,
+          bank: this.newAccount.bank,
+          type: this.newAccount.type,
+          initialBalance: this.newAccount.initialBalance,
+          isActive: this.editingIsActive,
+        })
+      : this.accountService.create(this.newAccount);
+
+    request$.subscribe({
       next: () => {
         this.saving.set(false);
         this.showForm.set(false);
+        this.editingId.set(null);
         this.newAccount.name = '';
         this.newAccount.bank = '';
         this.newAccount.initialBalance = 0;
@@ -147,7 +178,7 @@ export class AccountListComponent implements OnInit {
       },
       error: () => {
         this.saving.set(false);
-        this.formError.set('Não foi possível salvar a conta.');
+        this.formError.set(editingId ? 'Não foi possível salvar as alterações.' : 'Não foi possível salvar a conta.');
       },
     });
   }

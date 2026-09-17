@@ -59,7 +59,8 @@
   text-align: right;
 }
 
-.mf-row-delete-icon {
+.mf-row-delete-icon,
+.mf-row-edit-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -69,10 +70,17 @@
   margin: 0;
   line-height: 1;
   font-size: 1rem;
-  color: var(--mf-red);
   cursor: pointer;
 }
-.mf-row-delete-icon:hover {
+.mf-row-delete-icon {
+  color: var(--mf-red);
+}
+.mf-row-edit-icon {
+  color: var(--mf-primary);
+  margin-right: 0.75rem;
+}
+.mf-row-delete-icon:hover,
+.mf-row-edit-icon:hover {
   opacity: 0.7;
 }
 

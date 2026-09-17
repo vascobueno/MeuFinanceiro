@@ -86,7 +86,7 @@ export class TransactionListComponent implements OnInit {
   readonly cardOptions = computed(() => [{ id: null, name: 'Todos' }, ...this.cards()]);
 
   readonly dateRange: DateRange = { start: null, end: null };
-  readonly filtersExpanded = signal(true);
+  readonly filtersExpanded = signal(false);
 
   // sortBy/sortDir ficam fora de `filter` de propósito (mesmo padrão em account-list/
   // card-list/invoice-list) — ver comentário sobre [sortField]/[sortOrder] no template: NÃO

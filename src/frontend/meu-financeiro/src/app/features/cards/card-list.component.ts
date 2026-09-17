@@ -58,7 +58,9 @@ export class CardListComponent implements OnInit {
   readonly showForm = signal(false);
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
+  readonly editingId = signal<string | null>(null);
   readonly newCard: CreateCardRequest = { name: '', brand: '', closingDay: 1, dueDay: 10, limit: undefined };
+  private editingIsActive = true;
 
   get availableLimit(): number {
     return this.totalLimit() - this.openInvoicesTotal();
@@ -115,12 +117,31 @@ export class CardListComponent implements OnInit {
   }
 
   openForm(): void {
+    this.editingId.set(null);
+    this.newCard.name = '';
+    this.newCard.brand = '';
+    this.newCard.closingDay = 1;
+    this.newCard.dueDay = 10;
+    this.newCard.limit = undefined;
+    this.showForm.set(true);
+    this.formError.set(null);
+  }
+
+  edit(card: CreditCard): void {
+    this.editingId.set(card.id);
+    this.editingIsActive = card.isActive;
+    this.newCard.name = card.name;
+    this.newCard.brand = card.brand ?? '';
+    this.newCard.closingDay = card.closingDay;
+    this.newCard.dueDay = card.dueDay;
+    this.newCard.limit = card.limit;
     this.showForm.set(true);
     this.formError.set(null);
   }
 
   closeForm(): void {
     this.showForm.set(false);
+    this.editingId.set(null);
   }
 
   submit(): void {
@@ -132,10 +153,16 @@ export class CardListComponent implements OnInit {
     this.saving.set(true);
     this.formError.set(null);
 
-    this.cardService.create(this.newCard).subscribe({
+    const editingId = this.editingId();
+    const request$ = editingId
+      ? this.cardService.update(editingId, { ...this.newCard, isActive: this.editingIsActive })
+      : this.cardService.create(this.newCard);
+
+    request$.subscribe({
       next: () => {
         this.saving.set(false);
         this.showForm.set(false);
+        this.editingId.set(null);
         this.newCard.name = '';
         this.newCard.brand = '';
         this.load();
@@ -143,7 +170,7 @@ export class CardListComponent implements OnInit {
       },
       error: () => {
         this.saving.set(false);
-        this.formError.set('Não foi possível salvar o cartão.');
+        this.formError.set(editingId ? 'Não foi possível salvar as alterações.' : 'Não foi possível salvar o cartão.');
       },
     });
   }

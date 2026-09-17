@@ -18,7 +18,7 @@
 
 @if (showForm()) {
   <div class="mf-card mf-inline-form">
-    <h6>Novo cartão</h6>
+    <h6>{{ editingId() ? 'Editar cartão' : 'Novo cartão' }}</h6>
     <div class="mf-inline-form-grid">
       <div>
         <label class="mf-field-label">Nome</label>
@@ -96,6 +96,16 @@
             </td>
             <td class="mf-col-end">
               @if (authService.canWrite()) {
+                <button
+                  type="button"
+                  class="mf-row-edit-icon"
+                  pTooltip="Editar"
+                  tooltipPosition="top"
+                  [attr.aria-label]="'Editar'"
+                  (click)="edit(card)"
+                >
+                  <i class="pi pi-pencil"></i>
+                </button>
                 <button
                   type="button"
                   class="mf-row-delete-icon"

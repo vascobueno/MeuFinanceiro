@@ -3,7 +3,7 @@ using MeuFinanceiro.Domain.Enums;
 namespace MeuFinanceiro.Application.Accounts;
 
 public record CreateAccountRequest(string Name, string? Bank, AccountType Type, decimal InitialBalance);
-public record UpdateAccountRequest(string Name, string? Bank, AccountType Type, bool IsActive);
+public record UpdateAccountRequest(string Name, string? Bank, AccountType Type, decimal InitialBalance, bool IsActive);
 
 public record AccountResponse(
     Guid Id,

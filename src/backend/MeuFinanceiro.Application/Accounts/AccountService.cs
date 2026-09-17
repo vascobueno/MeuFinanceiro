@@ -75,6 +75,7 @@ public class AccountService : IAccountService
         account.Name = request.Name;
         account.Bank = request.Bank;
         account.Type = request.Type;
+        account.InitialBalance = request.InitialBalance;
         account.IsActive = request.IsActive;
         account.UpdatedAt = DateTime.UtcNow;
         account.UpdatedBy = _currentUser.UserId;

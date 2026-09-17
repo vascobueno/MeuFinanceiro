@@ -24,5 +24,6 @@ export interface UpdateAccountRequest {
   name: string;
   bank?: string;
   type: AccountType;
+  initialBalance: number;
   isActive: boolean;
 }
