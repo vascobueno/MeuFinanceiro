@@ -43,10 +43,20 @@ public class CardReconciliationService : ICardReconciliationService
         };
         _db.CardInvoices.Add(invoice);
 
-        var candidateTransactions = await _db.FinancialTransactions
-            .Include(t => t.Installment)
-            .Where(t => t.GrupoId == _currentUser.GrupoId && t.CreditCardId == request.CreditCardId && t.Status != TransactionStatus.Reconciled)
-            .ToListAsync(ct);
+        // Mesma correção do extrato bancário: a janela de busca (15 dias) era aplicada só dentro
+        // do laço de scoring, depois de carregar todos os lançamentos não conciliados do cartão.
+        var candidateTransactions = new List<FinancialTransaction>();
+        if (request.Items.Count > 0)
+        {
+            var windowStart = request.Items.Min(i => i.Date).AddDays(-SearchWindowDays);
+            var windowEnd = request.Items.Max(i => i.Date).AddDays(SearchWindowDays);
+
+            candidateTransactions = await _db.FinancialTransactions
+                .Include(t => t.Installment)
+                .Where(t => t.GrupoId == _currentUser.GrupoId && t.CreditCardId == request.CreditCardId && t.Status != TransactionStatus.Reconciled)
+                .Where(t => t.TransactionDate >= windowStart && t.TransactionDate <= windowEnd)
+                .ToListAsync(ct);
+        }
 
         foreach (var itemRequest in request.Items)
         {

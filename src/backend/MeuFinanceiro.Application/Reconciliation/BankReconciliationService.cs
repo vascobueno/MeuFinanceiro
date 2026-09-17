@@ -48,9 +48,21 @@ public class BankReconciliationService : IBankReconciliationService
         };
         _db.BankStatements.Add(statement);
 
-        var candidateTransactions = await _db.FinancialTransactions
-            .Where(t => t.GrupoId == _currentUser.GrupoId && t.AccountId == request.AccountId && t.Status != TransactionStatus.Reconciled)
-            .ToListAsync(ct);
+        // A janela de busca já era aplicada, mas só dentro do laço de scoring (FindBestCandidate),
+        // depois de trazer TODOS os lançamentos não conciliados da conta para a memória. Subindo o
+        // recorte para o WHERE, o produto cartesiano do matching passa a ser sobre o período do
+        // extrato em vez de sobre o histórico inteiro.
+        var candidateTransactions = new List<FinancialTransaction>();
+        if (request.Items.Count > 0)
+        {
+            var windowStart = request.Items.Min(i => i.Date).AddDays(-SearchWindowDays[0]);
+            var windowEnd = request.Items.Max(i => i.Date).AddDays(SearchWindowDays[0]);
+
+            candidateTransactions = await _db.FinancialTransactions
+                .Where(t => t.GrupoId == _currentUser.GrupoId && t.AccountId == request.AccountId && t.Status != TransactionStatus.Reconciled)
+                .Where(t => t.TransactionDate >= windowStart && t.TransactionDate <= windowEnd)
+                .ToListAsync(ct);
+        }
 
         foreach (var itemRequest in request.Items)
         {

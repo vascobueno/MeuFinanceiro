@@ -148,6 +148,26 @@ justifica), **não se justifica**. Fica registrado como decisão consciente, nã
 O ganho absoluto em ms é pequeno no volume atual — mas o que muda é a **classe de custo**: antes
 crescia linearmente com a tabela (que aumenta a cada `SaveChangesAsync`), agora não cresce.
 
+---
+
+## Rodada 6 — item 7: janela da conciliação no `WHERE`
+
+A janela de busca (10 dias no extrato, 15 na fatura) já existia, mas era aplicada como `continue`
+**dentro** do laço de scoring — depois de carregar todos os lançamentos não conciliados da
+conta/cartão. Subiu para o `WHERE`.
+
+Não aparece no `bench.js` (é caminho de escrita, não de leitura), então a medição é do mecanismo —
+o conjunto de candidatos, que é o `m` do produto cartesiano:
+
+| Cenário (uma conta da massa) | Candidatos carregados |
+|---|---:|
+| Antes — todos os não conciliados | **1198** |
+| Depois — janela de um extrato de 30 dias | **55** (-95%) |
+
+O scoring é O(n×m) com normalização e split de string por par. Um extrato de 200 itens sai de
+~240 mil comparações para ~11 mil. E o número "antes" cresce com o histórico da conta para sempre,
+enquanto o "depois" é limitado pelo período do extrato.
+
 ### Ajuste de rumo
 
 O baseline reordena prioridades em relação ao plano. Entram na Parte D, por evidência:
