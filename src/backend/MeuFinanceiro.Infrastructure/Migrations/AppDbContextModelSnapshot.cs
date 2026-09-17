@@ -113,6 +113,12 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Timestamp")
+                        .IsDescending();
+
+                    b.HasIndex("GrupoId", "Timestamp")
+                        .IsDescending(false, true);
+
                     b.ToTable("AuditLogs");
                 });
 

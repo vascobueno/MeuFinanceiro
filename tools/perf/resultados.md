@@ -134,6 +134,20 @@ extra na API para pedir o saldo em duas datas, e economizaria poucas dezenas de 
 Pelo critério de parada do plano (D5 — toda otimização precisa citar a linha de medição que a
 justifica), **não se justifica**. Fica registrado como decisão consciente, não como esquecimento.
 
+---
+
+## Rodada 5 — item 6: índice em `AuditLogs`
+
+| | Antes | Depois |
+|---|---|---|
+| Plano | `Seq Scan` + `top-N heapsort` | **`Index Scan using IX_AuditLogs_GrupoId_Timestamp`** |
+| Linhas varridas | 40.019 | 20 |
+| Buffers | 1014 | **20** |
+| Execution Time | 10,211 ms | **0,233 ms** (44×) |
+
+O ganho absoluto em ms é pequeno no volume atual — mas o que muda é a **classe de custo**: antes
+crescia linearmente com a tabela (que aumenta a cada `SaveChangesAsync`), agora não cresce.
+
 ### Ajuste de rumo
 
 O baseline reordena prioridades em relação ao plano. Entram na Parte D, por evidência:

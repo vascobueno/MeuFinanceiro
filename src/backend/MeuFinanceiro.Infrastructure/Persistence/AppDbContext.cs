@@ -108,6 +108,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasOne(t => t.RecurringTransaction).WithMany().HasForeignKey(t => t.RecurringTransactionId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        // AuditLog é a tabela que mais cresce (toda SaveChangesAsync grava auditoria) e não tinha
+        // índice nenhum: a tela fazia Seq Scan + Sort na tabela inteira. A ordem das colunas segue
+        // a consulta real de AuditService.GetAllAsync — filtra por grupo e ordena por Timestamp
+        // desc —, e o desc no índice evita o passo de ordenação.
+        builder.Entity<AuditLog>(e =>
+        {
+            e.HasIndex(a => new { a.GrupoId, a.Timestamp }).IsDescending(false, true);
+            // Administrador consulta sem filtro de grupo, caindo só na ordenação por data.
+            e.HasIndex(a => a.Timestamp).IsDescending();
+        });
+
         builder.Entity<BankStatementItem>(e => e.HasIndex(i => i.Date));
         builder.Entity<CardInvoiceItem>(e => e.HasIndex(i => i.Date));
         builder.Entity<Reconciliation>(e => e.HasIndex(r => r.Status));
