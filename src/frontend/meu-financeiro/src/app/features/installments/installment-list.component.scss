@@ -1,0 +1,63 @@
+.mf-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  overflow: hidden;
+}
+
+.mf-panel-body {
+  padding: 1rem;
+}
+
+.mf-clickable-row {
+  cursor: pointer;
+}
+
+.mf-col-end {
+  text-align: right;
+}
+
+.mf-col-center {
+  text-align: center;
+}
+
+.mf-col-toggle {
+  width: 2rem;
+  color: var(--mf-muted);
+}
+
+.mf-detail-row > td {
+  background: var(--mf-bg);
+}
+
+.mf-installments-detail {
+  width: 100%;
+  max-width: 560px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.mf-installments-detail th {
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mf-muted);
+  padding: 0.25rem 0.5rem;
+}
+.mf-installments-detail td {
+  padding: 0.25rem 0.5rem;
+}
+
+.mf-pagination-block {
+  display: block;
+  margin-top: 1rem;
+}

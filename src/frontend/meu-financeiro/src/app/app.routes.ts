@@ -97,12 +97,22 @@ export const routes: Routes = [
       },
       {
         path: 'parcelamento',
+        loadComponent: () =>
+          import('./features/installments/installment-list.component').then((m) => m.InstallmentListComponent),
+        data: {
+          title: 'Parcelamentos',
+          section: 'Financeiro',
+          help: 'Lista os parcelamentos criados, com a origem, o total e quantas parcelas já foram conciliadas. Clique numa linha para ver parcela a parcela: número, vencimento, valor e status.',
+        },
+      },
+      {
+        path: 'parcelamento/novo',
         canActivate: [canWriteGuard],
         loadComponent: () =>
           import('./features/installments/installment-form.component').then((m) => m.InstallmentFormComponent),
         data: {
-          title: 'Parcelamento',
-          section: 'Financeiro',
+          title: 'Novo parcelamento',
+          parent: { title: 'Parcelamentos', path: '/parcelamento' },
           help: 'Divida uma compra em parcelas informando o valor total (dividido pela quantidade) ou o valor de cada parcela (multiplicado pela quantidade). A soma das parcelas sempre fecha exatamente o valor principal, com o ajuste de arredondamento ficando na última parcela. Cada parcela vira um lançamento independente.',
         },
       },

@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MfIconComponent } from '../../shared/icons/mf-icon.component';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -30,6 +30,7 @@ import { MoneyInputComponent } from '../../shared/components/money-input.compone
   imports: [
     CommonModule,
     FormsModule,
+    RouterLink,
     MfIconComponent,
     ButtonDirective,
     InputText,

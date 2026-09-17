@@ -24,3 +24,45 @@ public record InstallmentPlanResponse(
     int InstallmentCount,
     IReadOnlyList<decimal> InstallmentAmounts
 );
+
+/// <summary>
+/// Linha da lista de parcelamentos. O plano em si não guarda conta/cartão — a origem vive nos
+/// FinancialTransaction gerados por cada parcela, por isso ela (e o andamento) são resolvidos
+/// a partir dos lançamentos vinculados.
+/// </summary>
+public record InstallmentPlanListItemResponse(
+    Guid Id,
+    string Description,
+    InstallmentMode Mode,
+    decimal TotalAmount,
+    int InstallmentCount,
+    int PaidCount,
+    string? AccountName,
+    string? CreditCardName,
+    DateOnly FirstDueDate,
+    DateOnly LastDueDate,
+    int? NextInstallmentNumber,
+    DateOnly? NextDueDate,
+    decimal? NextAmount
+);
+
+public record InstallmentPlanDetailResponse(
+    Guid Id,
+    string Description,
+    InstallmentMode Mode,
+    decimal TotalAmount,
+    int InstallmentCount,
+    int PaidCount,
+    string? AccountName,
+    string? CreditCardName,
+    IReadOnlyList<InstallmentItemResponse> Installments
+);
+
+public record InstallmentItemResponse(
+    Guid Id,
+    int Number,
+    decimal Amount,
+    DateOnly DueDate,
+    TransactionStatus? Status,
+    Guid? FinancialTransactionId
+);

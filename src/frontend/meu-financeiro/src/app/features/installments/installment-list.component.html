@@ -1,0 +1,99 @@
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title"><mf-icon name="mf-installments" class="mf-page-title-icon"></mf-icon>Parcelamentos</h2>
+    <div class="mf-sub">Compras divididas em parcelas, com o andamento de cada plano.</div>
+  </div>
+  @if (authService.canWrite()) {
+    <a pButton routerLink="/parcelamento/novo">+ Novo parcelamento</a>
+  }
+</div>
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && plans().length === 0"
+      emptyMessage="Nenhum parcelamento criado ainda."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && plans().length > 0) {
+      <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir do que o (onSort)
+           também escreve fecha um ciclo de reemissão infinita no p-table — ver comentário
+           completo em transaction-list.component.html. -->
+      <p-table [value]="plans()" [customSort]="true" (onSort)="onSort($event)" size="small">
+        <ng-template #header>
+          <tr>
+            <th></th>
+            <th pSortableColumn="description">Descrição <p-sort-icon field="description" /></th>
+            <th>Origem</th>
+            <th>Modo</th>
+            <th pSortableColumn="totalAmount" class="mf-col-end">Total <p-sort-icon field="totalAmount" /></th>
+            <th pSortableColumn="installmentCount" class="mf-col-center">Parcelas <p-sort-icon field="installmentCount" /></th>
+            <th>Próxima parcela</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-plan>
+          <tr class="mf-clickable-row" (click)="toggleDetail(plan)">
+            <td class="mf-col-toggle">
+              <i class="pi" [ngClass]="expandedId() === plan.id ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
+            </td>
+            <td>{{ plan.description }}</td>
+            <td>{{ origin(plan) }}</td>
+            <td>{{ modeLabel(plan.mode) }}</td>
+            <td class="mf-col-end">{{ plan.totalAmount | currency: 'BRL' }}</td>
+            <td class="mf-col-center">{{ plan.paidCount }}/{{ plan.installmentCount }}</td>
+            <td>
+              @if (plan.nextDueDate) {
+                {{ plan.nextInstallmentNumber }}/{{ plan.installmentCount }} em {{ plan.nextDueDate | date: 'dd/MM/yyyy' }}
+                <span class="mf-sub">({{ plan.nextAmount | currency: 'BRL' }})</span>
+              } @else {
+                <span class="mf-sub">Tudo conciliado</span>
+              }
+            </td>
+          </tr>
+
+          @if (expandedId() === plan.id) {
+            <tr class="mf-detail-row">
+              <td colspan="7">
+                @if (loadingDetail()) {
+                  <div class="mf-sub">Carregando parcelas...</div>
+                } @else if (expandedDetail(); as detail) {
+                  <table class="mf-installments-detail">
+                    <tr>
+                      <th>Parcela</th>
+                      <th>Vencimento</th>
+                      <th class="mf-col-end">Valor</th>
+                      <th>Status</th>
+                    </tr>
+                    @for (installment of detail.installments; track installment.id) {
+                      <tr>
+                        <td>{{ installment.number }}/{{ detail.installmentCount }}</td>
+                        <td>{{ installment.dueDate | date: 'dd/MM/yyyy' }}</td>
+                        <td class="mf-col-end">{{ installment.amount | currency: 'BRL' }}</td>
+                        <td>
+                          <span class="mf-badge" [ngClass]="statusClass(installment.status)">{{ statusLabel(installment.status) }}</span>
+                        </td>
+                      </tr>
+                    }
+                  </table>
+                }
+              </td>
+            </tr>
+          }
+        </ng-template>
+      </p-table>
+    }
+
+    @if (!loading() && !error() && plans().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="filter.page"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>
