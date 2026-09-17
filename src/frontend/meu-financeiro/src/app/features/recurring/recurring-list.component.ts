@@ -2,6 +2,8 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MfIconComponent } from '../../shared/icons/mf-icon.component';
+import { ConfirmationService } from 'primeng/api';
+import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Table, SortIcon, SortableColumn } from 'primeng/table';
 import { Tooltip } from 'primeng/tooltip';
 import { AuthService } from '../../core/services/auth.service';
@@ -21,7 +23,8 @@ import { ListStateComponent } from '../../shared/components/list-state.component
 @Component({
   selector: 'mf-recurring-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, MfIconComponent, Table, SortIcon, SortableColumn, ListStateComponent, Tooltip],
+  imports: [CommonModule, RouterLink, MfIconComponent, Table, SortIcon, SortableColumn, ListStateComponent, Tooltip, ConfirmDialog],
+  providers: [ConfirmationService],
   templateUrl: './recurring-list.component.html',
   styleUrl: './recurring-list.component.scss',
 })
@@ -34,6 +37,7 @@ export class RecurringListComponent implements OnInit {
 
   constructor(
     private readonly recurringService: RecurringService,
+    private readonly confirmationService: ConfirmationService,
     readonly authService: AuthService,
   ) {}
 
@@ -54,6 +58,23 @@ export class RecurringListComponent implements OnInit {
         this.error.set('Não foi possível carregar as recorrências.');
         this.loading.set(false);
       },
+    });
+  }
+
+  confirmDelete(recurring: RecurringTransaction): void {
+    this.confirmationService.confirm({
+      header: 'Excluir recorrência',
+      message: `Deseja realmente excluir '${recurring.description}'? Ocorrências já conciliadas continuam no histórico como lançamentos avulsos.`,
+      acceptLabel: 'Excluir',
+      rejectLabel: 'Cancelar',
+      accept: () => this.delete(recurring),
+    });
+  }
+
+  private delete(recurring: RecurringTransaction): void {
+    this.recurringService.delete(recurring.id).subscribe({
+      next: () => this.load(),
+      error: () => this.error.set('Não foi possível excluir a recorrência.'),
     });
   }
 

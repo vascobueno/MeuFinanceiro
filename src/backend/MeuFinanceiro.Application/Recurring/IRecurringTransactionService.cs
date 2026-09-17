@@ -10,4 +10,9 @@ public interface IRecurringTransactionService
     Task<RecurringTransactionResponse> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     Task<RecurringTransactionResponse> CreateVersionAsync(Guid id, CreateRecurringVersionRequest request, CancellationToken ct = default);
+
+    /// <summary>Altera o cadastro (destino/categoria/vigência/ativa). O valor só muda por versão.</summary>
+    Task<RecurringTransactionResponse> UpdateAsync(Guid id, UpdateRecurringTransactionRequest request, CancellationToken ct = default);
+
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

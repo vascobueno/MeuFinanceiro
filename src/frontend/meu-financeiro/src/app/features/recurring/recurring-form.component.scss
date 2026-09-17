@@ -65,6 +65,21 @@
   gap: 0.5rem;
 }
 
+// Separa o cadastro da recorrência (acima) do versionamento de valor (abaixo) — são duas
+// operações distintas, cada uma com seu próprio botão de salvar.
+.mf-form-divider {
+  border-top: 1px solid var(--mf-line);
+  margin: 0.25rem 0;
+}
+
+.mf-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mf-muted);
+}
+
 .mf-form-spinner {
   display: inline-block;
   margin-right: 0.5rem;

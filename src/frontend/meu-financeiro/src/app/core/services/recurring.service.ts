@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { CreateRecurringVersionRequest, RecurringTransaction } from '../models/recurring.model';
+import { CreateRecurringVersionRequest, RecurringTransaction, UpdateRecurringTransactionRequest } from '../models/recurring.model';
 import { TransactionType } from '../models/transaction.model';
 import { toHttpParams } from './http-params.util';
 
@@ -23,5 +23,13 @@ export class RecurringService {
 
   createVersion(id: string, request: CreateRecurringVersionRequest): Observable<RecurringTransaction> {
     return this.http.post<RecurringTransaction>(`${this.baseUrl}/${id}/versions`, request);
+  }
+
+  update(id: string, request: UpdateRecurringTransactionRequest): Observable<RecurringTransaction> {
+    return this.http.put<RecurringTransaction>(`${this.baseUrl}/${id}`, request);
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 }

@@ -1,3 +1,5 @@
+<p-confirm-dialog />
+
 <div class="mf-list-header">
   <div>
     <h2 class="mf-page-title"><mf-icon name="mf-recurring" class="mf-page-title-icon"></mf-icon>Recorrências</h2>
@@ -65,6 +67,16 @@
                 >
                   <i class="pi pi-pencil"></i>
                 </a>
+                <button
+                  type="button"
+                  class="mf-row-delete-icon"
+                  pTooltip="Excluir"
+                  tooltipPosition="top"
+                  [attr.aria-label]="'Excluir'"
+                  (click)="confirmDelete(r)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
               }
             </td>
           </tr>

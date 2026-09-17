@@ -29,4 +29,15 @@ public class RecurringTransactionsController : ControllerBase
     [HttpPost("{id:guid}/versions")]
     public async Task<ActionResult<RecurringTransactionResponse>> CreateVersion(Guid id, CreateRecurringVersionRequest request, CancellationToken ct)
         => Ok(await _recurringTransactionService.CreateVersionAsync(id, request, ct));
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<RecurringTransactionResponse>> Update(Guid id, UpdateRecurringTransactionRequest request, CancellationToken ct)
+        => Ok(await _recurringTransactionService.UpdateAsync(id, request, ct));
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _recurringTransactionService.DeleteAsync(id, ct);
+        return NoContent();
+    }
 }

@@ -13,8 +13,11 @@ export interface RecurringTransaction {
   type: TransactionType;
   currentAmount: number;
   frequency: RecurrenceFrequency;
+  accountId?: string | null;
   accountName?: string | null;
+  creditCardId?: string | null;
   creditCardName?: string | null;
+  categoryId?: string | null;
   startDate: string;
   endDate?: string | null;
   isActive: boolean;
@@ -25,4 +28,14 @@ export interface RecurringTransaction {
 export interface CreateRecurringVersionRequest {
   effectiveFrom: string;
   amount: number;
+}
+
+/** Altera o cadastro (destino/categoria/vigência/ativa) — o valor só muda por versão. */
+export interface UpdateRecurringTransactionRequest {
+  description: string;
+  accountId?: string | null;
+  creditCardId?: string | null;
+  categoryId?: string | null;
+  endDate?: string | null;
+  isActive: boolean;
 }

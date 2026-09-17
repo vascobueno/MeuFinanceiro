@@ -1,6 +1,8 @@
+using MeuFinanceiro.Application.Common;
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
 using MeuFinanceiro.Domain.Entities;
+using MeuFinanceiro.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace MeuFinanceiro.Application.Recurring;
@@ -32,26 +34,11 @@ public class RecurringTransactionService : IRecurringTransactionService
         if (type is not null) query = query.Where(r => r.Type == type);
 
         var recurring = await query.OrderBy(r => r.Description).ToListAsync(ct);
-
-        // RecurringTransaction guarda só o Id da conta/cartão (sem navegação mapeada), então
-        // os nomes são resolvidos à parte — mesmo padrão de outras telas que cruzam listas
-        // carregadas separadamente pelo frontend, só que aqui é mais simples resolver no backend.
-        var accountIds = recurring.Where(r => r.AccountId is not null).Select(r => r.AccountId!.Value).ToList();
-        var cardIds = recurring.Where(r => r.CreditCardId is not null).Select(r => r.CreditCardId!.Value).ToList();
-
-        var accountNames = await _db.Accounts.Where(a => accountIds.Contains(a.Id)).ToDictionaryAsync(a => a.Id, a => a.Name, ct);
-        var cardNames = await _db.CreditCards.Where(c => cardIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name, ct);
-
-        return recurring
-            .Select(r => ToResponse(
-                r,
-                r.AccountId is Guid accId ? accountNames.GetValueOrDefault(accId) : null,
-                r.CreditCardId is Guid cardId ? cardNames.GetValueOrDefault(cardId) : null))
-            .ToList();
+        return await ToResponsesAsync(recurring, ct);
     }
 
     public async Task<RecurringTransactionResponse> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-        ToResponse(await FindOwnedAsync(id, ct));
+        await ToResponseWithNamesAsync(await FindOwnedAsync(id, ct), ct);
 
     public async Task<RecurringTransactionResponse> CreateVersionAsync(Guid id, CreateRecurringVersionRequest request, CancellationToken ct = default)
     {
@@ -77,7 +64,49 @@ public class RecurringTransactionService : IRecurringTransactionService
         recurring.Versions.Add(newVersion);
 
         await _db.SaveChangesAsync(ct);
-        return ToResponse(recurring);
+        return await ToResponseWithNamesAsync(recurring, ct);
+    }
+
+    public async Task<RecurringTransactionResponse> UpdateAsync(Guid id, UpdateRecurringTransactionRequest request, CancellationToken ct = default)
+    {
+        var recurring = await FindOwnedAsync(id, ct);
+        TransactionOriginRules.Validate(request.AccountId, request.CreditCardId, recurring.Type);
+
+        recurring.Description = request.Description;
+        recurring.AccountId = request.AccountId;
+        recurring.CreditCardId = request.CreditCardId;
+        recurring.CategoryId = request.CategoryId;
+        recurring.EndDate = request.EndDate;
+        recurring.IsActive = request.IsActive;
+        recurring.UpdatedAt = DateTime.UtcNow;
+        recurring.UpdatedBy = _currentUser.UserId;
+
+        await _db.SaveChangesAsync(ct);
+        return await ToResponseWithNamesAsync(recurring, ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var recurring = await FindOwnedAsync(id, ct);
+
+        // A FK FinancialTransaction.RecurringTransactionId é Restrict (AppDbContext), então as
+        // ocorrências já materializadas precisam ser tratadas antes. O critério é o status: o
+        // que já foi conferido contra o extrato (Reconciled) é dinheiro que de fato se moveu e
+        // continua valendo como lançamento avulso — só perde o vínculo. O que ainda era
+        // previsão (Pending/Confirmed) some junto com a regra que o gerou.
+        var linked = await _db.FinancialTransactions.Where(t => t.RecurringTransactionId == id).ToListAsync(ct);
+
+        foreach (var transaction in linked)
+        {
+            if (transaction.Status == TransactionStatus.Reconciled)
+                transaction.RecurringTransactionId = null;
+            else
+                _db.FinancialTransactions.Remove(transaction);
+        }
+
+        // As versões caem por cascade (configurado em AppDbContext).
+        _db.RecurringTransactions.Remove(recurring);
+        await _db.SaveChangesAsync(ct);
     }
 
     private async Task<RecurringTransaction> FindOwnedAsync(Guid id, CancellationToken ct)
@@ -92,6 +121,29 @@ public class RecurringTransactionService : IRecurringTransactionService
 
     /// <summary>Quantas ocorrências futuras mostrar na prévia da listagem (regra 13/docs/11).</summary>
     private const int NextOccurrencesPreviewCount = 3;
+
+    /// <summary>
+    /// RecurringTransaction guarda só o Id da conta/cartão (sem navegação mapeada), então os
+    /// nomes são resolvidos à parte, numa query por lista em vez de uma por item.
+    /// </summary>
+    private async Task<IReadOnlyList<RecurringTransactionResponse>> ToResponsesAsync(IReadOnlyList<RecurringTransaction> recurring, CancellationToken ct)
+    {
+        var accountIds = recurring.Where(r => r.AccountId is not null).Select(r => r.AccountId!.Value).ToList();
+        var cardIds = recurring.Where(r => r.CreditCardId is not null).Select(r => r.CreditCardId!.Value).ToList();
+
+        var accountNames = await _db.Accounts.Where(a => accountIds.Contains(a.Id)).ToDictionaryAsync(a => a.Id, a => a.Name, ct);
+        var cardNames = await _db.CreditCards.Where(c => cardIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name, ct);
+
+        return recurring
+            .Select(r => ToResponse(
+                r,
+                r.AccountId is Guid accId ? accountNames.GetValueOrDefault(accId) : null,
+                r.CreditCardId is Guid cardId ? cardNames.GetValueOrDefault(cardId) : null))
+            .ToList();
+    }
+
+    private async Task<RecurringTransactionResponse> ToResponseWithNamesAsync(RecurringTransaction recurring, CancellationToken ct) =>
+        (await ToResponsesAsync(new[] { recurring }, ct))[0];
 
     private static RecurringTransactionResponse ToResponse(RecurringTransaction recurring, string? accountName = null, string? creditCardName = null)
     {
@@ -110,8 +162,11 @@ public class RecurringTransactionService : IRecurringTransactionService
             recurring.Type,
             currentVersion.Amount,
             recurring.Frequency,
+            recurring.AccountId,
             accountName,
+            recurring.CreditCardId,
             creditCardName,
+            recurring.CategoryId,
             recurring.StartDate,
             recurring.EndDate,
             recurring.IsActive,

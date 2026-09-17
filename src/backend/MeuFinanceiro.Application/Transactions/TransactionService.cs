@@ -76,7 +76,7 @@ public class TransactionService : ITransactionService
 
     public async Task<IReadOnlyList<TransactionResponse>> CreateAsync(CreateTransactionRequest request, CancellationToken ct = default)
     {
-        ValidateOrigin(request.AccountId, request.CreditCardId, request.Type);
+        TransactionOriginRules.Validate(request.AccountId, request.CreditCardId, request.Type);
 
         if (request.Type == TransactionType.Transfer)
             return await CreateTransferAsync(request, ct);
@@ -128,17 +128,6 @@ public class TransactionService : ITransactionService
     }
 
     // ----------------- helpers -----------------
-
-    private static void ValidateOrigin(Guid? accountId, Guid? creditCardId, TransactionType type)
-    {
-        if (type == TransactionType.Transfer) return; // validado em CreateTransferAsync
-
-        if (accountId is null && creditCardId is null)
-            throw new BusinessRuleException("origem-obrigatoria", "Informe uma conta ou um cartão de origem para o lançamento.");
-
-        if (accountId is not null && creditCardId is not null)
-            throw new BusinessRuleException("origem-ambigua", "Um lançamento pertence a uma conta OU a um cartão, nunca aos dois (regra 3).");
-    }
 
     private static void EnsureNotReconciled(FinancialTransaction transaction)
     {
