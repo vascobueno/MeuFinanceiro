@@ -102,6 +102,38 @@ Fica o registro: **uma única rodada não decide nada**. Medir todos os endpoint
 repetir quando algo destoa) é o que separa sinal de ruído — e teria evitado uma "otimização"
 inventada para um problema inexistente.
 
+---
+
+## Rodada 4 — item 3: payload da projeção
+
+O Dashboard baixava a linha do tempo inteira (1,5 MB na projeção de 60 dias) para usar **5 itens,
+uma contagem e uma soma**. A resposta ganhou os agregados (`TimelineCount`,
+`ProjectedExpensesTotal`), sempre calculados sobre a linha completa, e o parâmetro
+`maxTimelineEntries` limita só o que trafega.
+
+| Endpoint | p50 antes → depois | payload antes → depois |
+|---|---|---|
+| **Dashboard** | 208 (baseline) → **131 ms** | **2343 KB → 50 KB** (-98%) |
+| `GET /projection` +60d (tela) | 181 → **103 ms** | 1523 KB (inalterado — a tela mostra a linha toda) |
+
+### Nota de método: o harness media falhas como sucesso
+
+Uma rodada devolveu ~15 ms e **0 KB** em todos os endpoints. Não era otimização mágica: o rate
+limit da autenticação tinha disparado e o `bench.js` estava cronometrando respostas 401/429 como se
+fossem válidas.
+
+O harness passou a **abortar em qualquer resposta não-2xx**. Sem isso, uma medição inteira de
+números falsos poderia ter virado "prova" de um ganho inexistente.
+
+### Item 5 (chamada dupla da projeção): dispensado pela medição
+
+O Dashboard ainda chama a projeção duas vezes (+30d e +60d), mas agora cada uma trafega poucos KB e
+as duas correm em paralelo: **131 ms contra uma meta de 1 s**. Deduplicar exigiria um parâmetro
+extra na API para pedir o saldo em duas datas, e economizaria poucas dezenas de ms.
+
+Pelo critério de parada do plano (D5 — toda otimização precisa citar a linha de medição que a
+justifica), **não se justifica**. Fica registrado como decisão consciente, não como esquecimento.
+
 ### Ajuste de rumo
 
 O baseline reordena prioridades em relação ao plano. Entram na Parte D, por evidência:

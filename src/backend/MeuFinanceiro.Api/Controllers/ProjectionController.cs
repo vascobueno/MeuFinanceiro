@@ -18,6 +18,9 @@ public class ProjectionController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ProjectionResponse>> Get([FromQuery] DateOnly date, CancellationToken ct)
-        => Ok(await _service.GetProjectionAsync(date, ct));
+    public async Task<ActionResult<ProjectionResponse>> Get(
+        [FromQuery] DateOnly date,
+        [FromQuery] int? maxTimelineEntries,
+        CancellationToken ct)
+        => Ok(await _service.GetProjectionAsync(date, maxTimelineEntries, ct));
 }

@@ -11,7 +11,12 @@ export class ProjectionService {
 
   constructor(private readonly http: HttpClient) {}
 
-  getProjection(date: string): Observable<Projection> {
-    return this.http.get<Projection>(this.baseUrl, { params: toHttpParams({ date }) });
+  /**
+   * maxTimelineEntries limita quantas entradas voltam na resposta; os agregados
+   * (timelineCount, projectedExpensesTotal) continuam sobre a linha completa. Use quando só
+   * precisar dos números e de uma prévia — evita trafegar a linha do tempo inteira.
+   */
+  getProjection(date: string, maxTimelineEntries?: number): Observable<Projection> {
+    return this.http.get<Projection>(this.baseUrl, { params: toHttpParams({ date, maxTimelineEntries }) });
   }
 }

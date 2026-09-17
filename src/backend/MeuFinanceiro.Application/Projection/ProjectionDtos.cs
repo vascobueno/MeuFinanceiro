@@ -21,5 +21,10 @@ public record ProjectionResponse(
     decimal InvestmentsBalance,
     decimal ProjectedNetWorth,
     bool HasNegativeAccountsBalance,
-    IReadOnlyList<ProjectionEntry> Timeline
+    IReadOnlyList<ProjectionEntry> Timeline,
+    // Agregados da linha do tempo COMPLETA, mesmo quando Timeline vem truncada por
+    // maxTimelineEntries. Existem porque o Dashboard precisava só de um total e de uma contagem,
+    // e para obtê-los baixava a linha inteira — medido em 1,5 MB numa única projeção de 60 dias.
+    int TimelineCount,
+    decimal ProjectedExpensesTotal
 );

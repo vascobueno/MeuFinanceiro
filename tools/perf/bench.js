@@ -51,7 +51,9 @@ async function main() {
     body: JSON.stringify(USER),
   });
   if (!login.ok) {
-    console.error('login falhou:', login.status, '— rode o bootstrap.js primeiro');
+    console.error('login falhou:', login.status, await login.text());
+    if (login.status === 429) console.error('Rate limit de autenticação — aguarde e repita.');
+    else console.error('Rode o bootstrap.js primeiro.');
     process.exit(1);
   }
   const jar = parseCookies(login);
@@ -72,13 +74,15 @@ async function main() {
     ['GET /recurring-transactions', () => get('/recurring-transactions')],
     ['GET /investments/summary', () => get('/investments/summary')],
     [
+      // Reproduz exatamente o que o dashboard.component.ts pede, inclusive o maxTimelineEntries:
+      // ele usa da projeção só os saldos, 5 eventos e dois agregados.
       'Dashboard (5 chamadas em paralelo)',
       () =>
         Promise.all([
           get('/accounts?page=1&pageSize=100'),
           get('/investments/summary'),
-          get(`/projection?date=${isoPlus(30)}`),
-          get(`/projection?date=${isoPlus(60)}`),
+          get(`/projection?date=${isoPlus(30)}&maxTimelineEntries=5`),
+          get(`/projection?date=${isoPlus(60)}&maxTimelineEntries=0`),
           get('/transactions?page=1&pageSize=100'),
         ]),
     ],
@@ -98,7 +102,17 @@ async function main() {
       const res = await call();
       const respostas = Array.isArray(res) ? res : [res];
       let total = 0;
-      for (const r of respostas) total += (await r.text()).length;
+      for (const r of respostas) {
+        // Sem esta checagem, uma resposta 401/429 seria medida como se fosse sucesso — e o
+        // rate limit do login já produziu uma rodada inteira de números falsos (~15 ms, 0 KB).
+        if (!r.ok) {
+          console.error(`\nFALHA em "${nome}": HTTP ${r.status} ${r.url}`);
+          console.error('Medição abortada — números de resposta com erro não valem nada.');
+          if (r.status === 429) console.error('Rate limit do login: aguarde alguns minutos e repita.');
+          process.exit(1);
+        }
+        total += (await r.text()).length;
+      }
       const dt = performance.now() - t0;
 
       if (i >= WARMUP) {

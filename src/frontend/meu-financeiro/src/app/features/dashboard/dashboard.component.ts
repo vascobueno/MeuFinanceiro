@@ -12,6 +12,9 @@ import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/components/timeline.component';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 
+/** Quantos "próximos movimentos" o painel mostra — e, por isso, quantos ele pede à projeção. */
+const UPCOMING_EVENTS = 5;
+
 interface CategorySummary {
   name: string;
   amount: number;
@@ -77,8 +80,10 @@ export class DashboardComponent implements OnInit {
     forkJoin({
       accounts: this.accountService.getAll({ page: 1, pageSize: 100 }),
       investments: this.investmentService.getSummary(),
-      projection30: this.projectionService.getProjection(this.toIsoDate(in30Days)),
-      projection60: this.projectionService.getProjection(this.toIsoDate(in60Days)),
+      // O dashboard usa da projeção só os saldos, os 5 próximos eventos e dois agregados —
+      // não a linha do tempo inteira, que chegava a 1,5 MB numa projeção de 60 dias.
+      projection30: this.projectionService.getProjection(this.toIsoDate(in30Days), UPCOMING_EVENTS),
+      projection60: this.projectionService.getProjection(this.toIsoDate(in60Days), 0),
       expenses: this.transactionService.getAll({
         page: 1,
         pageSize: 100,
@@ -98,9 +103,8 @@ export class DashboardComponent implements OnInit {
           { label: '+60 dias', value: projection60.projectedAccountsBalance },
         ]);
 
-        const upcoming = projection30.timeline.slice(0, 5);
         this.upcomingEvents.set(
-          upcoming.map((entry) => ({
+          projection30.timeline.map((entry) => ({
             dateLabel: new Date(entry.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase(),
             title: entry.description,
             amountLabel: `${entry.amount >= 0 ? '+' : '−'} ${this.formatCurrency(Math.abs(entry.amount))}`,
@@ -108,9 +112,9 @@ export class DashboardComponent implements OnInit {
           })),
         );
 
-        const expenseEntries = projection30.timeline.filter((e) => e.amount < 0);
-        this.commitments30d.set(Math.abs(expenseEntries.reduce((sum, e) => sum + e.amount, 0)));
-        this.commitmentsCount.set(projection30.timeline.length);
+        // Agregados vêm prontos do backend, sobre a linha completa — a resposta traz só a prévia.
+        this.commitments30d.set(projection30.projectedExpensesTotal);
+        this.commitmentsCount.set(projection30.timelineCount);
 
         const totals = new Map<string, number>();
         for (const t of expenses.items) {

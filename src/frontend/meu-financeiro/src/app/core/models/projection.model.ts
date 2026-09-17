@@ -16,4 +16,7 @@ export interface Projection {
   projectedNetWorth: number;
   hasNegativeAccountsBalance: boolean;
   timeline: ProjectionEntry[];
+  /** Agregados da linha COMPLETA — válidos mesmo quando `timeline` vem truncada. */
+  timelineCount: number;
+  projectedExpensesTotal: number;
 }

@@ -24,7 +24,7 @@ public class ProjectionService : IProjectionService
         _balances = balances;
     }
 
-    public async Task<ProjectionResponse> GetProjectionAsync(DateOnly date, CancellationToken ct = default)
+    public async Task<ProjectionResponse> GetProjectionAsync(DateOnly date, int? maxTimelineEntries = null, CancellationToken ct = default)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -106,6 +106,14 @@ public class ProjectionService : IProjectionService
             .Where(p => p is not null)
             .Sum(p => p!.NetValue);
 
+        // Agregados sempre sobre a linha completa; só a lista devolvida é truncada.
+        var timelineCount = timeline.Count;
+        var projectedExpensesTotal = Math.Abs(timeline.Where(e => e.Amount < 0).Sum(e => e.Amount));
+
+        var returnedTimeline = maxTimelineEntries is int max && max >= 0 && timeline.Count > max
+            ? timeline.Take(max).ToList()
+            : timeline;
+
         return new ProjectionResponse(
             date,
             currentAccountsBalance,
@@ -113,7 +121,9 @@ public class ProjectionService : IProjectionService
             investmentsBalance,
             projectedAccountsBalance + investmentsBalance,
             hasNegative,
-            timeline
+            returnedTimeline,
+            timelineCount,
+            projectedExpensesTotal
         );
     }
 
