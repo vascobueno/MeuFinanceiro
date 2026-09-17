@@ -53,6 +53,29 @@ Execution Time: 10.211 ms
 4. **A projeção não é dominada pela expansão de recorrências** como se temia: 4 queries e ~180 ms,
    com o peso concentrado na serialização do payload.
 
+---
+
+## Rodada 2 — item 1: saldo em uma consulta + corte `<= hoje`
+
+`AccountBalanceQueries` + `AccountBalanceService`; `AccountService` e `ProjectionService` passam a
+usar a mesma definição de saldo.
+
+| Endpoint | p50 antes → depois | p95 antes → depois | queries |
+|---|---|---|---|
+| `GET /accounts` | 49 → **23 ms** (-53%) | 65 → **34 ms** | **12 → 3** |
+| `GET /projection` +30d | 178 → **120 ms** (-33%) | 211 → **136 ms** | 4 → 5 |
+| `GET /projection` +60d | 181 → **126 ms** (-30%) | 320 → **149 ms** (-53%) | 4 → 5 |
+| **Dashboard** | 208 → **167 ms** (-20%) | 260 → **190 ms** | ~20 → ~11 |
+
+**Correção verificada**: os 10 saldos devolvidos pela API batem centavo a centavo com o oráculo SQL
+(`InitialBalance + SUM(...) WHERE Status <> 1 AND TransactionDate <= CURRENT_DATE`).
+
+A projeção ganhou **uma** consulta (o saldo virou soma no banco em vez de agregação em memória) e
+mesmo assim ficou 30% mais rápida, porque deixou de trazer o histórico inteiro para descartar quase
+tudo em memória. Trocar uma consulta a mais por muito menos dado trafegado compensou.
+
+Payloads seguem iguais — são o alvo dos itens 2 e 3.
+
 ### Ajuste de rumo
 
 O baseline reordena prioridades em relação ao plano. Entram na Parte D, por evidência:

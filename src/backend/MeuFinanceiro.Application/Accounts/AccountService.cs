@@ -11,11 +11,13 @@ public class AccountService : IAccountService
 {
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IAccountBalanceService _balances;
 
-    public AccountService(IApplicationDbContext db, ICurrentUserService currentUser)
+    public AccountService(IApplicationDbContext db, ICurrentUserService currentUser, IAccountBalanceService balances)
     {
         _db = db;
         _currentUser = currentUser;
+        _balances = balances;
     }
 
     public async Task<PagedResult<AccountResponse>> GetAllAsync(PagedRequest request, CancellationToken ct = default)
@@ -39,9 +41,9 @@ public class AccountService : IAccountService
         var totalItems = await query.CountAsync(ct);
         var accounts = await query.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).ToListAsync(ct);
 
-        var items = new List<AccountResponse>(accounts.Count);
-        foreach (var a in accounts)
-            items.Add(await ToResponseAsync(a, ct));
+        // Uma consulta para a página inteira, não uma por conta.
+        var balances = await _balances.GetBalancesAsync(accounts.Select(a => a.Id).ToList(), ct);
+        var items = accounts.Select(a => ToResponse(a, balances[a.Id])).ToList();
 
         return PagedResult<AccountResponse>.Create(items, request.Page, request.PageSize, totalItems);
     }
@@ -49,7 +51,7 @@ public class AccountService : IAccountService
     public async Task<AccountResponse> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var account = await FindOwnedAsync(id, ct);
-        return await ToResponseAsync(account, ct);
+        return await ToResponseWithBalanceAsync(account, ct);
     }
 
     public async Task<AccountResponse> CreateAsync(CreateAccountRequest request, CancellationToken ct = default)
@@ -66,7 +68,7 @@ public class AccountService : IAccountService
 
         _db.Accounts.Add(account);
         await _db.SaveChangesAsync(ct);
-        return await ToResponseAsync(account, ct);
+        return await ToResponseWithBalanceAsync(account, ct);
     }
 
     public async Task<AccountResponse> UpdateAsync(Guid id, UpdateAccountRequest request, CancellationToken ct = default)
@@ -81,7 +83,7 @@ public class AccountService : IAccountService
         account.UpdatedBy = _currentUser.UserId;
 
         await _db.SaveChangesAsync(ct);
-        return await ToResponseAsync(account, ct);
+        return await ToResponseWithBalanceAsync(account, ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -109,12 +111,12 @@ public class AccountService : IAccountService
         return account;
     }
 
-    private async Task<AccountResponse> ToResponseAsync(Account a, CancellationToken ct)
+    private async Task<AccountResponse> ToResponseWithBalanceAsync(Account a, CancellationToken ct)
     {
-        var sum = await _db.FinancialTransactions
-            .Where(t => t.AccountId == a.Id && t.Status != TransactionStatus.Pending)
-            .SumAsync(t => (decimal?)(t.Direction == TransactionDirection.Credit ? t.Amount : -t.Amount), ct) ?? 0m;
-
-        return new AccountResponse(a.Id, a.Name, a.Bank, a.Type, a.InitialBalance, a.InitialBalance + sum, a.IsActive);
+        var balances = await _balances.GetBalancesAsync(new[] { a.Id }, ct);
+        return ToResponse(a, balances[a.Id]);
     }
+
+    private static AccountResponse ToResponse(Account a, decimal movements) =>
+        new(a.Id, a.Name, a.Bank, a.Type, a.InitialBalance, a.InitialBalance + movements, a.IsActive);
 }

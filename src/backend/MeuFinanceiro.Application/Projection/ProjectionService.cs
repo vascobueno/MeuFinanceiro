@@ -1,3 +1,4 @@
+using MeuFinanceiro.Application.Accounts;
 using MeuFinanceiro.Application.Common.Interfaces;
 using MeuFinanceiro.Application.Recurring;
 using MeuFinanceiro.Domain.Enums;
@@ -14,11 +15,13 @@ public class ProjectionService : IProjectionService
 {
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IAccountBalanceService _balances;
 
-    public ProjectionService(IApplicationDbContext db, ICurrentUserService currentUser)
+    public ProjectionService(IApplicationDbContext db, ICurrentUserService currentUser, IAccountBalanceService balances)
     {
         _db = db;
         _currentUser = currentUser;
+        _balances = balances;
     }
 
     public async Task<ProjectionResponse> GetProjectionAsync(DateOnly date, CancellationToken ct = default)
@@ -28,20 +31,23 @@ public class ProjectionService : IProjectionService
         var accounts = await _db.Accounts.AsNoTracking().Where(a => a.GrupoId == _currentUser.GrupoId).ToListAsync(ct);
         var initialBalance = accounts.Sum(a => a.InitialBalance);
 
+        // Saldo atual sai de uma soma no banco, pela mesma definição usada na tela de Contas
+        // (AccountBalanceQueries), em vez de somar em memória o histórico inteiro.
+        var currentAccountsBalance = initialBalance + await _balances.GetGroupMovementsTotalAsync(ct);
+
+        // Só a janela que a timeline realmente usa: de amanhã até a data alvo. Antes esta consulta
+        // trazia todo o histórico do grupo para descartar quase tudo em memória.
         var recordedTransactions = await _db.FinancialTransactions
             .AsNoTracking()
             .Where(t => t.GrupoId == _currentUser.GrupoId && t.AccountId != null && t.Status != TransactionStatus.Pending)
+            .Where(t => t.TransactionDate > today && t.TransactionDate <= date)
             .Select(t => new { t.TransactionDate, t.Description, t.Amount, t.Direction, t.Type })
             .ToListAsync(ct);
-
-        var currentAccountsBalance = initialBalance + recordedTransactions
-            .Where(t => t.TransactionDate <= today)
-            .Sum(t => t.Direction == TransactionDirection.Credit ? t.Amount : -t.Amount);
 
         var timeline = new List<ProjectionEntry>();
 
         // 1) Lançamentos futuros já registrados (parcelas futuras, primeira ocorrência de recorrência etc.).
-        foreach (var t in recordedTransactions.Where(t => t.TransactionDate > today && t.TransactionDate <= date))
+        foreach (var t in recordedTransactions)
         {
             var signedAmount = t.Direction == TransactionDirection.Credit ? t.Amount : -t.Amount;
             timeline.Add(new ProjectionEntry(t.TransactionDate, t.Description, signedAmount, IsProjected: false, t.Type));

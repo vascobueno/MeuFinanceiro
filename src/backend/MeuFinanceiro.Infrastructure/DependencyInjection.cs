@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
 
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IAccountBalanceService, AccountBalanceService>();
         services.AddScoped<ICardService, CardService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IMerchantService, MerchantService>();
