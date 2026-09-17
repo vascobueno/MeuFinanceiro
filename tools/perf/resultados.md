@@ -248,7 +248,7 @@ conseguiriam burlar. Optou-se pelo hook em C# — ver o ponto cego documentado n
 
 ## O que sobrou, e por que não foi mexido
 
-### 1. Expansão de recorrências: O(recorrências × idade) — **achado importante**
+### 1. Expansão de recorrências — ✅ **RESOLVIDO** (ver rodada 9)
 
 `RecurrenceOccurrenceCalculator.EnumerateUntil` começa o cursor na `StartDate` e avança **um período
 por vez**, descartando tudo anterior a hoje. Para uma recorrência semanal de 3 anos atrás são ~156
@@ -263,10 +263,20 @@ recorrência que começa em 2026-01-31
   pulando 3 meses     : 2026-04-30   (preserva o dia de origem)
 ```
 
-Ou seja, hoje uma conta que vence todo dia 31 **degrada permanentemente para o dia 28** depois da
-primeira passagem por fevereiro. Isso é discutivelmente um bug de negócio — mas corrigi-lo muda
-datas de vencimento projetadas, o que é decisão de produto, não de performance. **Fica em aberto,
-com a pergunta anexada.**
+Ou seja, uma conta que vencia todo dia 31 **degradava permanentemente para o dia 28** depois da
+primeira passagem por fevereiro.
+
+**Resolvido na rodada 9**: cada ocorrência passou a ser calculada a partir da `StartDate`
+(`StartDate + n períodos`) em vez de avançar a partir da anterior. Corrige o encurtamento composto
+**e** elimina o custo por idade de uma vez — o índice da primeira ocorrência futura é estimado
+direto pela distância, com ajuste de no máximo uma posição.
+
+Casos de calendário verificados: fim de mês (31/01 → 28/02, **31/03**, **30/04**), fevereiro com 30
+dias de origem, ano bissexto (29/02/2024 anual → 28/02 nos anos comuns e **29/02/2028**), semanal
+preservando o dia da semana, `EndDate`, e recorrência que ainda não começou.
+
+Custo depois: **13 ms** para 5.000 recorrências semanais de 10 anos atrás × 3 ocorrências — o que
+antes era ~522 iterações por recorrência (2,6 milhões no total).
 
 ### 2. Busca por descrição — dentro da meta
 
