@@ -76,6 +76,32 @@ tudo em memória. Trocar uma consulta a mais por muito menos dado trafegado comp
 
 Payloads seguem iguais — são o alvo dos itens 2 e 3.
 
+---
+
+## Rodada 3 — item 2: paginação de `/recurring-transactions`
+
+O endpoint devolvia **todas** as recorrências de uma vez, cada uma com 3 próximas ocorrências.
+Agora é paginado (`PagedRequest`/`PagedResult`), e as ocorrências são calculadas só para a página.
+
+O relatório imprimível de gastos recorrentes **não** pode ser paginado — o total do rodapé precisa
+fechar sobre o conjunto inteiro —, então ganhou endpoint próprio (`GET /recurring-transactions/report`)
+com shape enxuto: sem origem e com apenas a primeira data, em vez das 3 ocorrências.
+
+| Endpoint | p50 antes → depois | payload antes → depois |
+|---|---|---|
+| `GET /recurring-transactions` | 175 → **30 ms** (-83%) | **2237 KB → 9 KB** (-99,6%) |
+| **Dashboard** | 167 → **145 ms** | 2343 KB (inalterado — alvo do item 3) |
+
+### Nota de método: a primeira medição enganou
+
+A rodada logo após reiniciar o backend acusou a projeção em 219/271 ms e o Dashboard em 235 ms —
+*piora* em endpoints que este item nem tocou. Repetindo a medição, os valores voltaram para
+105/104 ms e 145 ms. Era ruído de máquina, não regressão.
+
+Fica o registro: **uma única rodada não decide nada**. Medir todos os endpoints a cada item (e
+repetir quando algo destoa) é o que separa sinal de ruído — e teria evitado uma "otimização"
+inventada para um problema inexistente.
+
 ### Ajuste de rumo
 
 O baseline reordena prioridades em relação ao plano. Entram na Parte D, por evidência:

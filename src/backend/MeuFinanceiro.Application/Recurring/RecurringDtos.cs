@@ -23,6 +23,26 @@ public record RecurringTransactionResponse(
 /// <summary>Prévia de uma ocorrência futura ainda não materializada (mesmo cálculo da Projeção).</summary>
 public record RecurringOccurrencePreview(DateOnly Date, decimal Amount);
 
+/// <summary>Filtro da listagem paginada de recorrências.</summary>
+public class RecurringTransactionFilter : Common.PagedRequest
+{
+    /// <summary>Opcional — usado pelo relatório "Gastos recorrentes" (Expense).</summary>
+    public TransactionType? Type { get; set; }
+}
+
+/// <summary>
+/// Linha do relatório imprimível de gastos recorrentes. Shape enxuto de propósito: o relatório
+/// precisa de TODOS os itens ativos (o total no rodapé tem de fechar), então não pode ser
+/// paginado — mas também não usa origem nem as 3 próximas ocorrências, só a primeira data.
+/// </summary>
+public record RecurringExpenseReportItem(
+    Guid Id,
+    string Description,
+    RecurrenceFrequency Frequency,
+    decimal CurrentAmount,
+    DateOnly? NextDate
+);
+
 /// <summary>Regra 13: cria nova versão por data de vigência; ocorrências anteriores/conciliadas não mudam.</summary>
 public record CreateRecurringVersionRequest(DateOnly EffectiveFrom, decimal Amount);
 

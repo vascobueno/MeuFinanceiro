@@ -2,7 +2,7 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonDirective } from 'primeng/button';
 import { RecurringService } from '../../core/services/recurring.service';
-import { RecurringTransaction } from '../../core/models/recurring.model';
+import { RecurringExpenseReportItem } from '../../core/models/recurring.model';
 import { RecurrenceFrequency, TransactionType } from '../../core/models/transaction.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 
@@ -17,13 +17,11 @@ import { ListStateComponent } from '../../shared/components/list-state.component
 export class RecurringExpensesReportComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly items = signal<RecurringTransaction[]>([]);
+  readonly items = signal<RecurringExpenseReportItem[]>([]);
   readonly generatedAt = new Date();
 
   readonly monthlyTotal = computed(() =>
-    this.items()
-      .filter((i) => i.isActive)
-      .reduce((sum, i) => sum + this.monthlyEquivalent(i), 0),
+    this.items().reduce((sum, i) => sum + this.monthlyEquivalent(i), 0),
   );
 
   constructor(private readonly recurringService: RecurringService) {}
@@ -36,9 +34,9 @@ export class RecurringExpensesReportComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    this.recurringService.getAll(TransactionType.Expense).subscribe({
+    this.recurringService.getReport(TransactionType.Expense).subscribe({
       next: (items) => {
-        this.items.set(items.filter((i) => i.isActive));
+        this.items.set(items);
         this.loading.set(false);
       },
       error: () => {
@@ -62,7 +60,7 @@ export class RecurringExpensesReportComponent implements OnInit {
   }
 
   /** Normaliza pra base mensal só pro total do relatório (semanal ×~4.33, anual ÷12). */
-  private monthlyEquivalent(item: RecurringTransaction): number {
+  private monthlyEquivalent(item: RecurringExpenseReportItem): number {
     switch (item.frequency) {
       case RecurrenceFrequency.Weekly:
         return item.currentAmount * 4.33;

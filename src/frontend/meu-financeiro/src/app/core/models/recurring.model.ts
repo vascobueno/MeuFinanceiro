@@ -24,6 +24,19 @@ export interface RecurringTransaction {
   nextOccurrences: RecurringOccurrencePreview[];
 }
 
+/**
+ * Linha do relatório imprimível de gastos recorrentes. Shape enxuto de propósito: o relatório
+ * precisa de todos os itens ativos (o total tem de fechar), mas não usa origem nem as 3 próximas
+ * ocorrências — só a primeira data.
+ */
+export interface RecurringExpenseReportItem {
+  id: string;
+  description: string;
+  frequency: RecurrenceFrequency;
+  currentAmount: number;
+  nextDate?: string | null;
+}
+
 /** Regra 13: cria nova versão por data de vigência; histórico permanece intacto. */
 export interface CreateRecurringVersionRequest {
   effectiveFrom: string;

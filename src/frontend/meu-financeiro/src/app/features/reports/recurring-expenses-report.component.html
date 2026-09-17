@@ -38,7 +38,7 @@
               <td>{{ item.description }}</td>
               <td>{{ frequencyLabel(item.frequency) }}</td>
               <td class="mf-col-end">{{ item.currentAmount | currency: 'BRL' }}</td>
-              <td>{{ item.nextOccurrences[0]?.date ? (item.nextOccurrences[0].date | date: 'dd/MM/yyyy') : '—' }}</td>
+              <td>{{ item.nextDate ? (item.nextDate | date: 'dd/MM/yyyy') : '—' }}</td>
             </tr>
           }
         </tbody>

@@ -2,10 +2,11 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MfIconComponent } from '../../shared/icons/mf-icon.component';
-import { ConfirmationService } from 'primeng/api';
+import { ConfirmationService, SortEvent } from 'primeng/api';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Table, SortIcon, SortableColumn } from 'primeng/table';
 import { Tooltip } from 'primeng/tooltip';
+import { PaginationComponent } from '../../shared/components/pagination.component';
 import { AuthService } from '../../core/services/auth.service';
 import { RecurringService } from '../../core/services/recurring.service';
 import { RecurringTransaction } from '../../core/models/recurring.model';
@@ -23,7 +24,18 @@ import { ListStateComponent } from '../../shared/components/list-state.component
 @Component({
   selector: 'mf-recurring-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, MfIconComponent, Table, SortIcon, SortableColumn, ListStateComponent, Tooltip, ConfirmDialog],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MfIconComponent,
+    Table,
+    SortIcon,
+    SortableColumn,
+    ListStateComponent,
+    PaginationComponent,
+    Tooltip,
+    ConfirmDialog,
+  ],
   providers: [ConfirmationService],
   templateUrl: './recurring-list.component.html',
   styleUrl: './recurring-list.component.scss',
@@ -34,6 +46,11 @@ export class RecurringListComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly recurrences = signal<RecurringTransaction[]>([]);
+  readonly totalPages = signal(0);
+  readonly totalItems = signal(0);
+
+  // Objeto mutável, não signal — mesmo padrão de invoice-list/transaction-list.
+  readonly filter = { page: 1, pageSize: 20, sortBy: undefined as string | undefined, sortDir: 'asc' as 'asc' | 'desc' };
 
   constructor(
     private readonly recurringService: RecurringService,
@@ -49,9 +66,11 @@ export class RecurringListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    this.recurringService.getAll().subscribe({
-      next: (recurrences) => {
-        this.recurrences.set(recurrences);
+    this.recurringService.getAll(this.filter).subscribe({
+      next: (result) => {
+        this.recurrences.set(result.items);
+        this.totalPages.set(result.totalPages);
+        this.totalItems.set(result.totalItems);
         this.loading.set(false);
       },
       error: () => {
@@ -59,6 +78,17 @@ export class RecurringListComponent implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  onSort(event: SortEvent): void {
+    this.filter.sortBy = event.field;
+    this.filter.sortDir = event.order === -1 ? 'desc' : 'asc';
+    this.load();
+  }
+
+  onPageChange(page: number): void {
+    this.filter.page = page;
+    this.load();
   }
 
   confirmDelete(recurring: RecurringTransaction): void {

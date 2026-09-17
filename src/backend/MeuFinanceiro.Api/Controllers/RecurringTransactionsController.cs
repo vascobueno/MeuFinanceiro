@@ -1,3 +1,4 @@
+using MeuFinanceiro.Application.Common;
 using MeuFinanceiro.Application.Recurring;
 using MeuFinanceiro.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -19,8 +20,13 @@ public class RecurringTransactionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<RecurringTransactionResponse>>> GetAll([FromQuery] TransactionType? type, CancellationToken ct)
-        => Ok(await _recurringTransactionService.GetAllAsync(type, ct));
+    public async Task<ActionResult<PagedResult<RecurringTransactionResponse>>> GetAll([FromQuery] RecurringTransactionFilter filter, CancellationToken ct)
+        => Ok(await _recurringTransactionService.GetAllAsync(filter, ct));
+
+    /// <summary>Relatório imprimível — todos os ativos, sem paginar, em shape enxuto.</summary>
+    [HttpGet("report")]
+    public async Task<ActionResult<IReadOnlyList<RecurringExpenseReportItem>>> GetReport([FromQuery] TransactionType? type, CancellationToken ct)
+        => Ok(await _recurringTransactionService.GetReportAsync(type, ct));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<RecurringTransactionResponse>> GetById(Guid id, CancellationToken ct)
