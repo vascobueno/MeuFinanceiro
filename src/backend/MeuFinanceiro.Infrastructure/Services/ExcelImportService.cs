@@ -119,6 +119,12 @@ public class ExcelImportService : IExcelImportService
         var rowsImported = 0;
         var rowsRejected = 0;
 
+        // Todos os merchants de uma vez, antes do laço: a versão de item único faz uma consulta e
+        // um SaveChangesAsync por chamada, o que aqui significava um commit por linha importada.
+        var merchantIds = await _merchantService.GetOrCreateManyAsync(
+            validatedRows.Where(r => r.IsValid && r.Description is not null).Select(r => r.Description!).ToList(),
+            ct);
+
         foreach (var row in validatedRows)
         {
             if (!row.IsValid || row.Date is null || row.Amount is null || row.Type is null || row.Description is null)
@@ -127,7 +133,9 @@ public class ExcelImportService : IExcelImportService
                 continue;
             }
 
-            var merchantId = await _merchantService.GetOrCreateAndTouchAsync(row.Description, ct);
+            // Guid? explícito: GetValueOrDefault devolveria Guid.Empty numa ausência, que viraria
+            // uma FK inválida em vez de "sem merchant".
+            Guid? merchantId = merchantIds.TryGetValue(row.Description.Trim(), out var found) ? found : null;
 
             var notesParts = new List<string>();
             if (!string.IsNullOrWhiteSpace(row.InstallmentRaw)) notesParts.Add($"Parcela original: {row.InstallmentRaw}");

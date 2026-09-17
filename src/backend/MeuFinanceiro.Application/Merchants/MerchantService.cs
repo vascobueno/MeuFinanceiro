@@ -71,4 +71,56 @@ public class MerchantService : IMerchantService
         await _db.SaveChangesAsync(ct);
         return merchant.Id;
     }
+
+    public async Task<IReadOnlyDictionary<string, Guid>> GetOrCreateManyAsync(
+        IReadOnlyCollection<string> descriptions,
+        CancellationToken ct = default)
+    {
+        // Quantas vezes cada descrição aparece no lote — UsageCount tem de refletir o total
+        // importado, não apenas "+1", que é o que sairia chamando a versão de item único em laço.
+        var occurrences = descriptions
+            .Select(d => d.Trim())
+            .Where(d => !string.IsNullOrEmpty(d))
+            .GroupBy(d => d)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        if (occurrences.Count == 0) return new Dictionary<string, Guid>();
+
+        var names = occurrences.Keys.ToList();
+        var existing = await _db.Merchants
+            .Where(m => m.GrupoId == _currentUser.GrupoId && names.Contains(m.Name))
+            .ToListAsync(ct);
+
+        var result = new Dictionary<string, Guid>(occurrences.Count);
+        var now = DateTime.UtcNow;
+
+        foreach (var merchant in existing)
+        {
+            merchant.UsageCount += occurrences[merchant.Name];
+            merchant.LastUsedAt = now;
+            merchant.UpdatedAt = now;
+            merchant.UpdatedBy = _currentUser.UserId;
+            result[merchant.Name] = merchant.Id;
+        }
+
+        foreach (var (name, count) in occurrences)
+        {
+            if (result.ContainsKey(name)) continue;
+
+            // O Id já vem preenchido pela entidade (Guid.NewGuid no construtor), então o chamador
+            // pode referenciá-lo antes do commit.
+            var merchant = new Merchant
+            {
+                GrupoId = _currentUser.GrupoId,
+                Name = name,
+                UsageCount = count,
+                LastUsedAt = now,
+                CreatedBy = _currentUser.UserId
+            };
+            _db.Merchants.Add(merchant);
+            result[name] = merchant.Id;
+        }
+
+        return result;
+    }
 }
