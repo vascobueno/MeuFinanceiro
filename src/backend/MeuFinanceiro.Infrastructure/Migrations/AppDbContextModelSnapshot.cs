@@ -69,6 +69,55 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.ToTable("Accounts");
                 });
 
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.AccountMonthlyBalance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CumulativeAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("GrupoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAnchor")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MonthAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrupoId");
+
+                    b.HasIndex("AccountId", "PeriodEnd")
+                        .IsUnique();
+
+                    b.ToTable("AccountMonthlyBalances");
+                });
+
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1420,6 +1469,23 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .HasForeignKey("GrupoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.AccountMonthlyBalance", b =>
+                {
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.BankStatement", b =>

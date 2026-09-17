@@ -6,6 +6,13 @@ namespace MeuFinanceiro.Application.Accounts;
 /// <summary>Movimento líquido de uma conta até uma data (sem o saldo inicial).</summary>
 public record AccountMovementsRow(Guid AccountId, decimal Total);
 
+/// <summary>Conferência do cache de fechamento contra a soma bruta dos lançamentos.</summary>
+public record AccountBalanceCheck(Guid AccountId, string AccountName, decimal ViaFechamento, decimal ViaSomaBruta)
+{
+    public decimal Diferenca => ViaFechamento - ViaSomaBruta;
+    public bool Ok => Diferenca == 0m;
+}
+
 /// <summary>
 /// Definição única de como o saldo de uma conta é apurado. Existe porque o mesmo cálculo estava
 /// escrito de duas formas diferentes — e elas discordavam: a tela de Contas somava inclusive

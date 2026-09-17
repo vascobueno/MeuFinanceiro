@@ -2,6 +2,7 @@ using System.Text.Json;
 using MeuFinanceiro.Application.Common.Interfaces;
 using MeuFinanceiro.Domain.Common;
 using MeuFinanceiro.Domain.Entities;
+using MeuFinanceiro.Domain.Enums;
 using MeuFinanceiro.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -27,6 +28,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Grupo> Grupos => Set<Grupo>();
     public DbSet<GrupoMember> GrupoMembers => Set<GrupoMember>();
     public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<AccountMonthlyBalance> AccountMonthlyBalances => Set<AccountMonthlyBalance>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Subcategory> Subcategories => Set<Subcategory>();
@@ -108,6 +110,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasOne(t => t.RecurringTransaction).WithMany().HasForeignKey(t => t.RecurringTransactionId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<AccountMonthlyBalance>(e =>
+        {
+            // Único: um fechamento por conta/mês. Também é a barreira contra duplicata em corrida
+            // entre requisições que gerem o mesmo mês ao mesmo tempo.
+            e.HasIndex(b => new { b.AccountId, b.PeriodEnd }).IsUnique();
+            e.HasOne(b => b.Account).WithMany().HasForeignKey(b => b.AccountId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         // AuditLog é a tabela que mais cresce (toda SaveChangesAsync grava auditoria) e não tinha
         // índice nenhum: a tela fazia Seq Scan + Sort na tabela inteira. A ordem das colunas segue
         // a consulta real de AuditService.GetAllAsync — filtra por grupo e ordena por Timestamp
@@ -166,16 +176,88 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     /// com suas chamadas manuais específicas (ações como "Accept"/"Undo" têm semântica própria
     /// que este override genérico não capturaria) — as duas formas convivem sem conflito.
     /// </summary>
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var auditEntries = BuildAuditEntries();
         if (auditEntries.Count > 0)
             AuditLogs.AddRange(auditEntries);
 
-        return base.SaveChangesAsync(cancellationToken);
+        // Depois da auditoria (para os deletes derivados não poluírem o log) e antes do commit,
+        // na mesma transação.
+        await InvalidateAffectedBalancesAsync(cancellationToken);
+
+        return await base.SaveChangesAsync(cancellationToken);
     }
 
-    private static readonly HashSet<Type> AuditExcludedTypes = new() { typeof(AuditLog), typeof(RefreshToken) };
+    /// <summary>
+    /// Apaga os fechamentos que deixaram de valer por causa dos lançamentos desta transação.
+    ///
+    /// Fica aqui, e não nos services, pelo mesmo motivo da auditoria: FinancialTransaction é
+    /// criada/alterada/removida em 7 pontos de 5 services diferentes (incluindo a conciliação,
+    /// que só muda o Status — e Status muda o saldo). Instrumentar cada um seria frágil.
+    ///
+    /// Apaga em vez de recalcular: recalcular exigiria reescrever todos os meses até hoje dentro
+    /// da transação de escrita, e erros de delta se acumulariam. O DELETE é auto-curativo — o
+    /// fechamento é regenerado na próxima leitura, a partir dos lançamentos, que são a verdade.
+    ///
+    /// PONTO CEGO CONHECIDO: operações em lote do EF (ExecuteUpdate/ExecuteDelete) e scripts SQL
+    /// não passam pelo ChangeTracker e, portanto, não disparam esta invalidação. Hoje não existe
+    /// nenhuma no projeto, mas o arquivamento de lançamentos antigos (docs/24) é o candidato mais
+    /// provável a ser implementado assim — quem o escrever precisa apagar os fechamentos afetados
+    /// explicitamente. O endpoint de verificação de saldos existe para detectar essa divergência.
+    /// </summary>
+    private async Task InvalidateAffectedBalancesAsync(CancellationToken ct)
+    {
+        var affected = CollectAffectedPeriods();
+        if (affected.Count == 0) return;
+
+        foreach (var (accountId, month) in affected)
+        {
+            var stale = await AccountMonthlyBalances
+                .Where(b => b.AccountId == accountId && b.PeriodEnd >= month && !b.IsAnchor)
+                .ToListAsync(ct);
+
+            if (stale.Count > 0) AccountMonthlyBalances.RemoveRange(stale);
+        }
+    }
+
+    /// <summary>
+    /// Para cada conta tocada, o MENOR mês afetado. Uma entrada Modified conta pelos dois lados
+    /// (original e atual): isso cobre de uma vez mudança de data, troca de conta e mudança de
+    /// status, que são justamente os casos em que olhar só o valor novo daria resultado errado.
+    /// </summary>
+    private Dictionary<Guid, DateOnly> CollectAffectedPeriods()
+    {
+        var affected = new Dictionary<Guid, DateOnly>();
+
+        void Consider(Guid? accountId, DateOnly date, TransactionStatus status)
+        {
+            // Pendente não entra no saldo, então não invalida nada.
+            if (accountId is not Guid id || status == TransactionStatus.Pending) return;
+
+            var monthEnd = new DateOnly(date.Year, date.Month, DateTime.DaysInMonth(date.Year, date.Month));
+            if (!affected.TryGetValue(id, out var current) || monthEnd < current)
+                affected[id] = monthEnd;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<FinancialTransaction>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+                Consider(entry.Entity.AccountId, entry.Entity.TransactionDate, entry.Entity.Status);
+
+            if (entry.State is EntityState.Deleted or EntityState.Modified)
+                Consider(
+                    entry.OriginalValues.GetValue<Guid?>(nameof(FinancialTransaction.AccountId)),
+                    entry.OriginalValues.GetValue<DateOnly>(nameof(FinancialTransaction.TransactionDate)),
+                    entry.OriginalValues.GetValue<TransactionStatus>(nameof(FinancialTransaction.Status)));
+        }
+
+        return affected;
+    }
+
+    // AccountMonthlyBalance é cache derivado: auditar sua invalidação só encheria o log de ruído.
+    private static readonly HashSet<Type> AuditExcludedTypes =
+        new() { typeof(AuditLog), typeof(RefreshToken), typeof(AccountMonthlyBalance) };
 
     private List<AuditLog> BuildAuditEntries()
     {

@@ -11,15 +11,25 @@ namespace MeuFinanceiro.Api.Controllers;
 public class AccountsController : ControllerBase
 {
     private readonly IAccountService _accountService;
+    private readonly IAccountBalanceService _balanceService;
 
-    public AccountsController(IAccountService accountService)
+    public AccountsController(IAccountService accountService, IAccountBalanceService balanceService)
     {
         _accountService = accountService;
+        _balanceService = balanceService;
     }
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<AccountResponse>>> GetAll([FromQuery] PagedRequest request, CancellationToken ct)
         => Ok(await _accountService.GetAllAsync(request, ct));
+
+    /// <summary>
+    /// Confere o saldo via fechamento contra a soma bruta dos lançamentos, conta a conta. É a
+    /// rede de regressão do cache de fechamento — ver AccountBalanceService.
+    /// </summary>
+    [HttpGet("balances/verify")]
+    public async Task<ActionResult<IReadOnlyList<AccountBalanceCheck>>> VerifyBalances(CancellationToken ct)
+        => Ok(await _balanceService.VerifyAsync(ct));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AccountResponse>> GetById(Guid id, CancellationToken ct)

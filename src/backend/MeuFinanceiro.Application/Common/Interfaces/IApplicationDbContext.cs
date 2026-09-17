@@ -13,6 +13,7 @@ public interface IApplicationDbContext
     DbSet<Grupo> Grupos { get; }
     DbSet<GrupoMember> GrupoMembers { get; }
     DbSet<Account> Accounts { get; }
+    DbSet<AccountMonthlyBalance> AccountMonthlyBalances { get; }
     DbSet<CreditCard> CreditCards { get; }
     DbSet<Category> Categories { get; }
     DbSet<Subcategory> Subcategories { get; }

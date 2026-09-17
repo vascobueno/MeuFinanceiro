@@ -168,6 +168,41 @@ O scoring é O(n×m) com normalização e split de string por par. Um extrato de
 ~240 mil comparações para ~11 mil. E o número "antes" cresce com o histórico da conta para sempre,
 enquanto o "depois" é limitado pelo período do extrato.
 
+---
+
+## Rodada 7 — itens 8 e 9: importação em lote e fechamento mensal
+
+`GET /audit` caiu de 40 para **16 ms** (efeito do índice da rodada 5 medido pelo endpoint, não só
+pelo `EXPLAIN`). `GET /accounts` chegou a **17 ms** (baseline: 49 ms).
+
+### Prova de correção do fechamento
+
+O fechamento é um cache — o risco dele é dar saldo errado em silêncio. Os testes:
+
+| Caso | Resultado |
+|---|---|
+| Cache gerado do zero | 13 fechamentos na conta A, saldo −40.647,51 · `verify` OK |
+| **Escrita via EF** em mês de 400 dias atrás (criar + confirmar pela API) | fechamentos **13 → 0**: a invalidação disparou e apagou as linhas afetadas |
+| Saldo após essa escrita | **−41.882,07** = −40.647,51 − 1.234,56 (exato) · `verify` OK nas 10 contas |
+| Apagar o cache inteiro à mão | regenera 314 linhas e `verify` volta OK — **auto-curativo** |
+| **Ponto cego**: `UPDATE` direto no SQL alterando um valor antigo | `verify` acusa **divergência de 1000** |
+
+O último caso é o mais importante: confirma que o ponto cego documentado (operação em lote ou
+script SQL não passa pelo ChangeTracker) **existe de fato** e que a rede de segurança
+(`GET /accounts/balances/verify`) **o detecta**. Quem implementar o arquivamento do `docs/24`
+precisa apagar os fechamentos afetados explicitamente.
+
+### Dois testes que passaram por acidente (e foram refeitos)
+
+Vale registrar, porque quase viraram falso positivo:
+
+1. Mudei a **data** de um lançamento antigo entre dois meses **ambos anteriores à âncora**. O
+   acumulado na âncora não muda, então o teste passaria mesmo com a invalidação quebrada.
+2. Tentei exercitar o caminho do EF excluindo um lançamento **Reconciled** — a regra 12 bloqueia,
+   o `DELETE` voltou 405 e nada foi exercitado. O "OK" era ausência de mudança, não correção.
+
+Teste que passa sem exercitar o que deveria é pior que teste ausente: dá confiança falsa.
+
 ### Ajuste de rumo
 
 O baseline reordena prioridades em relação ao plano. Entram na Parte D, por evidência:
