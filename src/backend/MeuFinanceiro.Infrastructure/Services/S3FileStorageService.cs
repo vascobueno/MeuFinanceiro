@@ -65,4 +65,20 @@ public class S3FileStorageService : IFileStorageService
         }, ct);
         return response.ResponseStream;
     }
+
+    public async Task DeleteAsync(string containerName, string blobPath, CancellationToken ct = default)
+    {
+        try
+        {
+            await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
+            {
+                BucketName = containerName,
+                Key = blobPath,
+            }, ct);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Objeto (ou bucket) já não existe — é o estado desejado, não uma falha.
+        }
+    }
 }

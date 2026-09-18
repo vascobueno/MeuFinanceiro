@@ -49,7 +49,12 @@ public class InstallmentPlanService : IInstallmentPlanService
         var created = await _transactionService.CreateAsync(transactionRequest, ct);
         var amounts = created.Select(t => t.Amount).ToList();
 
-        return new InstallmentPlanResponse(amounts.Sum(), amounts.Count, amounts);
+        // O plano é criado lá dentro; o id volta pelas parcelas — é o que permite anexar arquivo
+        // ao parcelamento recém-criado sem uma segunda consulta.
+        var planId = created.Select(t => t.InstallmentPlanId).FirstOrDefault(id => id.HasValue)
+            ?? throw new InvalidOperationException("Parcelamento criado sem plano associado.");
+
+        return new InstallmentPlanResponse(planId, amounts.Sum(), amounts.Count, amounts);
     }
 
     public async Task<PagedResult<InstallmentPlanListItemResponse>> GetAllAsync(PagedRequest request, CancellationToken ct = default)

@@ -61,6 +61,9 @@ public record TransactionResponse(
     Guid? InstallmentId,
     int? InstallmentNumber,
     int? InstallmentCount,
+    /// <summary>Plano a que a parcela pertence — é nele que fica o anexo do parcelamento,
+    /// e é o que a tela precisa depois de criar um lançamento parcelado.</summary>
+    Guid? InstallmentPlanId,
     Guid? RecurringTransactionId,
     string? Notes
 );

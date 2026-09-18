@@ -1,3 +1,4 @@
+using MeuFinanceiro.Application.Attachments;
 using MeuFinanceiro.Application.Common;
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
@@ -23,12 +24,14 @@ public class TransactionService : ITransactionService
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IMerchantService _merchantService;
+    private readonly IAttachmentService _attachmentService;
 
-    public TransactionService(IApplicationDbContext db, ICurrentUserService currentUser, IMerchantService merchantService)
+    public TransactionService(IApplicationDbContext db, ICurrentUserService currentUser, IMerchantService merchantService, IAttachmentService attachmentService)
     {
         _db = db;
         _currentUser = currentUser;
         _merchantService = merchantService;
+        _attachmentService = attachmentService;
     }
 
     public async Task<PagedResult<TransactionResponse>> GetAllAsync(TransactionFilter filter, CancellationToken ct = default)
@@ -122,6 +125,11 @@ public class TransactionService : ITransactionService
     {
         var transaction = await FindOwnedAsync(id, ct);
         EnsureNotReconciled(transaction);
+
+        // Antes de remover o lançamento: o cascade do banco apaga as linhas de anexo, mas não os
+        // objetos no storage — eles ficariam órfãos, ocupando espaço sem nada os referenciar.
+        await _attachmentService.DeleteForOwnerAsync(
+            new AttachmentOwner(AttachmentOwnerKind.Transaction, transaction.Id), ct);
 
         _db.FinancialTransactions.Remove(transaction);
         await _db.SaveChangesAsync(ct);
@@ -224,7 +232,7 @@ public class TransactionService : ITransactionService
             installment.FinancialTransactionId = transaction.Id;
 
             _db.FinancialTransactions.Add(transaction);
-            responses.Add(ToResponse(transaction, plan.InstallmentCount));
+            responses.Add(ToResponse(transaction, plan.InstallmentCount, plan.Id));
         }
 
         await _db.SaveChangesAsync(ct);
@@ -297,7 +305,10 @@ public class TransactionService : ITransactionService
         return transaction;
     }
 
-    private static TransactionResponse ToResponse(FinancialTransaction t, int? installmentCount = null) => new(
+    // installmentCount/installmentPlanId vêm por parâmetro no caminho de criação: ali as entidades
+    // acabaram de ser montadas em memória e a navegação t.Installment ainda não está carregada,
+    // então ler o plano por ela devolveria null exatamente quando a tela precisa do id.
+    private static TransactionResponse ToResponse(FinancialTransaction t, int? installmentCount = null, Guid? installmentPlanId = null) => new(
         t.Id,
         t.TransactionDate,
         t.Description,
@@ -316,6 +327,7 @@ public class TransactionService : ITransactionService
         t.InstallmentId,
         t.Installment?.Number,
         installmentCount ?? t.Installment?.InstallmentPlan?.InstallmentCount,
+        installmentPlanId ?? t.Installment?.InstallmentPlanId,
         t.RecurringTransactionId,
         t.Notes
     );

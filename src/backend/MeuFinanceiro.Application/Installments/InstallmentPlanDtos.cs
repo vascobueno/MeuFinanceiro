@@ -20,6 +20,8 @@ public record CreateInstallmentPlanRequest(
 );
 
 public record InstallmentPlanResponse(
+    /// <summary>Id do plano criado — a tela precisa dele para anexar arquivos logo após salvar.</summary>
+    Guid Id,
     decimal TotalAmount,
     int InstallmentCount,
     IReadOnlyList<decimal> InstallmentAmounts

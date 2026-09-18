@@ -49,6 +49,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<InvestmentPosition> InvestmentPositions => Set<InvestmentPosition>();
     public DbSet<InvestmentTransaction> InvestmentTransactions => Set<InvestmentTransaction>();
     public DbSet<ImportFile> ImportFiles => Set<ImportFile>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -145,6 +146,25 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             .WithOne(i => i.InstallmentPlan)
             .HasForeignKey(i => i.InstallmentPlanId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Anexo não tem vida própria: sai junto com o lançamento ou o plano que documenta. Cascade
+        // aqui (e não o Restrict do resto do modelo) porque não há o que preservar — mas o blob no
+        // storage NÃO é apagado pelo banco, então a Application remove os objetos antes de excluir
+        // o dono (ver AttachmentService.DeleteForOwnerAsync).
+        builder.Entity<Attachment>(e =>
+        {
+            e.HasIndex(a => a.FinancialTransactionId);
+            e.HasIndex(a => a.InstallmentPlanId);
+            e.Property(a => a.FileName).HasMaxLength(255);
+            e.Property(a => a.ContentType).HasMaxLength(100);
+            e.Property(a => a.FileHash).HasMaxLength(64);
+            e.Property(a => a.BlobPath).HasMaxLength(512);
+
+            e.HasOne(a => a.FinancialTransaction).WithMany()
+                .HasForeignKey(a => a.FinancialTransactionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.InstallmentPlan).WithMany()
+                .HasForeignKey(a => a.InstallmentPlanId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<RecurringTransaction>()
             .HasMany(r => r.Versions)

@@ -118,6 +118,70 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.ToTable("AccountMonthlyBalances");
                 });
 
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BlobPath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid?>("FinancialTransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GrupoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("InstallmentPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("bytea");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FinancialTransactionId");
+
+                    b.HasIndex("GrupoId");
+
+                    b.HasIndex("InstallmentPlanId");
+
+                    b.ToTable("Attachments");
+                });
+
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1486,6 +1550,29 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Attachment", b =>
+                {
+                    b.HasOne("MeuFinanceiro.Domain.Entities.FinancialTransaction", "FinancialTransaction")
+                        .WithMany()
+                        .HasForeignKey("FinancialTransactionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MeuFinanceiro.Domain.Entities.InstallmentPlan", "InstallmentPlan")
+                        .WithMany()
+                        .HasForeignKey("InstallmentPlanId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("FinancialTransaction");
+
+                    b.Navigation("InstallmentPlan");
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.BankStatement", b =>

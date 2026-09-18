@@ -1,5 +1,6 @@
 using MeuFinanceiro.Application.Accounts;
 using MeuFinanceiro.Application.Admin;
+using MeuFinanceiro.Application.Attachments;
 using MeuFinanceiro.Application.Auth;
 using MeuFinanceiro.Application.Cards;
 using MeuFinanceiro.Application.Categories;
@@ -74,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
         services.AddScoped<IInstallmentPlanService, InstallmentPlanService>();
+        services.AddScoped<IAttachmentService, AttachmentService>();
 
         return services;
     }
