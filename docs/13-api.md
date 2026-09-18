@@ -40,7 +40,19 @@ PUT `/api/v1/transactions/{id}`
 DELETE `/api/v1/transactions/{id}`
 
 ## Installment plans (Parcelamento)
-POST `/api/v1/installment-plans`
+POST `/api/v1/installment-plans` (resposta traz o `id` do plano, usado para anexar arquivos)
+
+## Attachments (Anexos de lançamento e parcelamento)
+GET `/api/v1/attachments?transactionId=` ou `?installmentPlanId=` (exatamente um dos dois)
+POST `/api/v1/attachments?transactionId=` ou `?installmentPlanId=` (multipart, campo `file`)
+GET `/api/v1/attachments/{id}/content` (download)
+DELETE `/api/v1/attachments/{id}`
+
+PDF e imagens (JPG, PNG, WEBP, HEIC), até 10 MB, no máximo 10 por item. O tipo é conferido pela
+assinatura do arquivo, não pela extensão nem pelo Content-Type enviado (docs/12-seguranca.md).
+O download sai sempre como `Content-Disposition: attachment` com `X-Content-Type-Options: nosniff`,
+e anexo de outro grupo devolve **404** (não 403), para não confirmar que o id existe.
+Perfil Visualizador lê e baixa, mas não anexa nem remove.
 
 ## Recurring transactions (Recorrências)
 GET `/api/v1/recurring-transactions?type=` (lista + prévia das próximas ocorrências; `type`

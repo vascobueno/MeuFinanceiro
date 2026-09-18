@@ -81,3 +81,19 @@
 - Menor privilégio.
 - Scan de dependências vulneráveis no CI (`dotnet list package --vulnerable`, `npm audit`) +
   Dependabot semanal (`.github/dependabot.yml`) — docs/18-ci-cd.md.
+- **Upload de anexos** (lançamentos e parcelamentos — docs/06, docs/07): a allowlist é conferida
+  pela **assinatura do arquivo** (magic number), não pela extensão nem pelo `Content-Type` do
+  multipart. Os dois são escolhidos pelo cliente, então uma allowlist que confie neles não filtra
+  nada — bastaria renomear um executável para `.pdf`. Aceitos: PDF, JPEG, PNG, WEBP, HEIC; até
+  10 MB e 10 anexos por item. O `ContentType` gravado é o deduzido do conteúdo, e a extensão só é
+  aceita se corresponder ao tipo detectado. Ver `FileSignatureValidator`.
+- **Download de anexos**: sai sempre como `Content-Disposition: attachment` (nunca `inline`) com
+  `X-Content-Type-Options: nosniff` — servir conteúdo enviado por usuário para o navegador
+  renderizar é o caminho clássico de XSS armazenado. O nome original do arquivo fica só na coluna
+  do banco; a chave no storage é `{grupoId}/{attachmentId}{extensão}`, para que nome vindo do
+  cliente nunca vire caminho.
+- **Isolamento por grupo nos anexos**: o projeto **não** tem `HasQueryFilter` global, então toda
+  consulta de anexo filtra `GrupoId` explicitamente — sem isso, um GUID adivinhado bastaria para
+  baixar documento de outro grupo. Anexo de outro grupo devolve **404**, não 403: um 403
+  confirmaria que aquele id existe. Coberto por teste de regressão
+  (`AttachmentEndpointTests.Anexo_de_outro_grupo_nao_deve_ser_baixado`).

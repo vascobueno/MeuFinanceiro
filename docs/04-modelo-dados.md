@@ -27,6 +27,7 @@ Investment
 InvestmentPosition
 InvestmentTransaction
 ImportFile
+Attachment
 AuditLog
 ```
 
@@ -50,6 +51,27 @@ identificando a pessoa, não o grupo). Mesmo padrão (`GrupoOwnedEntity`) vale p
 outras 11 entidades financeiras (Account, CreditCard, Category, Merchant,
 RecurringTransaction, InstallmentPlan, BankStatement, CardInvoice, Reconciliation,
 InvestmentAccount, ImportFile).
+
+## Attachment
+Arquivo anexado a um lançamento ou a um parcelamento — nota fiscal, boleto, comprovante.
+Guarda apenas metadados (`FileName`, `ContentType`, `SizeBytes`, `FileHash` SHA-256, `BlobPath`);
+o conteúdo vive no storage S3-compatible.
+
+Dono: **exatamente um** entre `FinancialTransactionId` e `InstallmentPlanId` — mesmo idioma que
+`FinancialTransaction` usa para a origem (conta OU cartão). Uma tabela só, em vez de uma por tipo
+de dono, para que um service/controller/componente cubra os dois casos e um terceiro dono futuro
+custe uma coluna.
+
+O anexo do parcelamento fica no **plano inteiro**, não na parcela: a nota da compra é um documento
+só e vale para todas as parcelas. Como o plano não guarda conta nem cartão (a origem vive nos
+lançamentos das parcelas), "parcelamento de conta" e "de cartão" são o mesmo caso aqui.
+
+`ContentType` é o deduzido da assinatura do arquivo no servidor, nunca o informado pelo cliente
+(ver docs/12-seguranca.md). `FileName` é só para exibir e para o `Content-Disposition` — nunca
+entra na chave do storage, que é `{grupoId}/{attachmentId}{extensão}`.
+
+FK `Cascade` para os dois donos: o anexo não tem vida própria. O cascade apaga as linhas, mas
+**não** os objetos no storage — por isso a Application remove os blobs antes de excluir o dono.
 
 ## Reconciliation
 FinancialTransactionId?, BankStatementItemId?, CardInvoiceItemId?, Status, Score, AmountDifference, DateDifferenceDays, DescriptionScore, Reason, auditoria.

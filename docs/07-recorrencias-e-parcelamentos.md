@@ -29,3 +29,17 @@ INSTALLMENT_AMOUNT:
 ```
 
 Cada parcela é independente para conciliação.
+
+## Anexos do parcelamento
+O anexo pertence ao **plano inteiro**, não a cada parcela: a nota fiscal da compra é um documento
+só e vale para todas as parcelas dela.
+
+Como o `InstallmentPlan` não guarda conta nem cartão — a origem vive no `FinancialTransaction` de
+cada parcela —, parcelamento de conta e de cartão são o mesmo caso: uma implementação cobre os
+dois.
+
+Pode ser anexado na criação (tela Parcelamento) e depois pelo detalhe expandido da lista de
+parcelamentos. Na tela de Lançamentos, cada parcela mostra o clipe herdado do plano, para as 12
+linhas não parecerem sem documento.
+
+Recorrências não têm anexo: ali o documento pertenceria à recorrência, não ao lançamento gerado.
