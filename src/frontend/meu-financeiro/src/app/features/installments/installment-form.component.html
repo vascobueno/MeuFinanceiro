@@ -97,6 +97,11 @@
       </div>
     </div>
 
+    <!-- O anexo vai para o plano inteiro: a nota da compra vale para todas as parcelas. -->
+    <div class="mf-form-full">
+      <mf-attachments ownerKind="installmentPlan" [ownerId]="null" />
+    </div>
+
     @if (preview(); as text) {
       <div class="mf-form-preview">{{ text }}</div>
     }

@@ -17,6 +17,7 @@ import { CreditCard } from '../../core/models/card.model';
 import { Category } from '../../core/models/category.model';
 import { InstallmentMode } from '../../core/models/transaction.model';
 import { MoneyInputComponent } from '../../shared/components/money-input.component';
+import { AttachmentsComponent } from '../../shared/components/attachments.component';
 
 /**
  * Tela Parcelamento, espelhando docs/screens/parcelamento/mockup.html. O mockup só mostra
@@ -38,6 +39,7 @@ import { MoneyInputComponent } from '../../shared/components/money-input.compone
     DatePicker,
     ProgressSpinner,
     MoneyInputComponent,
+    AttachmentsComponent,
   ],
   templateUrl: './installment-form.component.html',
   styleUrl: './installment-form.component.scss',
@@ -47,6 +49,7 @@ export class InstallmentFormComponent implements OnInit {
 
   @ViewChild('modeCardTotal') private readonly modeCardTotal?: ElementRef<HTMLDivElement>;
   @ViewChild('modeCardInstallment') private readonly modeCardInstallment?: ElementRef<HTMLDivElement>;
+  @ViewChild(AttachmentsComponent) private readonly anexos?: AttachmentsComponent;
 
   readonly accounts = signal<Account[]>([]);
   readonly cards = signal<CreditCard[]>([]);
@@ -168,10 +171,27 @@ export class InstallmentFormComponent implements OnInit {
       })
       .subscribe({
         next: (result) => {
-          this.saving.set(false);
-          this.success.set(
-            `${result.installmentCount} parcelas criadas — total ${this.formatCurrency(result.totalAmount)}.`,
-          );
+          const resumo = `${result.installmentCount} parcelas criadas — total ${this.formatCurrency(result.totalAmount)}.`;
+
+          // Os anexos ficaram segurados até aqui: só agora existe o plano a que vinculá-los.
+          if (!this.anexos?.hasPending()) {
+            this.saving.set(false);
+            this.success.set(resumo);
+            return;
+          }
+
+          this.anexos.uploadPending({ kind: 'installmentPlan', id: result.id }).subscribe({
+            next: () => {
+              this.saving.set(false);
+              this.success.set(`${resumo} Anexos enviados.`);
+            },
+            // O parcelamento já foi criado — falha de anexo não o desfaz.
+            error: () => {
+              this.saving.set(false);
+              this.success.set(resumo);
+              this.error.set('As parcelas foram criadas, mas não foi possível enviar os anexos.');
+            },
+          });
         },
         error: (err) => {
           this.saving.set(false);

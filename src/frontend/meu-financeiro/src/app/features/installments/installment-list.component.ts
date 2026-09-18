@@ -11,6 +11,7 @@ import { InstallmentPlanDetail, InstallmentPlanListItem } from '../../core/model
 import { InstallmentMode, TransactionStatus } from '../../core/models/transaction.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
+import { AttachmentsComponent } from '../../shared/components/attachments.component';
 
 /** Tela Parcelamentos: lista os planos criados, com o andamento de cada um (docs/07). */
 @Component({
@@ -26,6 +27,7 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
     SortableColumn,
     ListStateComponent,
     PaginationComponent,
+    AttachmentsComponent,
   ],
   templateUrl: './installment-list.component.html',
   styleUrl: './installment-list.component.scss',

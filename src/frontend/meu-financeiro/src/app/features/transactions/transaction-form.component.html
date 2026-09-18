@@ -134,6 +134,16 @@
       <textarea pTextarea class="mf-field-input" rows="2" [(ngModel)]="notes"></textarea>
     </div>
 
+    <!--
+      Oculto no modo recorrência: ali o documento pertenceria à recorrência, não ao lançamento,
+      e isso não faz parte do pedido. No modo parcelamento o anexo vai para o PLANO.
+    -->
+    @if (mode !== 'recurring') {
+      <div class="mf-form-full">
+        <mf-attachments [ownerKind]="attachmentOwnerKind" [ownerId]="attachmentOwnerId" />
+      </div>
+    }
+
     <button pButton type="button" [disabled]="saving()" (click)="submit()">
       @if (saving()) {
         <p-progress-spinner styleClass="mf-inline-spinner" strokeWidth="4" />

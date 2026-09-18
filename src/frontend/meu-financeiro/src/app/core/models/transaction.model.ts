@@ -88,6 +88,8 @@ export interface Transaction {
   installmentId?: string;
   installmentNumber?: number;
   installmentCount?: number;
+  /** Plano da parcela — é nele que fica o anexo do parcelamento. */
+  installmentPlanId?: string;
   recurringTransactionId?: string;
   notes?: string;
 }

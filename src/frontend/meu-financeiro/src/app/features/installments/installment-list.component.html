@@ -78,6 +78,15 @@
                       </tr>
                     }
                   </table>
+
+                  <!-- Anexo do plano: a nota da compra, que vale para todas as parcelas acima. -->
+                  <div class="mf-detail-attachments">
+                    <mf-attachments
+                      ownerKind="installmentPlan"
+                      [ownerId]="detail.id"
+                      [isReadonly]="!authService.canWrite()"
+                    />
+                  </div>
                 }
               </td>
             </tr>

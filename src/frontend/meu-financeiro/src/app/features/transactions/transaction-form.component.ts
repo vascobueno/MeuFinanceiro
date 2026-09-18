@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -29,6 +29,7 @@ import { Category } from '../../core/models/category.model';
 import { MerchantSuggestion } from '../../core/models/merchant.model';
 import { AutocompleteComponent } from '../../shared/components/autocomplete.component';
 import { MoneyInputComponent } from '../../shared/components/money-input.component';
+import { AttachmentsComponent } from '../../shared/components/attachments.component';
 
 type EntryMode = 'simple' | 'installment' | 'recurring';
 type OriginKind = 'account' | 'card';
@@ -55,6 +56,7 @@ type OriginKind = 'account' | 'card';
     ProgressSpinner,
     AutocompleteComponent,
     MoneyInputComponent,
+    AttachmentsComponent,
   ],
   templateUrl: './transaction-form.component.html',
   styleUrl: './transaction-form.component.scss',
@@ -100,7 +102,12 @@ export class TransactionFormComponent implements OnInit {
     { label: 'Anual', value: RecurrenceFrequency.Yearly },
   ];
 
+  /** Só existe fora do modo recorrência, por isso é opcional. */
+  @ViewChild(AttachmentsComponent) anexos?: AttachmentsComponent;
+
   readonly editingId = signal<string | null>(null);
+  /** Plano, quando o lançamento em edição é uma parcela — o anexo pertence ao plano, não à parcela. */
+  readonly editingPlanId = signal<string | null>(null);
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
@@ -203,6 +210,25 @@ export class TransactionFormComponent implements OnInit {
     this.amount = transaction.amount;
     this.notes = transaction.notes ?? '';
     this.status = transaction.status;
+    this.editingPlanId.set(transaction.installmentPlanId ?? null);
+  }
+
+  /**
+   * A que o anexo se prende. Editando uma parcela, o dono é o PLANO — a nota da compra vale para
+   * todas as parcelas, não só para a que está aberta.
+   *
+   * Getter, e não computed(): `mode` é campo comum ligado por ngModel, não signal, então um
+   * computed não recalcularia ao trocar de modo.
+   */
+  get attachmentOwnerKind(): 'transaction' | 'installmentPlan' {
+    if (this.editingPlanId()) return 'installmentPlan';
+    if (!this.editingId() && this.mode === 'installment') return 'installmentPlan';
+    return 'transaction';
+  }
+
+  /** Null na criação: o id ainda não existe e o componente segura os arquivos até o save. */
+  get attachmentOwnerId(): string | null {
+    return this.editingPlanId() ?? this.editingId();
   }
 
   onSuggestionSelected(suggestion: MerchantSuggestion): void {
@@ -269,10 +295,47 @@ export class TransactionFormComponent implements OnInit {
     };
 
     this.transactionService.create(request).subscribe({
-      next: () => this.router.navigate(['/lancamentos']),
+      next: (created) => this.uploadAttachmentsThenLeave(created),
       error: () => {
         this.saving.set(false);
         this.error.set('Não foi possível salvar o lançamento. Verifique os dados informados.');
+      },
+    });
+  }
+
+  /**
+   * Na criação os anexos ficam segurados no componente até aqui, porque só agora existe a que
+   * vinculá-los. Num lançamento parcelado o dono é o PLANO, não cada parcela: a nota da compra é
+   * um documento só e vale para as 12 parcelas.
+   */
+  private uploadAttachmentsThenLeave(created: Transaction[]): void {
+    const leave = () => this.router.navigate(['/lancamentos']);
+
+    const anexos = this.anexos;
+    if (!anexos?.hasPending() || created.length === 0) {
+      leave();
+      return;
+    }
+
+    const owner =
+      this.mode === 'installment'
+        ? created[0].installmentPlanId
+          ? { kind: 'installmentPlan' as const, id: created[0].installmentPlanId }
+          : null
+        : { kind: 'transaction' as const, id: created[0].id };
+
+    if (!owner) {
+      leave();
+      return;
+    }
+
+    anexos.uploadPending(owner).subscribe({
+      next: () => leave(),
+      // O lançamento já foi gravado — perder o anexo não pode desfazê-lo nem prender o usuário
+      // na tela; avisa e segue.
+      error: () => {
+        this.saving.set(false);
+        this.error.set('Lançamento salvo, mas não foi possível enviar os anexos. Tente anexá-los na edição.');
       },
     });
   }

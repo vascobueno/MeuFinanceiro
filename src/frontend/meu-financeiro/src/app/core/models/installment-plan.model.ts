@@ -13,6 +13,8 @@ export interface CreateInstallmentPlanRequest {
 }
 
 export interface InstallmentPlanResult {
+  /** Id do plano criado — usado para anexar arquivos logo após salvar. */
+  id: string;
   totalAmount: number;
   installmentCount: number;
   installmentAmounts: number[];
