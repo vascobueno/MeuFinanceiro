@@ -147,6 +147,42 @@ public class AccountBalanceEndpointTests : IClassFixture<CustomWebApplicationFac
     }
 
     [Fact]
+    public async Task Saldo_deve_funcionar_quando_o_grupo_tambem_tem_lancamento_de_cartao()
+    {
+        // Regressão: a geração do fechamento filtrava com `accountIds.Contains(t.AccountId!.Value)`,
+        // e esse `.Value` estoura em lançamento de cartão — que não tem conta. Nenhum teste
+        // misturava cartão com leitura de saldo, então o defeito passava despercebido.
+        var (client, _) = await NovoUsuarioAsync();
+        var contaId = await CriarContaAsync(client, 1000m);
+
+        var cartao = await client.PostAsJsonAsync("/api/v1/cards", new
+        {
+            name = $"Cartao {Guid.NewGuid():N}"[..20],
+            brand = "Visa",
+            closingDay = 5,
+            dueDay = 15,
+            creditLimit = 5000m,
+        });
+        cartao.StatusCode.Should().BeOneOf(HttpStatusCode.Created, HttpStatusCode.OK);
+        var cartaoId = JsonDocument.Parse(await cartao.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetGuid();
+
+        // Lançamento SEM conta, num mês já fechado, para entrar na geração do fechamento.
+        var noCartao = await client.PostAsJsonAsync("/api/v1/transactions", new
+        {
+            transactionDate = DateOnly.FromDateTime(DateTime.UtcNow).AddMonths(-3).ToString("yyyy-MM-dd"),
+            description = "Compra no cartao",
+            creditCardId = cartaoId,
+            type = 2,
+            direction = 1,
+            amount = 500m,
+        });
+        noCartao.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // O saldo da conta tem de ser lido normalmente, e sem enxergar o gasto do cartão.
+        (await SaldoAtualAsync(client, contaId)).Should().Be(1000m);
+    }
+
+    [Fact]
     public async Task Verificacao_de_saldos_deve_conferir_o_cache_contra_a_soma_bruta()
     {
         var (client, _) = await NovoUsuarioAsync();

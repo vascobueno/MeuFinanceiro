@@ -26,6 +26,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public TestEmailSender EmailSender => Services.GetRequiredService<TestEmailSender>();
 
+    public InMemoryFileStorage FileStorage => Services.GetRequiredService<InMemoryFileStorage>();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -53,6 +55,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<TestEmailSender>();
             services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<TestEmailSender>());
+
+            // Substitui o MinIO por um storage em memória: o CI não sobe serviço nenhum, então
+            // sem isto todo teste de anexo dependeria de um MinIO local.
+            services.RemoveAll<IFileStorageService>();
+            services.AddSingleton<InMemoryFileStorage>();
+            services.AddSingleton<IFileStorageService>(sp => sp.GetRequiredService<InMemoryFileStorage>());
         });
 
         builder.ConfigureAppConfiguration((_, configBuilder) =>

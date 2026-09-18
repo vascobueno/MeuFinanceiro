@@ -57,7 +57,9 @@ public class AccountBalanceService : IAccountBalanceService
         // Só o que veio depois da âncora: no máximo o mês corrente, em vez do histórico inteiro.
         var afterAnchor = await _db.FinancialTransactions
             .AsNoTracking()
-            .Where(t => accountIds.Contains(t.AccountId!.Value) && t.TransactionDate > anchor)
+            // A guarda de nulo precisa vir aqui, e não só dentro de ToAccountMovements: este Where
+            // é avaliado ANTES do de lá, então `.Value` estouraria em lançamento de cartão.
+            .Where(t => t.AccountId != null && accountIds.Contains(t.AccountId.Value) && t.TransactionDate > anchor)
             .ToAccountMovements(today)
             .ToListAsync(ct);
 
@@ -95,7 +97,7 @@ public class AccountBalanceService : IAccountBalanceService
         // olhar para o cache. É o oráculo — se os dois discordam, quem está errado é o cache.
         var viaSomaBruta = (await _db.FinancialTransactions
                 .AsNoTracking()
-                .Where(t => ids.Contains(t.AccountId!.Value))
+                .Where(t => t.AccountId != null && ids.Contains(t.AccountId.Value))
                 .ToAccountMovements(Today)
                 .ToListAsync(ct))
             .ToDictionary(r => r.AccountId, r => r.Total);
@@ -130,7 +132,11 @@ public class AccountBalanceService : IAccountBalanceService
         // Movimento por conta e por mês, do ponto de partida até a âncora.
         var monthly = await _db.FinancialTransactions
             .AsNoTracking()
-            .Where(t => accountIds.Contains(t.AccountId!.Value)
+            // O `t.AccountId != null` vem PRIMEIRO de propósito: sem ele, `.Value` estoura em
+            // lançamento de cartão (que não tem conta) assim que a consulta é avaliada em memória.
+            // É a mesma guarda que ToAccountMovements já fazia no caminho de leitura — faltava aqui.
+            .Where(t => t.AccountId != null
+                     && accountIds.Contains(t.AccountId.Value)
                      && t.Status != Domain.Enums.TransactionStatus.Pending
                      && t.TransactionDate <= anchor)
             .GroupBy(t => new { AccountId = t.AccountId!.Value, t.TransactionDate.Year, t.TransactionDate.Month })
