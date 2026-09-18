@@ -72,7 +72,11 @@ public class TransactionService : ITransactionService
         var totalItems = await query.CountAsync(ct);
         var results = await query.Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToListAsync(ct);
 
-        return PagedResult<TransactionResponse>.Create(results.Select(t => ToResponse(t)).ToList(), filter.Page, filter.PageSize, totalItems);
+        var attachmentCounts = await CountAttachmentsAsync(results, ct);
+
+        return PagedResult<TransactionResponse>.Create(
+            results.Select(t => ToResponse(t, attachmentCount: attachmentCounts.GetValueOrDefault(t.Id))).ToList(),
+            filter.Page, filter.PageSize, totalItems);
     }
 
     public async Task<TransactionResponse> GetByIdAsync(Guid id, CancellationToken ct = default) => ToResponse(await FindOwnedAsync(id, ct));
@@ -305,10 +309,64 @@ public class TransactionService : ITransactionService
         return transaction;
     }
 
+    /// <summary>
+    /// Quantos anexos cada lançamento da página tem, em DUAS consultas agregadas para a página
+    /// inteira — nunca uma por linha. A rodada de performance anterior derrubou exatamente esse
+    /// tipo de N+1 em /accounts (12 consultas para 3); reintroduzi-lo aqui apagaria o ganho.
+    ///
+    /// Uma parcela herda a contagem do plano: a nota da compra foi anexada ao parcelamento e vale
+    /// para todas as parcelas, então marcar só o plano deixaria as 12 linhas parecendo sem
+    /// documento na tela de Lançamentos.
+    /// </summary>
+    private async Task<Dictionary<Guid, int>> CountAttachmentsAsync(
+        IReadOnlyCollection<FinancialTransaction> transactions, CancellationToken ct)
+    {
+        var counts = new Dictionary<Guid, int>();
+        if (transactions.Count == 0) return counts;
+
+        var transactionIds = transactions.Select(t => t.Id).ToList();
+        var porLancamento = await _db.Attachments
+            .AsNoTracking()
+            .Where(a => a.GrupoId == _currentUser.GrupoId
+                     && a.FinancialTransactionId != null
+                     && transactionIds.Contains(a.FinancialTransactionId.Value))
+            .GroupBy(a => a.FinancialTransactionId!.Value)
+            .Select(g => new { Id = g.Key, Total = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Total, ct);
+
+        var planIds = transactions
+            .Where(t => t.Installment is not null)
+            .Select(t => t.Installment!.InstallmentPlanId)
+            .Distinct()
+            .ToList();
+
+        var porPlano = planIds.Count == 0
+            ? new Dictionary<Guid, int>()
+            : await _db.Attachments
+                .AsNoTracking()
+                .Where(a => a.GrupoId == _currentUser.GrupoId
+                         && a.InstallmentPlanId != null
+                         && planIds.Contains(a.InstallmentPlanId.Value))
+                .GroupBy(a => a.InstallmentPlanId!.Value)
+                .Select(g => new { Id = g.Key, Total = g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Total, ct);
+
+        foreach (var transaction in transactions)
+        {
+            var total = porLancamento.GetValueOrDefault(transaction.Id);
+            if (transaction.Installment is not null)
+                total += porPlano.GetValueOrDefault(transaction.Installment.InstallmentPlanId);
+
+            if (total > 0) counts[transaction.Id] = total;
+        }
+
+        return counts;
+    }
+
     // installmentCount/installmentPlanId vêm por parâmetro no caminho de criação: ali as entidades
     // acabaram de ser montadas em memória e a navegação t.Installment ainda não está carregada,
     // então ler o plano por ela devolveria null exatamente quando a tela precisa do id.
-    private static TransactionResponse ToResponse(FinancialTransaction t, int? installmentCount = null, Guid? installmentPlanId = null) => new(
+    private static TransactionResponse ToResponse(FinancialTransaction t, int? installmentCount = null, Guid? installmentPlanId = null, int attachmentCount = 0) => new(
         t.Id,
         t.TransactionDate,
         t.Description,
@@ -329,6 +387,7 @@ public class TransactionService : ITransactionService
         installmentCount ?? t.Installment?.InstallmentPlan?.InstallmentCount,
         installmentPlanId ?? t.Installment?.InstallmentPlanId,
         t.RecurringTransactionId,
-        t.Notes
+        t.Notes,
+        attachmentCount
     );
 }

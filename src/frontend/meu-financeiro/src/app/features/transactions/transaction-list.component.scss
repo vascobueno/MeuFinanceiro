@@ -140,3 +140,12 @@
     width: 100%;
   }
 }
+
+// Clipe de anexo ao lado da descrição — alinha o ícone com o texto e mantém a contagem junto.
+.mf-attachment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: 0.4rem;
+  cursor: help;
+}

@@ -91,6 +91,8 @@ export interface Transaction {
   /** Plano da parcela — é nele que fica o anexo do parcelamento. */
   installmentPlanId?: string;
   recurringTransactionId?: string;
+  /** Quantos anexos; numa parcela, inclui os do plano. Só para o clipe na lista. */
+  attachmentCount?: number;
   notes?: string;
 }
 

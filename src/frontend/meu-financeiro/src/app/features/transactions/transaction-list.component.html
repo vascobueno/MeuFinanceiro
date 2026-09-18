@@ -164,6 +164,26 @@
                   📝
                 </span>
               }
+              <!-- Clipe: evita ter que abrir cada lançamento para saber se tem documento.
+                   Numa parcela, conta também os anexos do plano. -->
+              @if (transaction.attachmentCount) {
+                <span
+                  class="mf-sub mf-attachment-badge"
+                  [title]="
+                    transaction.attachmentCount === 1
+                      ? '1 anexo'
+                      : transaction.attachmentCount + ' anexos'
+                  "
+                  (click)="$event.stopPropagation()"
+                  role="img"
+                  [attr.aria-label]="transaction.attachmentCount + ' anexo(s)'"
+                >
+                  <i class="pi pi-paperclip"></i>
+                  @if (transaction.attachmentCount > 1) {
+                    {{ transaction.attachmentCount }}
+                  }
+                </span>
+              }
             </td>
             <td>{{ transaction.categoryName || '—' }}</td>
             <td>{{ transaction.accountName || transaction.creditCardName || '—' }}</td>

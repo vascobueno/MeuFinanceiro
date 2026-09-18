@@ -65,7 +65,10 @@ public record TransactionResponse(
     /// e é o que a tela precisa depois de criar um lançamento parcelado.</summary>
     Guid? InstallmentPlanId,
     Guid? RecurringTransactionId,
-    string? Notes
+    string? Notes,
+    /// <summary>Quantos anexos — só para a lista mostrar o clipe sem abrir cada lançamento.
+    /// Numa parcela, inclui os anexos do plano.</summary>
+    int AttachmentCount = 0
 );
 
 /// <summary>Filtros server-side de docs/06-lancamentos.md (período, descrição, categoria, conta, cartão, tipo, status, valor).</summary>

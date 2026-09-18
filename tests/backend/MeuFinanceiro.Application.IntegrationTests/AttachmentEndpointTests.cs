@@ -231,6 +231,50 @@ public class AttachmentEndpointTests : IClassFixture<CustomWebApplicationFactory
         planoId.Should().NotBe(Guid.Empty);
     }
 
+    // ---------------- contagem na listagem ----------------
+
+    [Fact]
+    public async Task Listagem_de_lancamentos_deve_trazer_a_contagem_de_anexos()
+    {
+        var (client, _) = await NovoUsuarioAsync();
+        var contaId = await CriarContaAsync(client);
+        var comAnexo = await CriarLancamentoAsync(client, contaId);
+        var semAnexo = await CriarLancamentoAsync(client, contaId);
+
+        await UploadAsync(client, $"transactionId={comAnexo}", PdfBytes(), "nota.pdf");
+        await UploadAsync(client, $"transactionId={comAnexo}", JpegBytes(), "recibo.jpg");
+
+        var lista = await client.GetAsync($"/api/v1/transactions?page=1&pageSize=100&accountId={contaId}");
+        lista.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var itens = JsonDocument.Parse(await lista.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("items").EnumerateArray().ToList();
+
+        itens.First(i => i.GetProperty("id").GetGuid() == comAnexo)
+            .GetProperty("attachmentCount").GetInt32().Should().Be(2);
+        itens.First(i => i.GetProperty("id").GetGuid() == semAnexo)
+            .GetProperty("attachmentCount").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Parcela_deve_herdar_a_contagem_de_anexos_do_plano()
+    {
+        // A nota foi anexada ao parcelamento; sem herdar, as 12 parcelas apareceriam sem
+        // documento na tela de Lançamentos.
+        var (client, _) = await NovoUsuarioAsync();
+        var contaId = await CriarContaAsync(client);
+        var planoId = await CriarParcelamentoAsync(client, contaId, null);
+
+        await UploadAsync(client, $"installmentPlanId={planoId}", PdfBytes(), "nota.pdf");
+
+        var lista = await client.GetAsync($"/api/v1/transactions?page=1&pageSize=100&accountId={contaId}");
+        var itens = JsonDocument.Parse(await lista.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("items").EnumerateArray().ToList();
+
+        itens.Should().HaveCount(12);
+        itens.Should().OnlyContain(i => i.GetProperty("attachmentCount").GetInt32() == 1);
+    }
+
     // ---------------- validação ----------------
 
     [Fact]
