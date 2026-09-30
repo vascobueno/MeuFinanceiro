@@ -37,9 +37,13 @@
     <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Financeiro')"></i>
   </button>
   <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Financeiro') && !isCollapsedDesktop()">
-    <a class="mf-nav-link" routerLink="/lancamentos" routerLinkActive="mf-active" pTooltip="Lançamentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+    <a class="mf-nav-link" routerLink="/lancamentos/conta" routerLinkActive="mf-active" pTooltip="Lançamentos da conta" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
       <mf-icon name="mf-transactions" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Lançamentos</span>
+      <span class="mf-nav-label">Lançamentos da conta</span>
+    </a>
+    <a class="mf-nav-link" routerLink="/lancamentos/cartao" routerLinkActive="mf-active" pTooltip="Lançamentos do cartão" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-cards" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Lançamentos do cartão</span>
     </a>
     <a class="mf-nav-link" routerLink="/recorrencia" routerLinkActive="mf-active" pTooltip="Recorrências" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
       <mf-icon name="mf-recurring" class="mf-nav-icon"></mf-icon>

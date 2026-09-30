@@ -54,14 +54,28 @@ export const routes: Routes = [
           help: 'Visão consolidada das suas finanças: saldo em contas, patrimônio total, evolução de caixa dos últimos meses e os próximos compromissos a vencer. Use como ponto de partida para saber rapidamente como está sua situação financeira.',
         },
       },
+      // ORDEM IMPORTA: 'lancamentos/conta' e 'lancamentos/cartao' precisam vir ANTES de
+      // 'lancamentos/:id', senão o :id captura "conta" e a tela de edição abre tentando carregar
+      // um lançamento com esse id — falha silenciosa que parece bug de dados.
+      { path: 'lancamentos', pathMatch: 'full', redirectTo: 'lancamentos/conta' },
       {
-        path: 'lancamentos',
+        path: 'lancamentos/conta',
         loadComponent: () =>
-          import('./features/transactions/transaction-list.component').then((m) => m.TransactionListComponent),
+          import('./features/transactions/account-transactions.component').then((m) => m.AccountTransactionsComponent),
         data: {
-          title: 'Lançamentos',
+          title: 'Lançamentos da conta',
           section: 'Financeiro',
-          help: 'Lista todos os lançamentos (receitas, despesas e transferências) de contas e cartões, com filtros por período, categoria, conta, tipo, status e valor. Use "+ Novo lançamento" para registrar um lançamento simples, ou os atalhos Parcelamento e Recorrências para lançamentos que se repetem.',
+          help: 'Movimentações das contas correntes, com o saldo da conta escolhida no topo. Filtre por período, categoria, tipo e status. Os pagamentos de fatura de cartão aparecem aqui como "Pagamento de cartão" — eles saem da conta, mas não contam como despesa, porque a compra no cartão já foi contada.',
+        },
+      },
+      {
+        path: 'lancamentos/cartao',
+        loadComponent: () =>
+          import('./features/transactions/card-transactions.component').then((m) => m.CardTransactionsComponent),
+        data: {
+          title: 'Lançamentos do cartão',
+          section: 'Financeiro',
+          help: 'Fatura do ciclo do cartão, calculada a partir dos seus lançamentos: total gasto, quanto já foi pago e quanto falta. Navegue entre os ciclos pelas setas. Use "Pagar fatura" para registrar o pagamento, escolhendo a conta de onde o dinheiro saiu ou marcando como pago por outra forma.',
         },
       },
       {
@@ -71,7 +85,7 @@ export const routes: Routes = [
           import('./features/transactions/transaction-form.component').then((m) => m.TransactionFormComponent),
         data: {
           title: 'Novo lançamento',
-          parent: { title: 'Lançamentos', path: '/lancamentos' },
+          parent: { title: 'Lançamentos da conta', path: '/lancamentos/conta' },
           help: 'Registre um lançamento simples, um parcelamento ou uma recorrência. A descrição sugere lançamentos anteriores parecidos para agilizar o preenchimento, e a categoria ajuda a manter seus relatórios organizados.',
         },
       },
@@ -82,7 +96,7 @@ export const routes: Routes = [
           import('./features/transactions/transaction-form.component').then((m) => m.TransactionFormComponent),
         data: {
           title: 'Editar lançamento',
-          parent: { title: 'Lançamentos', path: '/lancamentos' },
+          parent: { title: 'Lançamentos da conta', path: '/lancamentos/conta' },
           help: 'Ajuste um lançamento já existente. Lançamentos já conciliados com o extrato bancário ou a fatura do cartão são bloqueados para edição automática — use as telas de Conciliação para tratar divergências nesses casos.',
         },
       },

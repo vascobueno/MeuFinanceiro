@@ -1,0 +1,187 @@
+<p-confirm-dialog />
+
+<div class="mf-list-header">
+  <div>
+    <h2 class="mf-page-title">
+      <mf-icon name="mf-cards" class="mf-page-title-icon"></mf-icon>Lançamentos do cartão
+    </h2>
+    <div class="mf-sub">Fatura do ciclo, com os gastos e os pagamentos.</div>
+  </div>
+  @if (authService.canWrite()) {
+    <div class="mf-list-header-actions">
+      <a pButton [outlined]="true" routerLink="/parcelamento/novo">Parcelamento</a>
+      <a pButton routerLink="/lancamentos/novo">+ Novo lançamento</a>
+    </div>
+  }
+</div>
+
+<div class="mf-card-bar">
+  <div class="mf-card-picker">
+    <label class="mf-field-label">Cartão</label>
+    <p-select
+      size="small"
+      class="mf-field-input"
+      [options]="cards()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="selectedCardId"
+      (onChange)="onCardChange()"
+    />
+  </div>
+
+  @if (cycle(); as c) {
+    <div class="mf-cycle-nav">
+      <button type="button" pTooltip="Ciclo anterior" tooltipPosition="top" (click)="shiftCycle(-1)">
+        <i class="pi pi-chevron-left"></i>
+      </button>
+      <div class="mf-cycle-label">
+        <b>{{ cycleLabel }}</b>
+        <span class="mf-badge" [ngClass]="cycleBadge.tone === 'bad' ? 'mf-badge-bad' : ''">{{ cycleBadge.text }}</span>
+      </div>
+      <button type="button" pTooltip="Próximo ciclo" tooltipPosition="top" (click)="shiftCycle(1)">
+        <i class="pi pi-chevron-right"></i>
+      </button>
+    </div>
+  }
+</div>
+
+@if (cycle(); as c) {
+  <div class="mf-stat-grid">
+    <mf-stat-card label="Total da fatura" [value]="c.total | currency: 'BRL'" [hint]="(c.start | date: 'dd/MM') + ' a ' + (c.closingDate | date: 'dd/MM')"></mf-stat-card>
+    <mf-stat-card label="Pago" [value]="c.paid | currency: 'BRL'" [hint]="c.payments.length + ' pagamento' + (c.payments.length === 1 ? '' : 's')"></mf-stat-card>
+    <mf-stat-card
+      label="Em aberto"
+      [value]="c.outstanding | currency: 'BRL'"
+      [hint]="'vence em ' + (c.dueDate | date: 'dd/MM/yyyy')"
+      [hintTone]="c.isOverdue ? 'negative' : 'neutral'"
+      variant="hero"
+    ></mf-stat-card>
+  </div>
+
+  <div class="mf-panel">
+    <div class="mf-panel-header">
+      <div><b>Pagamentos desta fatura</b></div>
+      @if (authService.canWrite() && !showPaymentForm()) {
+        <button pButton type="button" size="small" (click)="openPaymentForm()">Pagar fatura</button>
+      }
+    </div>
+
+    <div class="mf-panel-body">
+      @if (showPaymentForm()) {
+        <div class="mf-card mf-inline-form">
+          <h6>{{ editingPaymentId() ? 'Editar pagamento' : 'Pagar fatura' }}</h6>
+          <div class="mf-inline-form-grid">
+            <mf-money-input [(ngModel)]="payment.amount" name="paymentAmount" label="Valor"></mf-money-input>
+            <div>
+              <label class="mf-field-label">Data</label>
+              <p-datepicker size="small" class="mf-field-input" dateFormat="dd/mm/yy" [showIcon]="true" [(ngModel)]="payment.date" name="paymentDate" />
+            </div>
+            <div>
+              <label class="mf-field-label">Pago com</label>
+              <p-select
+                size="small"
+                class="mf-field-input"
+                [options]="accountOptions"
+                optionLabel="name"
+                optionValue="id"
+                [(ngModel)]="payment.accountId"
+                name="paymentAccount"
+              />
+            </div>
+            <div class="mf-inline-form-actions">
+              <button pButton type="button" [disabled]="savingPayment()" (click)="submitPayment()">Salvar</button>
+              <button pButton [outlined]="true" type="button" (click)="closePaymentForm()">Cancelar</button>
+            </div>
+          </div>
+          @if (paymentError(); as message) {
+            <div class="mf-form-error" role="alert">{{ message }}</div>
+          }
+        </div>
+      }
+
+      @if (c.payments.length === 0) {
+        <p class="mf-sub">Nenhum pagamento registrado para esta fatura.</p>
+      } @else {
+        <table class="mf-installments-detail">
+          <tr>
+            <th>Data</th>
+            <th>Pago com</th>
+            <th class="mf-col-end">Valor</th>
+            <th></th>
+          </tr>
+          @for (p of c.payments; track p.id) {
+            <tr>
+              <td>{{ p.paymentDate | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ p.accountName || 'Outra forma' }}</td>
+              <td class="mf-col-end">{{ p.amount | currency: 'BRL' }}</td>
+              <td class="mf-col-end">
+                @if (authService.canWrite()) {
+                  <button
+                    type="button"
+                    class="mf-row-edit-icon"
+                    pTooltip="Editar"
+                    tooltipPosition="top"
+                    [attr.aria-label]="'Editar pagamento'"
+                    (click)="openPaymentEdit(p)"
+                  >
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="mf-row-delete-icon"
+                    pTooltip="Excluir"
+                    tooltipPosition="top"
+                    [attr.aria-label]="'Excluir pagamento'"
+                    (click)="confirmRemovePayment(p)"
+                  >
+                    <i class="pi pi-trash"></i>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </table>
+      }
+    </div>
+  </div>
+}
+
+<mf-transaction-filters
+  [filter]="filter"
+  [categories]="categories()"
+  (changed)="applyFilters()"
+></mf-transaction-filters>
+
+<div class="mf-panel">
+  @if (!loading() && !error() && transactions().length > 0) {
+    <div class="mf-panel-header">
+      <div>
+        <b>Gastos do ciclo</b>
+        <div class="mf-sub">Os pagamentos não entram aqui — eles são lançamentos da conta</div>
+      </div>
+    </div>
+  }
+
+  <div class="mf-panel-body">
+    <mf-transaction-table
+      [transactions]="transactions()"
+      [loading]="loading()"
+      [error]="error()"
+      [canWrite]="authService.canWrite()"
+      emptyMessage="Nenhum gasto neste ciclo."
+      [onRetry]="loadTransactions.bind(this)"
+      (sort)="onSort($event)"
+      (remove)="removeTransaction($event)"
+    ></mf-transaction-table>
+
+    @if (!loading() && !error() && transactions().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="filter.page"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>

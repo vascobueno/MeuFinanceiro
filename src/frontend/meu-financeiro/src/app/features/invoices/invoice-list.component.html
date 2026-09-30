@@ -42,7 +42,7 @@
     @if (!loading() && !error() && invoices().length > 0) {
       <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir de filter.sortBy/
            filter.sortDir (que (onSort) também escreve) fecha um ciclo de reemissão infinita
-           no p-table — ver comentário completo em transaction-list.component.html. -->
+           no p-table — ver comentário completo em transaction-table.component.ts. -->
       <p-table
         [value]="invoices()"
         [customSort]="true"

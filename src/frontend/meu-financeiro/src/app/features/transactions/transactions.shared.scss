@@ -1,0 +1,215 @@
+// Estilos das duas telas de Lançamentos (conta e cartão).
+//
+// O card de filtros e a tabela têm os seus próprios: estilo de componente não atravessa para um
+// filho, então deixá-los aqui não teria efeito nenhum dentro de mf-transaction-filters /
+// mf-transaction-table.
+
+.mf-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.mf-list-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+
+
+
+
+// Período/Tipo/Status têm um conteúdo de largura previsível (duas datas curtas; a opção mais
+// longa de cada lista) — largura fixa evita que fiquem tão largos quanto Categoria/Conta/
+// Cartão (nomes livres, precisam do espaço flexível).
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  overflow: hidden;
+}
+
+.mf-row-delete-icon,
+.mf-row-edit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.mf-row-delete-icon {
+  color: var(--mf-red);
+}
+.mf-row-edit-icon {
+  color: var(--mf-primary);
+  margin-right: 0.75rem;
+}
+.mf-row-delete-icon:hover,
+.mf-row-edit-icon:hover {
+  opacity: 0.7;
+}
+
+.mf-panel-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--mf-line);
+}
+
+.mf-panel-body {
+  padding: 1rem;
+}
+
+
+
+.mf-col-end {
+  text-align: right;
+}
+
+.mf-pagination-block {
+  display: block;
+  margin-top: 1rem;
+}
+
+@media (max-width: 600px) {
+  .mf-filter-field,
+  .mf-filter-field-period,
+  .mf-filter-field-tipo,
+  .mf-filter-field-status {
+    flex-basis: 100%;
+    width: 100%;
+  }
+}
+
+// Clipe de anexo ao lado da descrição — alinha o ícone com o texto e mantém a contagem junto.
+.mf-attachment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: 0.4rem;
+  cursor: help;
+}
+
+// ---- barra de seleção + KPI, comum às duas telas ----
+.mf-account-bar,
+.mf-card-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.mf-account-picker,
+.mf-card-picker {
+  flex: 0 0 260px;
+}
+
+.mf-account-balance {
+  flex: 0 0 280px;
+}
+
+// ---- navegação de ciclo do cartão ----
+.mf-cycle-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mf-cycle-nav button {
+  background: none;
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  color: var(--mf-text);
+}
+
+.mf-cycle-nav button:hover {
+  background: var(--mf-card);
+}
+
+.mf-cycle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 13rem;
+}
+
+// ---- formulário inline de pagamento (padrão de account-list) ----
+.mf-inline-form {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  background: var(--mf-card);
+}
+
+.mf-inline-form h6 {
+  margin: 0 0 0.75rem;
+}
+
+.mf-inline-form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.mf-inline-form-grid > * {
+  flex: 1 1 180px;
+}
+
+.mf-inline-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.mf-installments-detail {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mf-installments-detail th,
+.mf-installments-detail td {
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--mf-line);
+}
+
+.mf-installments-detail .mf-col-end {
+  text-align: right;
+}
+
+.mf-row-edit-icon,
+.mf-row-delete-icon {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.mf-row-edit-icon {
+  color: var(--mf-primary);
+  margin-right: 0.75rem;
+}
+.mf-row-delete-icon {
+  color: var(--mf-red);
+}
+
+@media (max-width: 640px) {
+  .mf-account-picker,
+  .mf-card-picker,
+  .mf-account-balance {
+    flex: 1 1 100%;
+  }
+}

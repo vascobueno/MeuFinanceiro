@@ -21,7 +21,7 @@
     @if (!loading() && !error() && plans().length > 0) {
       <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir do que o (onSort)
            também escreve fecha um ciclo de reemissão infinita no p-table — ver comentário
-           completo em transaction-list.component.html. -->
+           completo em transaction-table.component.ts. -->
       <p-table [value]="plans()" [customSort]="true" (onSort)="onSort($event)" size="small">
         <ng-template #header>
           <tr>

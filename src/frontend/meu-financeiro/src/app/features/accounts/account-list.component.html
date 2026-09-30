@@ -64,7 +64,7 @@
     @if (!loading() && !error() && accounts().length > 0) {
       <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir de sortBy/sortDir
            (que (onSort) também escreve) fecha um ciclo de reemissão infinita no p-table —
-           ver comentário completo em transaction-list.component.html. -->
+           ver comentário completo em transaction-table.component.ts. -->
       <p-table
         [value]="accounts()"
         [customSort]="true"

@@ -20,7 +20,7 @@
     @if (!loading() && !error() && recurrences().length > 0) {
       <!-- Ordenação e paginação server-side (regra 19). Sem [sortField]/[sortOrder]: alimentar
            esses inputs a partir do que o (onSort) também escreve fecha um ciclo de reemissão
-           infinita no p-table — ver comentário completo em transaction-list.component.html.
+           infinita no p-table — ver comentário completo em transaction-table.component.ts.
            Só as colunas com campo real no backend são ordenáveis; "Origem" e "Valor atual" saem
            de dados derivados (nome resolvido à parte, versão vigente na data) e por isso não têm
            pSortableColumn. -->

@@ -4,6 +4,11 @@ export enum TransactionType {
   Transfer = 3,
   InvestmentApplication = 4,
   InvestmentRedemption = 5,
+  /**
+   * Pagamento de fatura de cartão. Tipo próprio, não Expense: a compra no cartão já é a despesa,
+   * e contar o pagamento de novo duplicaria o mesmo dinheiro (docs/05).
+   */
+  CardPayment = 6,
 }
 
 export enum TransactionDirection {
