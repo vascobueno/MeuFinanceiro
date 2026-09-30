@@ -79,6 +79,8 @@ public class TransactionFilter : Common.PagedRequest
     public Guid? CategoryId { get; set; }
     public Guid? AccountId { get; set; }
     public Guid? CreditCardId { get; set; }
+    /// <summary>Conta OU cartão, sem precisar dizer qual — as duas telas de Lançamentos.</summary>
+    public TransactionOrigin? Origin { get; set; }
     public TransactionType? Type { get; set; }
     public TransactionStatus? Status { get; set; }
     public decimal? MinAmount { get; set; }

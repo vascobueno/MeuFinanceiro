@@ -49,6 +49,10 @@ public class TransactionService : ITransactionService
         if (filter.CategoryId is not null) query = query.Where(t => t.CategoryId == filter.CategoryId);
         if (filter.AccountId is not null) query = query.Where(t => t.AccountId == filter.AccountId);
         if (filter.CreditCardId is not null) query = query.Where(t => t.CreditCardId == filter.CreditCardId);
+        // Origin responde "de qualquer conta" / "de qualquer cartão" — os filtros por id acima
+        // só respondem "desta conta" / "deste cartão".
+        if (filter.Origin == TransactionOrigin.Account) query = query.Where(t => t.AccountId != null);
+        if (filter.Origin == TransactionOrigin.Card) query = query.Where(t => t.CreditCardId != null);
         if (filter.Type is not null) query = query.Where(t => t.Type == filter.Type);
         if (filter.Status is not null) query = query.Where(t => t.Status == filter.Status);
         if (filter.MinAmount is not null) query = query.Where(t => t.Amount >= filter.MinAmount);

@@ -96,6 +96,12 @@ export interface Transaction {
   notes?: string;
 }
 
+/** De onde o lançamento saiu — as duas telas de Lançamentos (docs/06). */
+export enum TransactionOrigin {
+  Account = 1,
+  Card = 2,
+}
+
 export interface TransactionFilter {
   page: number;
   pageSize: number;
@@ -107,6 +113,8 @@ export interface TransactionFilter {
   categoryId?: string | null;
   accountId?: string | null;
   creditCardId?: string | null;
+  /** "de qualquer conta" / "de qualquer cartão" — os filtros por id acima são "desta/deste". */
+  origin?: TransactionOrigin | null;
   type?: TransactionType | null;
   status?: TransactionStatus | null;
   minAmount?: number | null;
