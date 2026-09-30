@@ -11,10 +11,12 @@ namespace MeuFinanceiro.Api.Controllers;
 public class CardsController : ControllerBase
 {
     private readonly ICardService _cardService;
+    private readonly ICardInvoiceCycleService _invoiceCycleService;
 
-    public CardsController(ICardService cardService)
+    public CardsController(ICardService cardService, ICardInvoiceCycleService invoiceCycleService)
     {
         _cardService = cardService;
+        _invoiceCycleService = invoiceCycleService;
     }
 
     [HttpGet]
@@ -24,6 +26,15 @@ public class CardsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<CardResponse>> GetById(Guid id, CancellationToken ct)
         => Ok(await _cardService.GetByIdAsync(id, ct));
+
+    /// <summary>
+    /// Fatura do ciclo, calculada a partir dos lançamentos. `reference` é a data de fechamento do
+    /// ciclo desejado; omitida, devolve o ciclo atual.
+    /// </summary>
+    [HttpGet("{id:guid}/invoice")]
+    public async Task<ActionResult<CardInvoiceCycleResponse>> GetInvoiceCycle(
+        Guid id, [FromQuery] DateOnly? reference, CancellationToken ct)
+        => Ok(await _invoiceCycleService.GetAsync(id, reference, ct));
 
     [HttpPost]
     public async Task<ActionResult<CardResponse>> Create(CreateCardRequest request, CancellationToken ct)

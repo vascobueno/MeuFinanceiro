@@ -87,6 +87,12 @@ public class CardService : ICardService
         if (hasTransactions)
             throw new BusinessRuleException("cartao-possui-lancamentos", "Não é possível excluir um cartão que já possui lançamentos. Desative-o em vez de excluir.");
 
+        // Pagamento de fatura tem FK Restrict para o cartão: sem esta checagem o erro viria do
+        // banco, cru, em vez da mensagem que a tela sabe mostrar.
+        var hasPayments = await _db.CardPayments.AnyAsync(p => p.CreditCardId == id, ct);
+        if (hasPayments)
+            throw new BusinessRuleException("cartao-possui-pagamentos", "Não é possível excluir um cartão que já possui pagamentos de fatura. Desative-o em vez de excluir.");
+
         _db.CreditCards.Remove(card);
         await _db.SaveChangesAsync(ct);
     }

@@ -76,6 +76,8 @@ public static class DependencyInjection
         services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
         services.AddScoped<IInstallmentPlanService, InstallmentPlanService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
+        services.AddScoped<ICardInvoiceCycleService, CardInvoiceCycleService>();
+        services.AddScoped<ICardPaymentService, CardPaymentService>();
 
         return services;
     }
