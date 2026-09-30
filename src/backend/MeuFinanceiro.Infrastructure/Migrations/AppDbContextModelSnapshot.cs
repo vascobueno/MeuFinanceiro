@@ -439,6 +439,61 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.ToTable("CardInvoiceItems");
                 });
 
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreditCardId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("CycleClosingDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("GrupoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("PaymentDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("PaymentTransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("GrupoId");
+
+                    b.HasIndex("PaymentTransactionId");
+
+                    b.HasIndex("CreditCardId", "CycleClosingDate");
+
+                    b.ToTable("CardPayments");
+                });
+
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1629,6 +1684,37 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("CardInvoice");
+                });
+
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardPayment", b =>
+                {
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MeuFinanceiro.Domain.Entities.CreditCard", "CreditCard")
+                        .WithMany()
+                        .HasForeignKey("CreditCardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MeuFinanceiro.Domain.Entities.FinancialTransaction", "PaymentTransaction")
+                        .WithMany()
+                        .HasForeignKey("PaymentTransactionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Account");
+
+                    b.Navigation("CreditCard");
+
+                    b.Navigation("PaymentTransaction");
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Category", b =>

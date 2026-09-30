@@ -50,6 +50,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<InvestmentTransaction> InvestmentTransactions => Set<InvestmentTransaction>();
     public DbSet<ImportFile> ImportFiles => Set<ImportFile>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<CardPayment> CardPayments => Set<CardPayment>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -164,6 +165,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .HasForeignKey(a => a.FinancialTransactionId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(a => a.InstallmentPlan).WithMany()
                 .HasForeignKey(a => a.InstallmentPlanId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Pagamento de fatura. Restrict em cartao e conta: apagar um cartao ou uma conta que
+        // tenha pagamento tem de ser barrado na Application com mensagem clara, como ja e feito
+        // para lancamentos, em vez de sumir com o historico financeiro em silencio.
+        // SetNull no lancamento porque o pagamento sobrevive a ele: "pago por outra forma" e
+        // exatamente um pagamento sem lancamento.
+        builder.Entity<CardPayment>(e =>
+        {
+            e.HasIndex(p => new { p.CreditCardId, p.CycleClosingDate });
+
+            e.HasOne(p => p.CreditCard).WithMany()
+                .HasForeignKey(p => p.CreditCardId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.Account).WithMany()
+                .HasForeignKey(p => p.AccountId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.PaymentTransaction).WithMany()
+                .HasForeignKey(p => p.PaymentTransactionId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<RecurringTransaction>()

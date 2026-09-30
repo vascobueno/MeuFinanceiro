@@ -35,6 +35,7 @@ public interface IApplicationDbContext
     DbSet<InvestmentTransaction> InvestmentTransactions { get; }
     DbSet<ImportFile> ImportFiles { get; }
     DbSet<Attachment> Attachments { get; }
+    DbSet<CardPayment> CardPayments { get; }
     DbSet<AuditLog> AuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
