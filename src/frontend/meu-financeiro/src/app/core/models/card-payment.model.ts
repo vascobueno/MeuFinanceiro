@@ -29,6 +29,10 @@ export interface CardInvoiceCycle {
   outstanding: number;
   isClosed: boolean;
   isOverdue: boolean;
+  /** O fechamento deste mês foi ajustado (difere do dia do cadastro). */
+  isClosingOverridden: boolean;
+  /** O fechamento que o cadastro do cartão daria — para o "voltar ao padrão". */
+  defaultClosingDate: string;
   payments: CardPayment[];
 }
 

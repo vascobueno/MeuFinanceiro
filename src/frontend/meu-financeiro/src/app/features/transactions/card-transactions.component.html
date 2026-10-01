@@ -42,14 +42,56 @@
         <i class="pi pi-chevron-right"></i>
       </button>
     </div>
+
+    <!-- A operadora às vezes antecipa ou adia o fechamento de um mês; o dia do cadastro vale
+         para todos. Aqui o ajuste é só desta fatura. -->
+    <div class="mf-cycle-closing">
+      @if (!editingClosing()) {
+        <span class="mf-sub">Fechamento</span>
+        <b>{{ c.closingDate | date: 'dd/MM/yyyy' }}</b>
+        @if (c.isClosingOverridden) {
+          <span class="mf-badge" pTooltip="Ajustado para esta fatura" tooltipPosition="top">ajustado</span>
+        }
+        @if (authService.canWrite()) {
+          <button
+            type="button"
+            class="mf-row-edit-icon"
+            pTooltip="Ajustar o fechamento desta fatura"
+            tooltipPosition="top"
+            [attr.aria-label]="'Ajustar o fechamento desta fatura'"
+            (click)="openClosingEditor()"
+          >
+            <i class="pi pi-pencil"></i>
+          </button>
+        }
+      } @else {
+        <p-datepicker
+          size="small"
+          dateFormat="dd/mm/yy"
+          [showIcon]="true"
+          [minDate]="closingMin"
+          [maxDate]="closingMax"
+          [(ngModel)]="closingDraft"
+          name="closingDraft"
+        />
+        <button pButton type="button" size="small" [disabled]="savingClosing()" (click)="saveClosing()">Salvar</button>
+        <button pButton [outlined]="true" size="small" type="button" (click)="closeClosingEditor()">Cancelar</button>
+        @if (c.isClosingOverridden) {
+          <button pButton [text]="true" size="small" type="button" [disabled]="savingClosing()" (click)="resetClosing()">
+            Voltar ao padrão ({{ defaultClosingLabel }})
+          </button>
+        }
+      }
+    </div>
   }
 </div>
 
 @if (cycle(); as c) {
   <div class="mf-stat-grid">
-    <mf-stat-card label="Total da fatura" [value]="c.total | currency: 'BRL'" [hint]="(c.start | date: 'dd/MM') + ' a ' + (c.closingDate | date: 'dd/MM')"></mf-stat-card>
-    <mf-stat-card label="Pago" [value]="c.paid | currency: 'BRL'" [hint]="c.payments.length + ' pagamento' + (c.payments.length === 1 ? '' : 's')"></mf-stat-card>
+    <mf-stat-card size="compact" label="Total da fatura" [value]="c.total | currency: 'BRL'" [hint]="(c.start | date: 'dd/MM') + ' a ' + (c.closingDate | date: 'dd/MM')"></mf-stat-card>
+    <mf-stat-card size="compact" label="Pago" [value]="c.paid | currency: 'BRL'" [hint]="c.payments.length + ' pagamento' + (c.payments.length === 1 ? '' : 's')"></mf-stat-card>
     <mf-stat-card
+      size="compact"
       label="Em aberto"
       [value]="c.outstanding | currency: 'BRL'"
       [hint]="'vence em ' + (c.dueDate | date: 'dd/MM/yyyy')"

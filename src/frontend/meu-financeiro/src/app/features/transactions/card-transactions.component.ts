@@ -25,7 +25,7 @@ import { CreditCard } from '../../core/models/card.model';
 import { Category } from '../../core/models/category.model';
 import { CardInvoiceCycle, CardPayment } from '../../core/models/card-payment.model';
 import { Transaction, TransactionFilter, TransactionOrigin } from '../../core/models/transaction.model';
-import { parseIsoDate, shiftMonthIso } from '../../core/services/date.util';
+import { parseIsoDate, shiftMonthIso, toIsoDate } from '../../core/services/date.util';
 
 /**
  * Lançamentos do cartão, com a fatura do ciclo no topo (docs/07).
@@ -85,6 +85,11 @@ export class CardTransactionsComponent implements OnInit {
   readonly paymentError = signal<string | null>(null);
 
   payment = { amount: 0, date: new Date(), accountId: null as string | null };
+
+  // Edição do fechamento da fatura — a operadora às vezes antecipa ou adia um mês específico.
+  readonly editingClosing = signal(false);
+  readonly savingClosing = signal(false);
+  closingDraft: Date = new Date();
 
   private sortBy: string | null = null;
   private sortDir: 'asc' | 'desc' = 'desc';
@@ -235,6 +240,76 @@ export class CardTransactionsComponent implements OnInit {
       next: () => this.loadCycle(),
       error: () => this.error.set('Não foi possível excluir. Lançamentos conciliados são bloqueados (regra 12).'),
     });
+  }
+
+  // ---------------- fechamento da fatura ----------------
+
+  /** Limites do datepicker: o fechamento tem de ficar dentro do próprio mês (o backend recusa fora). */
+  get closingMin(): Date | null {
+    const current = this.cycle();
+    return current ? parseIsoDate(current.reference) : null;
+  }
+
+  get closingMax(): Date | null {
+    const current = this.cycle();
+    if (!current) return null;
+    const inicio = parseIsoDate(current.reference);
+    return new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0);
+  }
+
+  /** "dia 31" — o padrão do cadastro, para o botão de voltar atrás. */
+  get defaultClosingLabel(): string {
+    const current = this.cycle();
+    return current ? `dia ${parseIsoDate(current.defaultClosingDate).getDate()}` : '';
+  }
+
+  openClosingEditor(): void {
+    const current = this.cycle();
+    if (!current) return;
+    this.closingDraft = parseIsoDate(current.closingDate);
+    this.editingClosing.set(true);
+  }
+
+  closeClosingEditor(): void {
+    this.editingClosing.set(false);
+  }
+
+  saveClosing(): void {
+    const current = this.cycle();
+    if (!current || !this.selectedCardId) return;
+
+    this.savingClosing.set(true);
+    this.cardPaymentService
+      .setClosing(this.selectedCardId, current.reference, toIsoDate(this.closingDraft))
+      .subscribe({
+        next: (cycle) => this.afterClosingChange(cycle),
+        error: (err) => {
+          this.savingClosing.set(false);
+          this.error.set(err?.error?.detail ?? 'Não foi possível ajustar o fechamento.');
+        },
+      });
+  }
+
+  resetClosing(): void {
+    const current = this.cycle();
+    if (!current || !this.selectedCardId) return;
+
+    this.savingClosing.set(true);
+    this.cardPaymentService.clearClosing(this.selectedCardId, current.reference).subscribe({
+      next: (cycle) => this.afterClosingChange(cycle),
+      error: () => {
+        this.savingClosing.set(false);
+        this.error.set('Não foi possível voltar ao fechamento padrão.');
+      },
+    });
+  }
+
+  /** A janela do ciclo mudou, então os gastos listados mudam junto — recarrega os dois. */
+  private afterClosingChange(cycle: CardInvoiceCycle): void {
+    this.savingClosing.set(false);
+    this.editingClosing.set(false);
+    this.cycle.set(cycle);
+    this.loadTransactions();
   }
 
   // ---------------- pagamento ----------------

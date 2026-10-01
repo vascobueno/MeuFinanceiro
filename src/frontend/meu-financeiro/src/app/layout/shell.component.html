@@ -37,13 +37,27 @@
     <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Financeiro')"></i>
   </button>
   <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Financeiro') && !isCollapsedDesktop()">
-    <a class="mf-nav-link" routerLink="/lancamentos/conta" routerLinkActive="mf-active" pTooltip="Lançamentos da conta" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
-      <mf-icon name="mf-transactions" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Lançamentos da conta</span>
+    @if (!isCollapsedDesktop()) {
+      <div class="mf-nav-subgroup">Contas</div>
+    }
+    <a class="mf-nav-link mf-nav-child" routerLink="/contas" routerLinkActive="mf-active" pTooltip="Contas · Cadastro" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-accounts" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Cadastro</span>
     </a>
-    <a class="mf-nav-link" routerLink="/lancamentos/cartao" routerLinkActive="mf-active" pTooltip="Lançamentos do cartão" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+    <a class="mf-nav-link mf-nav-child" routerLink="/lancamentos/conta" routerLinkActive="mf-active" pTooltip="Contas · Lançamentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-transactions" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Lançamentos</span>
+    </a>
+    @if (!isCollapsedDesktop()) {
+      <div class="mf-nav-subgroup">Cartões</div>
+    }
+    <a class="mf-nav-link mf-nav-child" routerLink="/cartoes" routerLinkActive="mf-active" pTooltip="Cartões · Cadastro" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
       <mf-icon name="mf-cards" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Lançamentos do cartão</span>
+      <span class="mf-nav-label">Cadastro</span>
+    </a>
+    <a class="mf-nav-link mf-nav-child" routerLink="/lancamentos/cartao" routerLinkActive="mf-active" pTooltip="Cartões · Lançamentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-transactions" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Lançamentos</span>
     </a>
     <a class="mf-nav-link" routerLink="/recorrencia" routerLinkActive="mf-active" pTooltip="Recorrências" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
       <mf-icon name="mf-recurring" class="mf-nav-icon"></mf-icon>
@@ -52,14 +66,6 @@
     <a class="mf-nav-link" routerLink="/parcelamento" routerLinkActive="mf-active" pTooltip="Parcelamentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
       <mf-icon name="mf-installments" class="mf-nav-icon"></mf-icon>
       <span class="mf-nav-label">Parcelamentos</span>
-    </a>
-    <a class="mf-nav-link" routerLink="/contas" routerLinkActive="mf-active" pTooltip="Contas" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
-      <mf-icon name="mf-accounts" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Contas</span>
-    </a>
-    <a class="mf-nav-link" routerLink="/cartoes" routerLinkActive="mf-active" pTooltip="Cartões" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
-      <mf-icon name="mf-cards" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Cartões</span>
     </a>
     <a class="mf-nav-link" routerLink="/faturas" routerLinkActive="mf-active" pTooltip="Faturas" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
       <mf-icon name="mf-invoices" class="mf-nav-icon"></mf-icon>

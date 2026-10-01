@@ -63,8 +63,9 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/transactions/account-transactions.component').then((m) => m.AccountTransactionsComponent),
         data: {
-          title: 'Lançamentos da conta',
+          title: 'Lançamentos',
           section: 'Financeiro',
+          parent: { title: 'Contas correntes', path: '/contas' },
           help: 'Movimentações das contas correntes, com o saldo da conta escolhida no topo. Filtre por período, categoria, tipo e status. Os pagamentos de fatura de cartão aparecem aqui como "Pagamento de cartão" — eles saem da conta, mas não contam como despesa, porque a compra no cartão já foi contada.',
         },
       },
@@ -73,8 +74,9 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/transactions/card-transactions.component').then((m) => m.CardTransactionsComponent),
         data: {
-          title: 'Lançamentos do cartão',
+          title: 'Lançamentos',
           section: 'Financeiro',
+          parent: { title: 'Cartões', path: '/cartoes' },
           help: 'Fatura do ciclo do cartão, calculada a partir dos seus lançamentos: total gasto, quanto já foi pago e quanto falta. Navegue entre os ciclos pelas setas. Use "Pagar fatura" para registrar o pagamento, escolhendo a conta de onde o dinheiro saiu ou marcando como pago por outra forma.',
         },
       },

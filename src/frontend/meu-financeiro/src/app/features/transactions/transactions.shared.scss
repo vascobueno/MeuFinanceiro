@@ -71,7 +71,7 @@
 .mf-stat-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
@@ -125,7 +125,7 @@
 }
 
 .mf-account-balance {
-  flex: 0 0 280px;
+  flex: 0 0 320px;
 }
 
 // ---- navegação de ciclo do cartão ----
@@ -230,4 +230,13 @@
   .mf-account-balance {
     flex: 1 1 100%;
   }
+}
+
+// Linha de fechamento da fatura, abaixo da navegação de ciclo.
+.mf-cycle-closing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
 }

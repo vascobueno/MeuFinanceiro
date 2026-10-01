@@ -8,16 +8,25 @@ import { CommonModule } from '@angular/common';
  * O visual é 100% customizado (nunca usou nenhum recurso específico do mat-card além do
  * container) — migrado direto pra uma div própria, sem trazer nenhuma lib de UI
  * (docs/migracao-primeng/00-plano.md, UI-01.2).
+ *
+ * size="compact" põe rótulo e valor na MESMA linha, com altura equivalente à de um
+ * p-select size="small" (~34px). Usado onde o KPI acompanha um seletor e não pode dominar a
+ * tela — as duas de Lançamentos. O padrão fica intacto nos demais usos.
  */
 @Component({
   selector: 'mf-stat-card',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="mf-stat-card" [class.mf-stat-card-hero]="variant === 'hero'">
+    <div
+      class="mf-stat-card"
+      [class.mf-stat-card-hero]="variant === 'hero'"
+      [class.mf-stat-card-compact]="size === 'compact'"
+      [title]="size === 'compact' && hint ? hint : null"
+    >
       <div class="mf-stat-label">{{ label }}</div>
-      <div class="mf-stat-value">{{ value }}</div>
-      @if (hint) {
+      <div class="mf-stat-value" [ngClass]="size === 'compact' ? hintClass : ''">{{ value }}</div>
+      @if (hint && size !== 'compact') {
         <div class="mf-stat-small" [ngClass]="hintClass">{{ hint }}</div>
       }
     </div>
@@ -65,6 +74,30 @@ import { CommonModule } from '@angular/common';
       .mf-stat-small.negative {
         color: var(--mf-red, #c0392b);
       }
+
+      /* Uma linha só: o hint vira title (tooltip nativo) — é o que tira a altura. */
+      .mf-stat-card-compact {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.35rem 0.75rem;
+      }
+      .mf-stat-card-compact .mf-stat-value {
+        font-size: 1rem;
+        margin: 0;
+      }
+      /* No compacto o tom vai para o VALOR, já que o texto pequeno não é exibido. */
+      .mf-stat-card-compact .mf-stat-value.positive {
+        color: var(--mf-green, #12966f);
+      }
+      .mf-stat-card-compact .mf-stat-value.negative {
+        color: var(--mf-red, #c0392b);
+      }
+      .mf-stat-card-compact.mf-stat-card-hero .mf-stat-value.positive,
+      .mf-stat-card-compact.mf-stat-card-hero .mf-stat-value.negative {
+        color: #fff;
+      }
     `,
   ],
 })
@@ -74,6 +107,8 @@ export class StatCardComponent {
   @Input() hint?: string | null;
   @Input() hintTone: 'positive' | 'negative' | 'neutral' = 'neutral';
   @Input() variant: 'default' | 'hero' = 'default';
+  /** 'compact' = rótulo e valor na mesma linha, na altura de um p-select pequeno. */
+  @Input() size: 'default' | 'compact' = 'default';
 
   get hintClass(): string {
     return this.hintTone === 'neutral' ? '' : this.hintTone;

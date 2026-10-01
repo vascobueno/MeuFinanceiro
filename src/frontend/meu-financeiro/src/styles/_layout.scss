@@ -172,7 +172,9 @@
 .mf-nav-list {
   display: flex;
   flex-direction: column;
-  max-height: 320px;
+  // Teto só para animar o colapso, não é restrição de layout. Subiu de 320px quando Financeiro
+  // ganhou os subgrupos Contas/Cartões: no valor antigo o último item ficava cortado.
+  max-height: 420px;
   overflow: hidden;
   transition: max-height 0.2s ease;
   padding: 2px 0;
@@ -189,6 +191,26 @@
 }
 .mf-collapsed .mf-nav-link {
   justify-content: center;
+}
+// No rail não há recuo: todos os ícones alinhados na mesma coluna.
+.mf-collapsed .mf-nav-link.mf-nav-child {
+  padding-left: 0.6rem;
+}
+
+// Rótulo dos subgrupos (Contas, Cartões) — não é link, só agrupa. Fica oculto no modo rail,
+// onde a desambiguação entre os dois "Lançamentos" é feita pelos tooltips.
+.mf-nav-subgroup {
+  padding: 0.5rem 0.6rem 0.15rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mf-muted);
+  opacity: 0.75;
+}
+
+.mf-nav-link.mf-nav-child {
+  padding-left: 1.35rem;
 }
 
 .mf-nav-link {
