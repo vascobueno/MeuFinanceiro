@@ -31,9 +31,24 @@ dizer não conferido, não "ainda não gastei".
 Pagamento parcial é aceito, e pagar a mais deixa o em aberto negativo — é crédito a favor, não erro.
 
 O fechamento de **uma** fatura pode ser ajustado, quando a operadora antecipa ou adia aquele mês. O
-ajuste vale só para o mês escolhido e tem de ser uma data **dentro** dele; o vencimento acompanha o
-fechamento ajustado. Por isso a fatura é identificada pelo mês, e não pela data de fechamento: assim
-um ajuste não desvincula os pagamentos já registrados.
+ajuste vale só para o mês escolhido e tem de ser uma data **dentro** dele. Por isso a fatura é
+identificada pelo mês, e não pela data de fechamento: assim um ajuste não desvincula os pagamentos
+já registrados.
+
+**O vencimento é independente do fechamento.** Ele sai do dia do cadastro aplicado ao fechamento
+*padrão* do mês, e **não se move** quando o fechamento é ajustado — a operadora antecipa o
+fechamento, mas o dia de vencimento costuma ser fixo. Também pode ser ajustado por fatura: tem de
+ser depois do fechamento efetivo e no máximo 90 dias após ele (limite só de sanidade contra erro de
+digitação, já que o vencimento não define a janela do ciclo).
+
+Uma única exceção move o vencimento sozinho, e é correção, não preferência: **uma fatura não pode
+vencer antes de fechar**. Se o fechamento for adiado para depois do vencimento, este avança para a
+próxima ocorrência do dia. Nesse caso ele não é marcado como "ajustado", porque o usuário não
+ajustou nada.
+
+Ajustar o fechamento para cima ou depois de um vencimento **já ajustado** é recusado, não empurrado:
+o valor foi escolhido pelo usuário, e mudá-lo em silêncio é pior que pedir para ajustar na ordem
+certa.
 
 ## Investimentos
 Aplicação reduz conta e aumenta investimento.

@@ -84,12 +84,17 @@ atual. Devolve total, pago, em aberto, período, vencimento, os pagamentos e se 
 ajustado.
 PUT `/api/v1/cards/{id}/invoice/{reference}/closing` — ajusta o fechamento desta fatura
 DELETE `/api/v1/cards/{id}/invoice/{reference}/closing` — volta ao dia do cadastro
+PUT `/api/v1/cards/{id}/invoice/{reference}/due` — ajusta o vencimento desta fatura
+DELETE `/api/v1/cards/{id}/invoice/{reference}/due` — volta ao vencimento derivado
 POST `/api/v1/card-payments`
 PUT `/api/v1/card-payments/{id}` (permite trocar a conta, inclusive para "outra forma")
 DELETE `/api/v1/card-payments/{id}`
 
-Uma `reference` que não seja o dia 1 devolve 400, e um fechamento fora do mês de referência também:
-o primeiro deixaria pagamentos num ciclo inexistente, o segundo faria dois ciclos se sobreporem. Ver docs/05 para a regra de que o pagamento é
+Erros 400: `referencia-invalida` (a referência não é o dia 1 — deixaria pagamentos num ciclo
+inexistente); `fechamento-fora-do-mes` (faria dois ciclos se sobreporem);
+`vencimento-antes-do-fechamento`; `vencimento-distante` (mais de 90 dias após o fechamento);
+`fechamento-depois-do-vencimento` (o fechamento passaria um vencimento já ajustado — ajuste o
+vencimento primeiro). Ver docs/05 para a regra de que o pagamento é
 movimentação, não despesa.
 
 ## Categories

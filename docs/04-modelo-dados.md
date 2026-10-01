@@ -29,7 +29,7 @@ InvestmentTransaction
 ImportFile
 Attachment
 CardPayment
-CardCycleClosing
+CardCycleOverride
 AuditLog
 ```
 
@@ -80,7 +80,7 @@ Pagamento de uma fatura de cartão. Campos: `CreditCardId`, `CycleReference` (qu
 quita), `PaymentDate`, `Amount`, `AccountId?` e `PaymentTransactionId?`.
 
 **A fatura é identificada pelo MÊS (`CycleReference`, dia 1), não pela data de fechamento.** A data
-pode ser ajustada por fatura (ver `CardCycleClosing`); se ela fosse a chave, cada ajuste deixaria os
+pode ser ajustada por fatura (ver `CardCycleOverride`); se ela fosse a chave, cada ajuste deixaria os
 pagamentos já registrados órfãos e eles sumiriam da tela sem aviso. O mês não muda.
 
 **O ciclo é calculado, não persistido.** Não existe tabela de faturas derivadas: `CardCycleCalculator`
@@ -100,18 +100,23 @@ Application com mensagem clara; `SetNull` para o lançamento, porque o pagamento
 
 Não confundir com `CardInvoice`, que é o PDF importado do banco para conciliação (docs/08).
 
-## CardCycleClosing
-Exceção ao dia de fechamento do cartão para **um** mês: `CreditCardId`, `ReferenceMonth` (dia 1) e
-`ClosingDate`. A operadora às vezes antecipa ou adia o fechamento (fim de semana, feriado), e o
-`CreditCard.ClosingDay` do cadastro vale para todos os meses.
+## CardCycleOverride
+Exceções ao calendário do cartão para **um** mês: `CreditCardId`, `ReferenceMonth` (dia 1),
+`ClosingDate?` e `DueDate?`. A operadora às vezes antecipa ou adia o fechamento (fim de semana,
+feriado) e pode remarcar o vencimento; os dias do cadastro valem para todos os meses.
 
-Só existe linha quando há exceção — sem ela, o fechamento é o calculado por `CardCycleCalculator`.
+Uma linha por `(cartão, mês)` com os dois campos anuláveis, e não duas tabelas: mesma chave, uma
+consulta só, e limpar tudo é um `DELETE`. **Linha com os dois nulos não existe** — ao limpar um
+ajuste com o outro já nulo, a linha é removida.
 
-**Invariante**: `ClosingDate` tem de cair **dentro** de `ReferenceMonth`. Sem isso, dois ciclos
-poderiam se sobrepor — o mesmo lançamento entraria em duas faturas — ou se inverter, deixando uma
-janela vazia. Os dois erram em silêncio.
+**Invariante do fechamento**: `ClosingDate` tem de cair **dentro** de `ReferenceMonth`. Sem isso,
+dois ciclos poderiam se sobrepor — o mesmo lançamento entraria em duas faturas — ou se inverter,
+deixando uma janela vazia. Os dois erram em silêncio.
 
-Único em `(CreditCardId, ReferenceMonth)`: dois fechamentos para o mesmo mês seriam ambíguos, e o
+O vencimento não tem invariante rígido porque **não define a janela do ciclo**: ele só aparece na
+tela e no cálculo de atraso. A única regra é não vencer antes de fechar (ver docs/05).
+
+Único em `(CreditCardId, ReferenceMonth)`: dois ajustes para o mesmo mês seriam ambíguos, e o
 índice é a barreira contra isso mesmo em corrida entre requisições.
 
 ## Reconciliation
