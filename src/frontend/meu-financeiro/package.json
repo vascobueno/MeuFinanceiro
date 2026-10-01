@@ -44,6 +44,6 @@
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "tailwindcss-primeui": "^0.6.1",
-    "typescript": "^6.0.0"
+    "typescript": "^7.0.2"
   }
 }
