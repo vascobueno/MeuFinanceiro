@@ -83,6 +83,10 @@ export class ShellComponent implements OnInit {
     this.pageHelp.set((data['help'] as string) ?? null);
     this.breadcrumbParent.set((data['parent'] as BreadcrumbParent) ?? null);
     this.ensureActiveSectionExpanded(this.resolveSection(data));
+    // Subgrupo (Contas/Cartões) usa o mesmo mapa persistido das seções, então a mesma função
+    // serve: sem isto, navegar para /lancamentos/cartao com o subgrupo fechado esconderia o
+    // item ativo.
+    this.ensureActiveSectionExpanded(data['group'] as string | undefined);
   }
 
   /** `data.section` direto, ou (rota filha, ex. /lancamentos/novo) a seção da rota-pai via `data.parent.path`. */

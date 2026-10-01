@@ -197,16 +197,34 @@
   padding-left: 0.6rem;
 }
 
-// Rótulo dos subgrupos (Contas, Cartões) — não é link, só agrupa. Fica oculto no modo rail,
-// onde a desambiguação entre os dois "Lançamentos" é feita pelos tooltips.
-.mf-nav-subgroup {
-  padding: 0.5rem 0.6rem 0.15rem;
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mf-muted);
-  opacity: 0.75;
+// Cabeçalho dos subgrupos (Contas, Cartões) — mesmo toggle das seções, um nível adentro, para
+// poder esconder os filhos.
+.mf-nav-subgroup-toggle {
+  padding-left: 1.1rem;
+  margin: 0.35rem 0 0.1rem;
+  font-size: 0.62rem;
+  opacity: 0.9;
+}
+// No rail só há ícones: o cabeçalho perderia o rótulo e sobraria uma linha solta. As seções já
+// viram separador lá; um segundo separador dentro da seção seria ruído.
+.mf-collapsed .mf-nav-subgroup-toggle {
+  display: none;
+}
+
+// Lista do subgrupo: mesmo recolhimento por max-height das seções, com teto para 2 itens.
+.mf-nav-sublist {
+  display: flex;
+  flex-direction: column;
+  max-height: 120px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+.mf-nav-sublist.mf-nav-collapsed {
+  max-height: 0;
+}
+// No rail o subgrupo nunca recolhe — lá não há cabeçalho para reabrir.
+.mf-collapsed .mf-nav-sublist {
+  max-height: none;
 }
 
 .mf-nav-link.mf-nav-child {
