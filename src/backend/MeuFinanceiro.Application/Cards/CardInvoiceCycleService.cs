@@ -36,7 +36,7 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
 
         var baseCycle = ResolveCycle(card.ClosingDay, card.DueDay, reference);
         var cycleReference = ReferenceOf(baseCycle);
-        var cycle = await ApplyOverridesAsync(card, baseCycle, cycleReference, ct);
+        var (cycle, closingOverridden, dueOverridden) = await ApplyOverridesAsync(card, baseCycle, cycleReference, ct);
 
         // Total do ciclo numa consulta agregada, nunca somando a lista paginada em memória.
         //
@@ -63,6 +63,7 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
                 p.AccountId, p.Account!.Name, p.PaymentTransactionId))
             .ToListAsync(ct);
 
+        var defaultDue = CardCycleCalculator.DueDateFor(baseCycle.ClosingDate, card.DueDay);
         var paid = payments.Sum(p => p.Amount);
         var outstanding = total - paid;   // pode ficar negativo: pagar a mais é crédito, não erro
         var isClosed = cycle.ClosingDate < Today;
@@ -74,19 +75,17 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
             total, paid, outstanding,
             isClosed,
             IsOverdue: isClosed && cycle.DueDate < Today && outstanding > 0,
-            IsClosingOverridden: cycle.ClosingDate != baseCycle.ClosingDate,
+            IsClosingOverridden: closingOverridden,
             DefaultClosingDate: baseCycle.ClosingDate,
+            IsDueOverridden: dueOverridden,
+            DefaultDueDate: defaultDue,
             payments);
     }
 
     public async Task<CardInvoiceCycleResponse> SetClosingAsync(
         Guid cardId, DateOnly reference, DateOnly closingDate, CancellationToken ct = default)
     {
-        if (!_currentUser.CanWrite)
-            throw new ForbiddenException("Perfil somente leitura não pode ajustar o fechamento.");
-
-        var card = await FindCardAsync(cardId, ct);
-        EnsureReferenceIsMonth(reference);
+        var (card, existing) = await PrepareOverrideAsync(cardId, reference, ct);
 
         // O fechamento tem de ficar DENTRO do próprio mês. Fora dele, dois ciclos se sobreporiam
         // (o mesmo lançamento entraria em duas faturas) ou se inverteriam (janela vazia) — e os
@@ -96,40 +95,60 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
                 "fechamento-fora-do-mes",
                 $"O fechamento tem de ser uma data de {reference:MM/yyyy}.");
 
-        var existing = await _db.CardCycleOverrides
-            .FirstOrDefaultAsync(o => o.CreditCardId == cardId
-                                   && o.GrupoId == _currentUser.GrupoId
-                                   && o.ReferenceMonth == reference, ct);
+        // Com vencimento já ajustado, mover o fechamento para cima ou depois dele é recusado em vez
+        // de empurrar o vencimento: o valor foi escolhido pelo usuário, e alterá-lo em silêncio é
+        // pior que pedir para ajustar na ordem certa.
+        if (existing?.DueDate is { } due && closingDate >= due)
+            throw new BusinessRuleException(
+                "fechamento-depois-do-vencimento",
+                $"O fechamento ficaria em cima ou depois do vencimento ajustado ({due:dd/MM/yyyy}). Ajuste o vencimento primeiro.");
 
-        if (existing is null)
-        {
-            _db.CardCycleOverrides.Add(new CardCycleOverride
-            {
-                GrupoId = _currentUser.GrupoId,
-                CreditCardId = card.Id,
-                ReferenceMonth = reference,
-                ClosingDate = closingDate,
-                CreatedBy = _currentUser.UserId,
-            });
-        }
-        else
-        {
-            existing.ClosingDate = closingDate;
-            existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = _currentUser.UserId;
-        }
-
-        await _db.SaveChangesAsync(ct);
+        await UpsertOverrideAsync(card, reference, existing, o => o.ClosingDate = closingDate, ct);
         return await GetAsync(cardId, reference, ct);
     }
 
     public async Task<CardInvoiceCycleResponse> ClearClosingAsync(
-        Guid cardId, DateOnly reference, CancellationToken ct = default)
+        Guid cardId, DateOnly reference, CancellationToken ct = default) =>
+        await ClearOverrideAsync(cardId, reference, o => o.ClosingDate = null, ct);
+
+    public async Task<CardInvoiceCycleResponse> SetDueAsync(
+        Guid cardId, DateOnly reference, DateOnly dueDate, CancellationToken ct = default)
+    {
+        var (card, existing) = await PrepareOverrideAsync(cardId, reference, ct);
+
+        // Validado contra o fechamento EFETIVO deste mês, que já pode estar ajustado.
+        var (cycle, _, _) = await ApplyOverridesAsync(
+            card, CardCycleCalculator.CycleForMonth(card.ClosingDay, card.DueDay, reference), reference, ct);
+
+        if (dueDate <= cycle.ClosingDate)
+            throw new BusinessRuleException(
+                "vencimento-antes-do-fechamento",
+                $"O vencimento tem de ser depois do fechamento ({cycle.ClosingDate:dd/MM/yyyy}).");
+
+        // Limite frouxo, só contra erro de digitação (ano errado). Ao contrário do fechamento, o
+        // vencimento não define a janela do ciclo — ele só aparece na tela e no cálculo de atraso.
+        if (dueDate > cycle.ClosingDate.AddDays(MaxDueDaysAfterClosing))
+            throw new BusinessRuleException(
+                "vencimento-distante",
+                $"O vencimento não pode passar de {MaxDueDaysAfterClosing} dias após o fechamento.");
+
+        await UpsertOverrideAsync(card, reference, existing, o => o.DueDate = dueDate, ct);
+        return await GetAsync(cardId, reference, ct);
+    }
+
+    public async Task<CardInvoiceCycleResponse> ClearDueAsync(
+        Guid cardId, DateOnly reference, CancellationToken ct = default) =>
+        await ClearOverrideAsync(cardId, reference, o => o.DueDate = null, ct);
+
+    private const int MaxDueDaysAfterClosing = 90;
+
+    private async Task<(CreditCard Card, CardCycleOverride? Existing)> PrepareOverrideAsync(
+        Guid cardId, DateOnly reference, CancellationToken ct)
     {
         if (!_currentUser.CanWrite)
-            throw new ForbiddenException("Perfil somente leitura não pode ajustar o fechamento.");
+            throw new ForbiddenException("Perfil somente leitura não pode ajustar o calendário da fatura.");
 
-        await FindCardAsync(cardId, ct);
+        var card = await FindCardAsync(cardId, ct);
         EnsureReferenceIsMonth(reference);
 
         var existing = await _db.CardCycleOverrides
@@ -137,10 +156,57 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
                                    && o.GrupoId == _currentUser.GrupoId
                                    && o.ReferenceMonth == reference, ct);
 
+        return (card, existing);
+    }
+
+    private async Task UpsertOverrideAsync(
+        CreditCard card, DateOnly reference, CardCycleOverride? existing,
+        Action<CardCycleOverride> aplicar, CancellationToken ct)
+    {
+        if (existing is null)
+        {
+            var novo = new CardCycleOverride
+            {
+                GrupoId = _currentUser.GrupoId,
+                CreditCardId = card.Id,
+                ReferenceMonth = reference,
+                CreatedBy = _currentUser.UserId,
+            };
+            aplicar(novo);
+            _db.CardCycleOverrides.Add(novo);
+        }
+        else
+        {
+            aplicar(existing);
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedBy = _currentUser.UserId;
+        }
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Limpa um dos dois ajustes. Quando o outro já era nulo, a linha inteira sai — linha com os
+    /// dois nulos não diz nada e só acumularia na tabela.
+    /// </summary>
+    private async Task<CardInvoiceCycleResponse> ClearOverrideAsync(
+        Guid cardId, DateOnly reference, Action<CardCycleOverride> limpar, CancellationToken ct)
+    {
+        var (_, existing) = await PrepareOverrideAsync(cardId, reference, ct);
+
         // Sem ajuste gravado já é o estado desejado — remover o que não existe não é erro.
         if (existing is not null)
         {
-            _db.CardCycleOverrides.Remove(existing);
+            limpar(existing);
+
+            if (existing.ClosingDate is null && existing.DueDate is null)
+                _db.CardCycleOverrides.Remove(existing);
+            else
+            {
+                existing.UpdatedAt = DateTime.UtcNow;
+                existing.UpdatedBy = _currentUser.UserId;
+            }
+
             await _db.SaveChangesAsync(ct);
         }
 
@@ -173,7 +239,7 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
     /// A regra do dia continua vindo de CardCycleCalculator.DueDateFor: muda de onde ela é chamada,
     /// não a regra. Duplicar calendário já nos custou um bug.
     /// </summary>
-    private async Task<CardCycle> ApplyOverridesAsync(
+    private async Task<(CardCycle Cycle, bool ClosingOverridden, bool DueOverridden)> ApplyOverridesAsync(
         CreditCard card, CardCycle baseCycle, DateOnly cycleReference, CancellationToken ct)
     {
         var previousReference = cycleReference.AddMonths(-1);
@@ -193,7 +259,11 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
         var previousClosing = overrides.GetValueOrDefault(previousReference)?.ClosingDate
             ?? previousBase.ClosingDate;
 
-        return new CardCycle(previousClosing.AddDays(1), closing, ResolveDueDate(card, baseCycle, current, closing));
+        var cycle = new CardCycle(previousClosing.AddDays(1), closing, ResolveDueDate(card, baseCycle, current, closing));
+
+        // As flags vêm do que está GRAVADO, não de comparar datas: o piso também move o
+        // vencimento, e compará-lo com o padrão marcaria "ajustado" sem o usuário ter ajustado.
+        return (cycle, current?.ClosingDate is not null, current?.DueDate is not null);
     }
 
     /// <summary>

@@ -78,6 +78,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 // não tem um, então muitos testes no mesmo fixture compartilhariam a partição
                 // "anonymous" e esbarrariam no limite. Afrouxado só pra não interferir nos testes.
                 ["RateLimiting:Auth:PermitLimit"] = "100000",
+                // Mesmo motivo do de cima, para o limitador global: sem IP real, a suíte inteira
+                // compartilha a partição "anonymous" e estoura o teto de 200/min de produção.
+                ["RateLimiting:Global:PermitLimit"] = "1000000",
                 ["RateLimiting:Auth:WindowMinutes"] = "1",
             });
         });

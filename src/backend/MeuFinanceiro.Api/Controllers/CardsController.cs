@@ -51,6 +51,21 @@ public class CardsController : ControllerBase
         Guid id, DateOnly reference, CancellationToken ct)
         => Ok(await _invoiceCycleService.ClearClosingAsync(id, reference, ct));
 
+    /// <summary>
+    /// Ajusta o vencimento de UMA fatura, independente do fechamento. Tem de ser depois do
+    /// fechamento efetivo e no máximo 90 dias após ele.
+    /// </summary>
+    [HttpPut("{id:guid}/invoice/{reference}/due")]
+    public async Task<ActionResult<CardInvoiceCycleResponse>> SetInvoiceDue(
+        Guid id, DateOnly reference, SetCycleDueRequest request, CancellationToken ct)
+        => Ok(await _invoiceCycleService.SetDueAsync(id, reference, request.DueDate, ct));
+
+    /// <summary>Remove o ajuste e volta ao vencimento derivado do fechamento padrão.</summary>
+    [HttpDelete("{id:guid}/invoice/{reference}/due")]
+    public async Task<ActionResult<CardInvoiceCycleResponse>> ClearInvoiceDue(
+        Guid id, DateOnly reference, CancellationToken ct)
+        => Ok(await _invoiceCycleService.ClearDueAsync(id, reference, ct));
+
     [HttpPost]
     public async Task<ActionResult<CardResponse>> Create(CreateCardRequest request, CancellationToken ct)
     {

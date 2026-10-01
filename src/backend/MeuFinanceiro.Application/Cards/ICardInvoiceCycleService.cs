@@ -13,4 +13,10 @@ public interface ICardInvoiceCycleService
 
     /// <summary>Remove o ajuste e volta ao dia de fechamento do cadastro.</summary>
     Task<CardInvoiceCycleResponse> ClearClosingAsync(Guid cardId, DateOnly reference, CancellationToken ct = default);
+
+    /// <summary>Ajusta o vencimento de um mês, independente do fechamento.</summary>
+    Task<CardInvoiceCycleResponse> SetDueAsync(Guid cardId, DateOnly reference, DateOnly dueDate, CancellationToken ct = default);
+
+    /// <summary>Remove o ajuste e volta ao vencimento derivado do fechamento padrão.</summary>
+    Task<CardInvoiceCycleResponse> ClearDueAsync(Guid cardId, DateOnly reference, CancellationToken ct = default);
 }

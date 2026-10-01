@@ -521,4 +521,134 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         DateOnly.FromDateTime(fatura.GetProperty("closingDate").GetDateTime()).Day.Should().Be(28);
         fatura.GetProperty("isClosingOverridden").GetBoolean().Should().BeFalse();
     }
+
+    // ---------------- ajuste do vencimento ----------------
+
+    private static Task<HttpResponseMessage> AjustarVencimentoAsync(
+        HttpClient client, Guid cardId, DateOnly referencia, DateOnly vencimento) =>
+        client.PutAsJsonAsync($"/api/v1/cards/{cardId}/invoice/{Iso(referencia)}/due",
+            new { dueDate = Iso(vencimento) });
+
+    [Fact]
+    public async Task Ajustar_o_vencimento_deve_mudar_a_data_e_marcar_como_ajustado()
+    {
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        var padrao = new DateOnly(referencia.Year, referencia.Month, 10).AddMonths(1);
+        var novo = padrao.AddDays(5);
+
+        (await AjustarVencimentoAsync(client, cardId, referencia, novo)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var fatura = await FaturaAsync(client, cardId, referencia);
+        DateOnly.FromDateTime(fatura.GetProperty("dueDate").GetDateTime()).Should().Be(novo);
+        fatura.GetProperty("isDueOverridden").GetBoolean().Should().BeTrue();
+        DateOnly.FromDateTime(fatura.GetProperty("defaultDueDate").GetDateTime()).Should().Be(padrao);
+    }
+
+    [Fact]
+    public async Task Vencimento_no_dia_do_fechamento_ou_antes_deve_ser_recusado()
+    {
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId, referencia)).GetProperty("closingDate").GetDateTime());
+
+        (await AjustarVencimentoAsync(client, cardId, referencia, fechamento))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "não pode vencer no dia em que fecha");
+        (await AjustarVencimentoAsync(client, cardId, referencia, fechamento.AddDays(-1)))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Vencimento_muito_distante_deve_ser_recusado()
+    {
+        // Sanidade contra erro de digitação (ano errado), não regra de negócio.
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId, referencia)).GetProperty("closingDate").GetDateTime());
+
+        (await AjustarVencimentoAsync(client, cardId, referencia, fechamento.AddDays(91)))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await AjustarVencimentoAsync(client, cardId, referencia, fechamento.AddDays(89)))
+            .StatusCode.Should().Be(HttpStatusCode.OK, "dentro do limite tem de passar");
+    }
+
+    [Fact]
+    public async Task Limpar_o_ajuste_de_vencimento_deve_voltar_ao_derivado()
+    {
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        var padrao = new DateOnly(referencia.Year, referencia.Month, 10).AddMonths(1);
+
+        await AjustarVencimentoAsync(client, cardId, referencia, padrao.AddDays(3));
+
+        var remocao = await client.DeleteAsync($"/api/v1/cards/{cardId}/invoice/{Iso(referencia)}/due");
+        remocao.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var fatura = await FaturaAsync(client, cardId, referencia);
+        DateOnly.FromDateTime(fatura.GetProperty("dueDate").GetDateTime()).Should().Be(padrao);
+        fatura.GetProperty("isDueOverridden").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Fechamento_que_passa_o_vencimento_ajustado_deve_ser_recusado()
+    {
+        // Recusa em vez de empurrar: o vencimento foi escolhido pelo usuário, e mudá-lo em
+        // silêncio é pior que pedir para ajustar na ordem certa.
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 10, dueDay: 20);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        var vencimento = new DateOnly(referencia.Year, referencia.Month, 15);
+        (await AjustarVencimentoAsync(client, cardId, referencia, vencimento)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 18)))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // E o fechamento antes do vencimento continua aceito.
+        (await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 12)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Limpar_os_dois_ajustes_nao_deve_deixar_linha_orfa()
+    {
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 20));
+        await AjustarVencimentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 25));
+
+        await client.DeleteAsync($"/api/v1/cards/{cardId}/invoice/{Iso(referencia)}/closing");
+        var fatura = await FaturaAsync(client, cardId, referencia);
+        fatura.GetProperty("isClosingOverridden").GetBoolean().Should().BeFalse();
+        fatura.GetProperty("isDueOverridden").GetBoolean().Should().BeTrue("o outro ajuste sobrevive");
+
+        await client.DeleteAsync($"/api/v1/cards/{cardId}/invoice/{Iso(referencia)}/due");
+        var final = await FaturaAsync(client, cardId, referencia);
+        final.GetProperty("isClosingOverridden").GetBoolean().Should().BeFalse();
+        final.GetProperty("isDueOverridden").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Piso_nao_deve_marcar_o_vencimento_como_ajustado()
+    {
+        // O piso move o vencimento por correção, não por escolha do usuário — o selo "ajustado"
+        // tem de continuar apagado.
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 20, dueDay: 25);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 27));
+
+        var fatura = await FaturaAsync(client, cardId, referencia);
+        DateOnly.FromDateTime(fatura.GetProperty("dueDate").GetDateTime())
+            .Should().Be(new DateOnly(referencia.Year, referencia.Month, 25).AddMonths(1));
+        fatura.GetProperty("isDueOverridden").GetBoolean().Should().BeFalse();
+    }
 }

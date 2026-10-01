@@ -110,13 +110,19 @@ builder.Services.AddAuthorization();
 // Rate limiting básico (docs/12-seguranca.md: "rate limiting quando aplicável").
 builder.Services.AddRateLimiter(options =>
 {
+    // Configurável pelo mesmo motivo do limite de auth logo abaixo: o TestServer não tem IP real,
+    // então a suíte inteira cai na partição "anonymous" e esbarra num teto pensado para um IP de
+    // verdade. O padrão (200/min) é o de produção e não muda.
+    var globalPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:Global:PermitLimit") ?? 200;
+    var globalWindowMinutes = builder.Configuration.GetValue<int?>("RateLimiting:Global:WindowMinutes") ?? 1;
+
     options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(context =>
         System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
             context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
             {
-                PermitLimit = 200,
-                Window = TimeSpan.FromMinutes(1)
+                PermitLimit = globalPermitLimit,
+                Window = TimeSpan.FromMinutes(globalWindowMinutes)
             }));
 
     // Limite dedicado, mais restrito, pros endpoints de auth (login/registro/recuperação de
