@@ -59,8 +59,20 @@
 }
 
 .mf-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid var(--mf-line);
+}
+
+// Não é global: cada tela define a sua (mesmo grid de cards/card-list.component.scss).
+.mf-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .mf-panel-body {
@@ -204,6 +216,12 @@
 }
 .mf-row-delete-icon {
   color: var(--mf-red);
+}
+
+@media (max-width: 900px) {
+  .mf-stat-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
