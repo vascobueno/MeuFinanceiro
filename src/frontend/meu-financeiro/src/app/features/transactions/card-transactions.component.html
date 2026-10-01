@@ -45,7 +45,7 @@
 
     <!-- A operadora às vezes antecipa ou adia o fechamento de um mês; o dia do cadastro vale
          para todos. Aqui o ajuste é só desta fatura. -->
-    <div class="mf-cycle-closing">
+    <div class="mf-cycle-dates">
       @if (!editingClosing()) {
         <span class="mf-sub">Fechamento</span>
         <b>{{ c.closingDate | date: 'dd/MM/yyyy' }}</b>
@@ -79,6 +79,47 @@
         @if (c.isClosingOverridden) {
           <button pButton [text]="true" size="small" type="button" [disabled]="savingClosing()" (click)="resetClosing()">
             Voltar ao padrão ({{ defaultClosingLabel }})
+          </button>
+        }
+      }
+    </div>
+
+    <!-- O vencimento é independente do fechamento: a operadora antecipa o fechamento mas costuma
+         manter o dia de vencimento. Ajustável só para esta fatura. -->
+    <div class="mf-cycle-dates">
+      @if (!editingDue()) {
+        <span class="mf-sub">Vencimento</span>
+        <b>{{ c.dueDate | date: 'dd/MM/yyyy' }}</b>
+        @if (c.isDueOverridden) {
+          <span class="mf-badge" pTooltip="Ajustado para esta fatura" tooltipPosition="top">ajustado</span>
+        }
+        @if (authService.canWrite()) {
+          <button
+            type="button"
+            class="mf-row-edit-icon"
+            pTooltip="Ajustar o vencimento desta fatura"
+            tooltipPosition="top"
+            [attr.aria-label]="'Ajustar o vencimento desta fatura'"
+            (click)="openDueEditor()"
+          >
+            <i class="pi pi-pencil"></i>
+          </button>
+        }
+      } @else {
+        <p-datepicker
+          size="small"
+          dateFormat="dd/mm/yy"
+          [showIcon]="true"
+          [minDate]="dueMin"
+          [maxDate]="dueMax"
+          [(ngModel)]="dueDraft"
+          name="dueDraft"
+        />
+        <button pButton type="button" size="small" [disabled]="savingDue()" (click)="saveDue()">Salvar</button>
+        <button pButton [outlined]="true" size="small" type="button" (click)="closeDueEditor()">Cancelar</button>
+        @if (c.isDueOverridden) {
+          <button pButton [text]="true" size="small" type="button" [disabled]="savingDue()" (click)="resetDue()">
+            Voltar ao padrão ({{ defaultDueLabel }})
           </button>
         }
       }

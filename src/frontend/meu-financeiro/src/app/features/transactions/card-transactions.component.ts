@@ -91,6 +91,10 @@ export class CardTransactionsComponent implements OnInit {
   readonly savingClosing = signal(false);
   closingDraft: Date = new Date();
 
+  readonly editingDue = signal(false);
+  readonly savingDue = signal(false);
+  dueDraft: Date = new Date();
+
   private sortBy: string | null = null;
   private sortDir: 'asc' | 'desc' = 'desc';
 
@@ -267,7 +271,75 @@ export class CardTransactionsComponent implements OnInit {
     const current = this.cycle();
     if (!current) return;
     this.closingDraft = parseIsoDate(current.closingDate);
+    // Um editor por vez: os dois abertos estouram a largura da linha.
+    this.editingDue.set(false);
     this.editingClosing.set(true);
+  }
+
+  // ---- vencimento ----
+
+  /** O vencimento tem de ser depois do fechamento — os limites espelham a validação do servidor. */
+  get dueMin(): Date | null {
+    const current = this.cycle();
+    if (!current) return null;
+    const fechamento = parseIsoDate(current.closingDate);
+    return new Date(fechamento.getFullYear(), fechamento.getMonth(), fechamento.getDate() + 1);
+  }
+
+  get dueMax(): Date | null {
+    const current = this.cycle();
+    if (!current) return null;
+    const fechamento = parseIsoDate(current.closingDate);
+    return new Date(fechamento.getFullYear(), fechamento.getMonth(), fechamento.getDate() + 90);
+  }
+
+  get defaultDueLabel(): string {
+    const current = this.cycle();
+    if (!current) return '';
+    const padrao = parseIsoDate(current.defaultDueDate);
+    return `${String(padrao.getDate()).padStart(2, '0')}/${String(padrao.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  openDueEditor(): void {
+    const current = this.cycle();
+    if (!current) return;
+    this.dueDraft = parseIsoDate(current.dueDate);
+    this.editingClosing.set(false);
+    this.editingDue.set(true);
+  }
+
+  closeDueEditor(): void {
+    this.editingDue.set(false);
+  }
+
+  saveDue(): void {
+    const current = this.cycle();
+    if (!current || !this.selectedCardId) return;
+
+    this.savingDue.set(true);
+    this.cardPaymentService
+      .setDue(this.selectedCardId, current.reference, toIsoDate(this.dueDraft))
+      .subscribe({
+        next: (cycle) => this.afterCycleChange(cycle),
+        error: (err) => {
+          this.savingDue.set(false);
+          this.error.set(err?.error?.detail ?? 'Não foi possível ajustar o vencimento.');
+        },
+      });
+  }
+
+  resetDue(): void {
+    const current = this.cycle();
+    if (!current || !this.selectedCardId) return;
+
+    this.savingDue.set(true);
+    this.cardPaymentService.clearDue(this.selectedCardId, current.reference).subscribe({
+      next: (cycle) => this.afterCycleChange(cycle),
+      error: () => {
+        this.savingDue.set(false);
+        this.error.set('Não foi possível voltar ao vencimento padrão.');
+      },
+    });
   }
 
   closeClosingEditor(): void {
@@ -282,7 +354,7 @@ export class CardTransactionsComponent implements OnInit {
     this.cardPaymentService
       .setClosing(this.selectedCardId, current.reference, toIsoDate(this.closingDraft))
       .subscribe({
-        next: (cycle) => this.afterClosingChange(cycle),
+        next: (cycle) => this.afterCycleChange(cycle),
         error: (err) => {
           this.savingClosing.set(false);
           this.error.set(err?.error?.detail ?? 'Não foi possível ajustar o fechamento.');
@@ -296,7 +368,7 @@ export class CardTransactionsComponent implements OnInit {
 
     this.savingClosing.set(true);
     this.cardPaymentService.clearClosing(this.selectedCardId, current.reference).subscribe({
-      next: (cycle) => this.afterClosingChange(cycle),
+      next: (cycle) => this.afterCycleChange(cycle),
       error: () => {
         this.savingClosing.set(false);
         this.error.set('Não foi possível voltar ao fechamento padrão.');
@@ -304,10 +376,13 @@ export class CardTransactionsComponent implements OnInit {
     });
   }
 
-  /** A janela do ciclo mudou, então os gastos listados mudam junto — recarrega os dois. */
-  private afterClosingChange(cycle: CardInvoiceCycle): void {
+  /** A janela do ciclo pode ter mudado, então os gastos listados mudam junto — recarrega os dois. */
+  private afterCycleChange(cycle: CardInvoiceCycle): void {
     this.savingClosing.set(false);
+    this.savingDue.set(false);
     this.editingClosing.set(false);
+    this.editingDue.set(false);
+    this.error.set(null);
     this.cycle.set(cycle);
     this.loadTransactions();
   }

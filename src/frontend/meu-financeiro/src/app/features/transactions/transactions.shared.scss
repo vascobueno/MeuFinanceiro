@@ -232,8 +232,8 @@
   }
 }
 
-// Linha de fechamento da fatura, abaixo da navegação de ciclo.
-.mf-cycle-closing {
+// Linhas de fechamento e vencimento da fatura, ao lado da navegação de ciclo.
+.mf-cycle-dates {
   display: flex;
   align-items: center;
   gap: 0.5rem;

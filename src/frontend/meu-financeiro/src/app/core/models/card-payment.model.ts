@@ -33,6 +33,10 @@ export interface CardInvoiceCycle {
   isClosingOverridden: boolean;
   /** O fechamento que o cadastro do cartão daria — para o "voltar ao padrão". */
   defaultClosingDate: string;
+  /** O vencimento deste mês foi ajustado. */
+  isDueOverridden: boolean;
+  /** O vencimento derivado do fechamento padrão — para o "voltar ao padrão". */
+  defaultDueDate: string;
   payments: CardPayment[];
 }
 

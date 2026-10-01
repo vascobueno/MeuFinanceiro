@@ -40,6 +40,18 @@ export class CardPaymentService {
       `${this.cardsUrl}/${cardId}/invoice/${reference}/closing`);
   }
 
+  /** Ajusta o vencimento de UMA fatura, independente do fechamento. */
+  setDue(cardId: string, reference: string, dueDate: string): Observable<CardInvoiceCycle> {
+    return this.http.put<CardInvoiceCycle>(
+      `${this.cardsUrl}/${cardId}/invoice/${reference}/due`, { dueDate });
+  }
+
+  /** Remove o ajuste e volta ao vencimento derivado do fechamento padrão. */
+  clearDue(cardId: string, reference: string): Observable<CardInvoiceCycle> {
+    return this.http.delete<CardInvoiceCycle>(
+      `${this.cardsUrl}/${cardId}/invoice/${reference}/due`);
+  }
+
   create(request: CreateCardPaymentRequest): Observable<CardPayment> {
     return this.http.post<CardPayment>(this.paymentsUrl, request);
   }
