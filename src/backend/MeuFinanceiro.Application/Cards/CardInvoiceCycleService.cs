@@ -36,7 +36,7 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
 
         var baseCycle = ResolveCycle(card.ClosingDay, card.DueDay, reference);
         var cycleReference = ReferenceOf(baseCycle);
-        var cycle = await ApplyClosingOverridesAsync(card, baseCycle, cycleReference, ct);
+        var cycle = await ApplyOverridesAsync(card, baseCycle, cycleReference, ct);
 
         // Total do ciclo numa consulta agregada, nunca somando a lista paginada em memória.
         //
@@ -96,14 +96,14 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
                 "fechamento-fora-do-mes",
                 $"O fechamento tem de ser uma data de {reference:MM/yyyy}.");
 
-        var existing = await _db.CardCycleClosings
+        var existing = await _db.CardCycleOverrides
             .FirstOrDefaultAsync(o => o.CreditCardId == cardId
                                    && o.GrupoId == _currentUser.GrupoId
                                    && o.ReferenceMonth == reference, ct);
 
         if (existing is null)
         {
-            _db.CardCycleClosings.Add(new CardCycleClosing
+            _db.CardCycleOverrides.Add(new CardCycleOverride
             {
                 GrupoId = _currentUser.GrupoId,
                 CreditCardId = card.Id,
@@ -132,7 +132,7 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
         await FindCardAsync(cardId, ct);
         EnsureReferenceIsMonth(reference);
 
-        var existing = await _db.CardCycleClosings
+        var existing = await _db.CardCycleOverrides
             .FirstOrDefaultAsync(o => o.CreditCardId == cardId
                                    && o.GrupoId == _currentUser.GrupoId
                                    && o.ReferenceMonth == reference, ct);
@@ -140,7 +140,7 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
         // Sem ajuste gravado já é o estado desejado — remover o que não existe não é erro.
         if (existing is not null)
         {
-            _db.CardCycleClosings.Remove(existing);
+            _db.CardCycleOverrides.Remove(existing);
             await _db.SaveChangesAsync(ct);
         }
 
@@ -161,38 +161,56 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
     }
 
     /// <summary>
-    /// Aplica as exceções de fechamento (CardCycleClosing) ao ciclo calculado.
+    /// Aplica as exceções de calendário (CardCycleOverride) ao ciclo calculado.
     ///
     /// Precisa do mês ANTERIOR também: o início do ciclo é o dia seguinte ao fechamento dele, e se
-    /// aquele mês tiver exceção, a janela deste muda junto. Os dois vêm numa consulta só.
+    /// aquele mês tiver ajuste, a janela deste muda junto. Os dois vêm numa consulta só.
     ///
-    /// O vencimento é recalculado a partir do fechamento efetivo — se a operadora antecipa o
-    /// fechamento, o vencimento acompanha. A regra vem de CardCycleCalculator.DueDateFor, para
-    /// não existir uma segunda cópia dela aqui.
+    /// O vencimento sai do fechamento PADRÃO, não do ajustado — é isso que o mantém estável. A
+    /// operadora antecipa ou adia o fechamento, mas o dia de vencimento costuma ser fixo; derivá-lo
+    /// do fechamento ajustado fazia o vencimento pular um mês inteiro a cada antecipação.
+    ///
+    /// A regra do dia continua vindo de CardCycleCalculator.DueDateFor: muda de onde ela é chamada,
+    /// não a regra. Duplicar calendário já nos custou um bug.
     /// </summary>
-    private async Task<CardCycle> ApplyClosingOverridesAsync(
+    private async Task<CardCycle> ApplyOverridesAsync(
         CreditCard card, CardCycle baseCycle, DateOnly cycleReference, CancellationToken ct)
     {
         var previousReference = cycleReference.AddMonths(-1);
 
-        var overrides = await _db.CardCycleClosings
+        var overrides = await _db.CardCycleOverrides
             .AsNoTracking()
             .Where(o => o.CreditCardId == card.Id
                      && o.GrupoId == _currentUser.GrupoId
                      && (o.ReferenceMonth == cycleReference || o.ReferenceMonth == previousReference))
-            .ToDictionaryAsync(o => o.ReferenceMonth, o => o.ClosingDate, ct);
+            .ToDictionaryAsync(o => o.ReferenceMonth, o => o, ct);
 
-        if (overrides.Count == 0) return baseCycle;
+        var current = overrides.GetValueOrDefault(cycleReference);
 
-        var closing = overrides.GetValueOrDefault(cycleReference, baseCycle.ClosingDate);
+        var closing = current?.ClosingDate ?? baseCycle.ClosingDate;
 
         var previousBase = CardCycleCalculator.CycleForMonth(card.ClosingDay, card.DueDay, previousReference);
-        var previousClosing = overrides.GetValueOrDefault(previousReference, previousBase.ClosingDate);
+        var previousClosing = overrides.GetValueOrDefault(previousReference)?.ClosingDate
+            ?? previousBase.ClosingDate;
 
-        return new CardCycle(
-            previousClosing.AddDays(1),
-            closing,
-            CardCycleCalculator.DueDateFor(closing, card.DueDay));
+        return new CardCycle(previousClosing.AddDays(1), closing, ResolveDueDate(card, baseCycle, current, closing));
+    }
+
+    /// <summary>
+    /// O vencimento efetivo: o ajustado, se houver; senão o derivado do fechamento PADRÃO.
+    ///
+    /// E um piso: uma fatura não pode vencer antes de fechar. Quando o fechamento é adiado para
+    /// depois do vencimento, este avança para a próxima ocorrência do dia depois do fechamento
+    /// efetivo. Isso é correção, não preferência — por isso é piso, e não a volta da derivação.
+    /// </summary>
+    private static DateOnly ResolveDueDate(
+        CreditCard card, CardCycle baseCycle, CardCycleOverride? current, DateOnly effectiveClosing)
+    {
+        var due = current?.DueDate ?? CardCycleCalculator.DueDateFor(baseCycle.ClosingDate, card.DueDay);
+
+        return due > effectiveClosing
+            ? due
+            : CardCycleCalculator.DueDateFor(effectiveClosing, card.DueDay);
     }
 
     /// <summary>

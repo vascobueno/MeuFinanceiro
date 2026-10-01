@@ -342,13 +342,13 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.ToTable("BankStatementItems");
                 });
 
-            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardCycleClosing", b =>
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardCycleOverride", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateOnly>("ClosingDate")
+                    b.Property<DateOnly?>("ClosingDate")
                         .HasColumnType("date");
 
                     b.Property<DateTime>("CreatedAt")
@@ -359,6 +359,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.Property<Guid>("CreditCardId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
 
                     b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
@@ -382,7 +385,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.HasIndex("CreditCardId", "ReferenceMonth")
                         .IsUnique();
 
-                    b.ToTable("CardCycleClosings");
+                    b.ToTable("CardCycleOverrides");
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardInvoice", b =>
@@ -1701,7 +1704,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Navigation("BankStatement");
                 });
 
-            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardCycleClosing", b =>
+            modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardCycleOverride", b =>
                 {
                     b.HasOne("MeuFinanceiro.Domain.Entities.CreditCard", "CreditCard")
                         .WithMany()

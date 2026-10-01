@@ -448,18 +448,46 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
     }
 
     [Fact]
-    public async Task Vencimento_deve_acompanhar_o_fechamento_ajustado()
+    public async Task Vencimento_NAO_deve_acompanhar_o_fechamento_ajustado()
     {
+        // MUDANÇA DE COMPORTAMENTO: antes o vencimento era derivado do fechamento EFETIVO, então
+        // antecipar o fechamento o puxava junto — às vezes um mês inteiro. A operadora antecipa o
+        // fechamento, mas o dia de vencimento costuma ser fixo. Agora ele sai do fechamento PADRÃO.
         var client = await NovoUsuarioAsync();
-        // dueDay 25 > closingDay 20: o vencimento cai no mesmo mês.
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        var vencimentoAntes = DateOnly.FromDateTime(
+            (await FaturaAsync(client, cardId, referencia)).GetProperty("dueDate").GetDateTime());
+        vencimentoAntes.Should().Be(new DateOnly(referencia.Year, referencia.Month, 10).AddMonths(1));
+
+        // Antecipa o fechamento para bem antes do dia 10: na regra antiga o vencimento viria para
+        // o dia 10 DESTE mês; na nova, não se move.
+        await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 5));
+
+        var vencimentoDepois = DateOnly.FromDateTime(
+            (await FaturaAsync(client, cardId, referencia)).GetProperty("dueDate").GetDateTime());
+        vencimentoDepois.Should().Be(vencimentoAntes, "o vencimento não acompanha o fechamento ajustado");
+    }
+
+    [Fact]
+    public async Task Vencimento_deve_ser_empurrado_quando_o_fechamento_passa_dele()
+    {
+        // O piso: uma fatura não pode vencer antes de fechar. Só aqui o vencimento se move.
+        var client = await NovoUsuarioAsync();
         var cardId = await CriarCartaoAsync(client, closingDay: 20, dueDay: 25);
         var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
 
-        // Adiando o fechamento para depois do dia 25, o vencimento tem de ir para o mês seguinte.
+        // Padrão: fecha 20, vence 25 do mesmo mês.
+        DateOnly.FromDateTime((await FaturaAsync(client, cardId, referencia)).GetProperty("dueDate").GetDateTime())
+            .Should().Be(new DateOnly(referencia.Year, referencia.Month, 25));
+
+        // Adiando o fechamento para 27, o vencimento 25 ficaria no passado — tem de ir para o 25
+        // do mês seguinte.
         await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 27));
 
-        var vencimento = DateOnly.FromDateTime((await FaturaAsync(client, cardId, referencia)).GetProperty("dueDate").GetDateTime());
-        vencimento.Should().Be(new DateOnly(referencia.Year, referencia.Month, 25).AddMonths(1));
+        DateOnly.FromDateTime((await FaturaAsync(client, cardId, referencia)).GetProperty("dueDate").GetDateTime())
+            .Should().Be(new DateOnly(referencia.Year, referencia.Month, 25).AddMonths(1));
     }
 
     [Fact]

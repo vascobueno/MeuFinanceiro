@@ -10,7 +10,7 @@ namespace MeuFinanceiro.Domain.Entities;
 /// pagamento é justamente a coisa que o usuário edita depois — trocar a conta de onde saiu.
 ///
 /// O ciclo que ele quita é identificado pelo MÊS (<see cref="CycleReference"/>), não pela data de
-/// fechamento. A data pode ser ajustada por fatura (ver CardCycleClosing) quando a operadora
+/// fechamento. A data pode ser ajustada por fatura (ver CardCycleOverride) quando a operadora
 /// antecipa ou adia o fechamento — se ela fosse a chave, um ajuste deixaria os pagamentos já
 /// registrados órfãos e eles sumiriam da tela sem aviso. O mês não muda.
 /// </summary>

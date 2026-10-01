@@ -51,7 +51,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<ImportFile> ImportFiles => Set<ImportFile>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<CardPayment> CardPayments => Set<CardPayment>();
-    public DbSet<CardCycleClosing> CardCycleClosings => Set<CardCycleClosing>();
+    public DbSet<CardCycleOverride> CardCycleOverrides => Set<CardCycleOverride>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -185,9 +185,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .HasForeignKey(p => p.PaymentTransactionId).OnDelete(DeleteBehavior.SetNull);
         });
 
-        // Exceção de fechamento por mês. Único em (cartão, mês): dois fechamentos para o mesmo mês
-        // seriam ambíguos, e o índice é a barreira contra isso mesmo em corrida entre requisições.
-        builder.Entity<CardCycleClosing>(e =>
+        // Exceções de calendário por mês (fechamento e/ou vencimento). Único em (cartão, mês):
+        // dois ajustes para o mesmo mês seriam ambíguos, e o índice é a barreira contra isso mesmo
+        // em corrida entre requisições.
+        builder.Entity<CardCycleOverride>(e =>
         {
             e.HasIndex(o => new { o.CreditCardId, o.ReferenceMonth }).IsUnique();
             e.HasOne(o => o.CreditCard).WithMany()
