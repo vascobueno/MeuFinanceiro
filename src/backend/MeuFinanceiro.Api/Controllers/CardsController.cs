@@ -36,6 +36,21 @@ public class CardsController : ControllerBase
         Guid id, [FromQuery] DateOnly? reference, CancellationToken ct)
         => Ok(await _invoiceCycleService.GetAsync(id, reference, ct));
 
+    /// <summary>
+    /// Ajusta o fechamento de UMA fatura — a operadora às vezes antecipa ou adia (fim de semana,
+    /// feriado). `reference` é o mês (dia 1); a data tem de cair dentro dele.
+    /// </summary>
+    [HttpPut("{id:guid}/invoice/{reference}/closing")]
+    public async Task<ActionResult<CardInvoiceCycleResponse>> SetInvoiceClosing(
+        Guid id, DateOnly reference, SetCycleClosingRequest request, CancellationToken ct)
+        => Ok(await _invoiceCycleService.SetClosingAsync(id, reference, request.ClosingDate, ct));
+
+    /// <summary>Remove o ajuste e volta ao dia de fechamento do cadastro do cartão.</summary>
+    [HttpDelete("{id:guid}/invoice/{reference}/closing")]
+    public async Task<ActionResult<CardInvoiceCycleResponse>> ClearInvoiceClosing(
+        Guid id, DateOnly reference, CancellationToken ct)
+        => Ok(await _invoiceCycleService.ClearClosingAsync(id, reference, ct));
+
     [HttpPost]
     public async Task<ActionResult<CardResponse>> Create(CreateCardRequest request, CancellationToken ct)
     {

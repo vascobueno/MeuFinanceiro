@@ -10,6 +10,9 @@ public record CreateCardPaymentRequest(
     Guid? AccountId
 );
 
+/// <summary>Ajuste do fechamento de UMA fatura (docs/05 — Pagamento de cartão).</summary>
+public record SetCycleClosingRequest(DateOnly ClosingDate);
+
 public record UpdateCardPaymentRequest(
     DateOnly PaymentDate,
     decimal Amount,
@@ -45,5 +48,9 @@ public record CardInvoiceCycleResponse(
     decimal Outstanding,
     bool IsClosed,
     bool IsOverdue,
+    /// <summary>O fechamento deste mês foi ajustado (difere do dia do cadastro).</summary>
+    bool IsClosingOverridden,
+    /// <summary>O fechamento que o cadastro do cartão daria — para o "voltar ao padrão".</summary>
+    DateOnly DefaultClosingDate,
     IReadOnlyList<CardPaymentResponse> Payments
 );

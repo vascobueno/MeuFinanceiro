@@ -47,6 +47,13 @@ public static class CardCycleCalculator
     public static CardCycle Shift(int closingDay, int dueDay, CardCycle from, int months) =>
         CycleForMonth(closingDay, dueDay, FirstOfMonth(from.ClosingDate).AddMonths(months));
 
+    /// <summary>
+    /// O vencimento de um fechamento qualquer — inclusive de um ajustado por fatura
+    /// (CardCycleClosing). Exposto para que a regra viva num lugar só: duplicá-la foi exatamente
+    /// o que produziu o bug de navegação no cliente.
+    /// </summary>
+    public static DateOnly DueDateFor(DateOnly closing, int dueDay) => DueAfter(closing, dueDay);
+
     private static DateOnly FirstOfMonth(DateOnly date) => new(date.Year, date.Month, 1);
 
     /// <summary>O fechamento num mês, encurtado quando o mês não tem aquele dia.</summary>

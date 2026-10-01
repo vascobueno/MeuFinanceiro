@@ -1,5 +1,6 @@
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
+using MeuFinanceiro.Domain.Entities;
 using MeuFinanceiro.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,7 +34,9 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
             .FirstOrDefaultAsync(c => c.Id == cardId && c.GrupoId == _currentUser.GrupoId, ct)
             ?? throw new NotFoundException("Cartão", cardId);
 
-        var cycle = ResolveCycle(card.ClosingDay, card.DueDay, reference);
+        var baseCycle = ResolveCycle(card.ClosingDay, card.DueDay, reference);
+        var cycleReference = ReferenceOf(baseCycle);
+        var cycle = await ApplyClosingOverridesAsync(card, baseCycle, cycleReference, ct);
 
         // Total do ciclo numa consulta agregada, nunca somando a lista paginada em memória.
         //
@@ -49,7 +52,6 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
                      && t.TransactionDate <= cycle.ClosingDate)
             .SumAsync(t => t.Direction == TransactionDirection.Debit ? t.Amount : -t.Amount, ct);
 
-        var cycleReference = ReferenceOf(cycle);
         var payments = await _db.CardPayments
             .AsNoTracking()
             .Where(p => p.CreditCardId == cardId
@@ -72,7 +74,125 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
             total, paid, outstanding,
             isClosed,
             IsOverdue: isClosed && cycle.DueDate < Today && outstanding > 0,
+            IsClosingOverridden: cycle.ClosingDate != baseCycle.ClosingDate,
+            DefaultClosingDate: baseCycle.ClosingDate,
             payments);
+    }
+
+    public async Task<CardInvoiceCycleResponse> SetClosingAsync(
+        Guid cardId, DateOnly reference, DateOnly closingDate, CancellationToken ct = default)
+    {
+        if (!_currentUser.CanWrite)
+            throw new ForbiddenException("Perfil somente leitura não pode ajustar o fechamento.");
+
+        var card = await FindCardAsync(cardId, ct);
+        EnsureReferenceIsMonth(reference);
+
+        // O fechamento tem de ficar DENTRO do próprio mês. Fora dele, dois ciclos se sobreporiam
+        // (o mesmo lançamento entraria em duas faturas) ou se inverteriam (janela vazia) — e os
+        // dois erram em silêncio, que é o pior jeito de errar dinheiro.
+        if (closingDate.Year != reference.Year || closingDate.Month != reference.Month)
+            throw new BusinessRuleException(
+                "fechamento-fora-do-mes",
+                $"O fechamento tem de ser uma data de {reference:MM/yyyy}.");
+
+        var existing = await _db.CardCycleClosings
+            .FirstOrDefaultAsync(o => o.CreditCardId == cardId
+                                   && o.GrupoId == _currentUser.GrupoId
+                                   && o.ReferenceMonth == reference, ct);
+
+        if (existing is null)
+        {
+            _db.CardCycleClosings.Add(new CardCycleClosing
+            {
+                GrupoId = _currentUser.GrupoId,
+                CreditCardId = card.Id,
+                ReferenceMonth = reference,
+                ClosingDate = closingDate,
+                CreatedBy = _currentUser.UserId,
+            });
+        }
+        else
+        {
+            existing.ClosingDate = closingDate;
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedBy = _currentUser.UserId;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return await GetAsync(cardId, reference, ct);
+    }
+
+    public async Task<CardInvoiceCycleResponse> ClearClosingAsync(
+        Guid cardId, DateOnly reference, CancellationToken ct = default)
+    {
+        if (!_currentUser.CanWrite)
+            throw new ForbiddenException("Perfil somente leitura não pode ajustar o fechamento.");
+
+        await FindCardAsync(cardId, ct);
+        EnsureReferenceIsMonth(reference);
+
+        var existing = await _db.CardCycleClosings
+            .FirstOrDefaultAsync(o => o.CreditCardId == cardId
+                                   && o.GrupoId == _currentUser.GrupoId
+                                   && o.ReferenceMonth == reference, ct);
+
+        // Sem ajuste gravado já é o estado desejado — remover o que não existe não é erro.
+        if (existing is not null)
+        {
+            _db.CardCycleClosings.Remove(existing);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return await GetAsync(cardId, reference, ct);
+    }
+
+    private async Task<CreditCard> FindCardAsync(Guid cardId, CancellationToken ct) =>
+        await _db.CreditCards.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == cardId && c.GrupoId == _currentUser.GrupoId, ct)
+        ?? throw new NotFoundException("Cartão", cardId);
+
+    private static void EnsureReferenceIsMonth(DateOnly reference)
+    {
+        if (reference.Day != 1)
+            throw new BusinessRuleException(
+                "referencia-invalida",
+                $"A referência da fatura é o mês (dia 1), e {reference:dd/MM/yyyy} não é.");
+    }
+
+    /// <summary>
+    /// Aplica as exceções de fechamento (CardCycleClosing) ao ciclo calculado.
+    ///
+    /// Precisa do mês ANTERIOR também: o início do ciclo é o dia seguinte ao fechamento dele, e se
+    /// aquele mês tiver exceção, a janela deste muda junto. Os dois vêm numa consulta só.
+    ///
+    /// O vencimento é recalculado a partir do fechamento efetivo — se a operadora antecipa o
+    /// fechamento, o vencimento acompanha. A regra vem de CardCycleCalculator.DueDateFor, para
+    /// não existir uma segunda cópia dela aqui.
+    /// </summary>
+    private async Task<CardCycle> ApplyClosingOverridesAsync(
+        CreditCard card, CardCycle baseCycle, DateOnly cycleReference, CancellationToken ct)
+    {
+        var previousReference = cycleReference.AddMonths(-1);
+
+        var overrides = await _db.CardCycleClosings
+            .AsNoTracking()
+            .Where(o => o.CreditCardId == card.Id
+                     && o.GrupoId == _currentUser.GrupoId
+                     && (o.ReferenceMonth == cycleReference || o.ReferenceMonth == previousReference))
+            .ToDictionaryAsync(o => o.ReferenceMonth, o => o.ClosingDate, ct);
+
+        if (overrides.Count == 0) return baseCycle;
+
+        var closing = overrides.GetValueOrDefault(cycleReference, baseCycle.ClosingDate);
+
+        var previousBase = CardCycleCalculator.CycleForMonth(card.ClosingDay, card.DueDay, previousReference);
+        var previousClosing = overrides.GetValueOrDefault(previousReference, previousBase.ClosingDate);
+
+        return new CardCycle(
+            previousClosing.AddDays(1),
+            closing,
+            CardCycleCalculator.DueDateFor(closing, card.DueDay));
     }
 
     /// <summary>

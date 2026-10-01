@@ -382,4 +382,115 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         JsonDocument.Parse(await deCartao.Content.ReadAsStringAsync()).RootElement.GetProperty("items")
             .EnumerateArray().Should().OnlyContain(i => i.GetProperty("creditCardId").ValueKind != JsonValueKind.Null);
     }
+
+    // ---------------- ajuste do fechamento por fatura ----------------
+
+    private static Task<HttpResponseMessage> AjustarFechamentoAsync(
+        HttpClient client, Guid cardId, DateOnly referencia, DateOnly fechamento) =>
+        client.PutAsJsonAsync($"/api/v1/cards/{cardId}/invoice/{Iso(referencia)}/closing",
+            new { closingDate = Iso(fechamento) });
+
+    [Fact]
+    public async Task Ajustar_o_fechamento_deve_mudar_a_janela_do_ciclo()
+    {
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        var original = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
+        original.Day.Should().Be(28);
+
+        var antecipado = new DateOnly(referencia.Year, referencia.Month, 20);
+        (await AjustarFechamentoAsync(client, cardId, referencia, antecipado)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var fatura = await FaturaAsync(client, cardId, referencia);
+        DateOnly.FromDateTime(fatura.GetProperty("closingDate").GetDateTime()).Should().Be(antecipado);
+        fatura.GetProperty("isClosingOverridden").GetBoolean().Should().BeTrue();
+        DateOnly.FromDateTime(fatura.GetProperty("defaultClosingDate").GetDateTime()).Should().Be(original);
+    }
+
+    [Fact]
+    public async Task Gasto_depois_do_fechamento_ajustado_deve_sair_do_ciclo()
+    {
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        // Gasto no dia 25: dentro do ciclo enquanto o fechamento é 28.
+        await GastarNoCartaoAsync(client, cardId, 400m, new DateOnly(referencia.Year, referencia.Month, 25));
+        (await FaturaAsync(client, cardId, referencia)).GetProperty("total").GetDecimal().Should().Be(400m);
+
+        // Antecipando o fechamento para o dia 20, ele passa a pertencer ao ciclo seguinte.
+        await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 20));
+
+        (await FaturaAsync(client, cardId, referencia)).GetProperty("total").GetDecimal().Should().Be(0m);
+        (await FaturaAsync(client, cardId, referencia.AddMonths(1))).GetProperty("total").GetDecimal().Should().Be(400m);
+    }
+
+    [Fact]
+    public async Task Pagamento_deve_continuar_na_fatura_depois_do_ajuste()
+    {
+        // É a razão de a chave do ciclo ser o MÊS: se fosse a data de fechamento, este pagamento
+        // ficaria órfão no ajuste e sumiria da tela sem aviso.
+        var client = await NovoUsuarioAsync();
+        var contaId = await CriarContaAsync(client, 5000m);
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        await GastarNoCartaoAsync(client, cardId, 300m, new DateOnly(referencia.Year, referencia.Month, 10));
+        (await PagarAsync(client, cardId, referencia, 300m, contaId)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 20));
+
+        var fatura = await FaturaAsync(client, cardId, referencia);
+        fatura.GetProperty("payments").GetArrayLength().Should().Be(1, "o pagamento é do mês, não do fechamento");
+        fatura.GetProperty("paid").GetDecimal().Should().Be(300m);
+    }
+
+    [Fact]
+    public async Task Vencimento_deve_acompanhar_o_fechamento_ajustado()
+    {
+        var client = await NovoUsuarioAsync();
+        // dueDay 25 > closingDay 20: o vencimento cai no mesmo mês.
+        var cardId = await CriarCartaoAsync(client, closingDay: 20, dueDay: 25);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        // Adiando o fechamento para depois do dia 25, o vencimento tem de ir para o mês seguinte.
+        await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 27));
+
+        var vencimento = DateOnly.FromDateTime((await FaturaAsync(client, cardId, referencia)).GetProperty("dueDate").GetDateTime());
+        vencimento.Should().Be(new DateOnly(referencia.Year, referencia.Month, 25).AddMonths(1));
+    }
+
+    [Fact]
+    public async Task Fechamento_fora_do_mes_de_referencia_deve_ser_recusado()
+    {
+        // Sem este limite, dois ciclos se sobreporiam (lançamento contado duas vezes) ou se
+        // inverteriam (janela vazia) — os dois erram em silêncio.
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        (await AjustarFechamentoAsync(client, cardId, referencia, referencia.AddMonths(1)))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await AjustarFechamentoAsync(client, cardId, referencia, referencia.AddDays(-1)))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Remover_o_ajuste_deve_voltar_ao_fechamento_do_cadastro()
+    {
+        var client = await NovoUsuarioAsync();
+        var cardId = await CriarCartaoAsync(client, closingDay: 28, dueDay: 10);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+
+        await AjustarFechamentoAsync(client, cardId, referencia, new DateOnly(referencia.Year, referencia.Month, 20));
+
+        var remocao = await client.DeleteAsync($"/api/v1/cards/{cardId}/invoice/{Iso(referencia)}/closing");
+        remocao.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var fatura = await FaturaAsync(client, cardId, referencia);
+        DateOnly.FromDateTime(fatura.GetProperty("closingDate").GetDateTime()).Day.Should().Be(28);
+        fatura.GetProperty("isClosingOverridden").GetBoolean().Should().BeFalse();
+    }
 }
