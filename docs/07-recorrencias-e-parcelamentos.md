@@ -43,3 +43,8 @@ parcelamentos. Na tela de Lançamentos, cada parcela mostra o clipe herdado do p
 linhas não parecerem sem documento.
 
 Recorrências não têm anexo: ali o documento pertenceria à recorrência, não ao lançamento gerado.
+
+## Parcelas e a fatura do cartão
+Cada parcela é um lançamento com data própria, então cai sozinha no ciclo de fatura correspondente
+(docs/05 — Pagamento de cartão). Não há nada a fazer: um parcelamento de 12x num cartão aparece
+distribuído por 12 faturas, uma parcela em cada.

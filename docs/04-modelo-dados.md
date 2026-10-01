@@ -28,6 +28,7 @@ InvestmentPosition
 InvestmentTransaction
 ImportFile
 Attachment
+CardPayment
 AuditLog
 ```
 
@@ -72,6 +73,27 @@ entra na chave do storage, que é `{grupoId}/{attachmentId}{extensão}`.
 
 FK `Cascade` para os dois donos: o anexo não tem vida própria. O cascade apaga as linhas, mas
 **não** os objetos no storage — por isso a Application remove os blobs antes de excluir o dono.
+
+## CardPayment
+Pagamento de uma fatura de cartão. Campos: `CreditCardId`, `CycleClosingDate` (qual fatura ele
+quita), `PaymentDate`, `Amount`, `AccountId?` e `PaymentTransactionId?`.
+
+**O ciclo é calculado, não persistido.** Não existe tabela de faturas derivadas: `CardCycleCalculator`
+traduz o `ClosingDay`/`DueDay` do cartão em períodos concretos, e a chave do ciclo é a própria data
+de fechamento. Persistir ciclos exigiria gerá-los e mantê-los em dia para sempre, sem ganho —
+diferente do fechamento de saldo, que existe porque somar o histórico inteiro a cada leitura custa.
+
+`AccountId` nulo significa **pago por outra forma**: não sai de conta nenhuma e não gera lançamento.
+Quando há conta, o pagamento gera um `FinancialTransaction` nela (`PaymentTransactionId`) — é esse
+lançamento que derruba o saldo, pela consulta de saldo que já existe.
+
+Entidade própria, e não um par de lançamentos como a transferência, porque "outra forma" não tem
+perna em conta nenhuma e porque o pagamento é o que o usuário edita depois (trocar a conta).
+
+FKs: `Restrict` para cartão e conta — excluir um deles com pagamento vinculado é barrado na
+Application com mensagem clara; `SetNull` para o lançamento, porque o pagamento sobrevive a ele.
+
+Não confundir com `CardInvoice`, que é o PDF importado do banco para conciliação (docs/08).
 
 ## Reconciliation
 FinancialTransactionId?, BankStatementItemId?, CardInvoiceItemId?, Status, Score, AmountDifference, DateDifferenceDays, DescriptionScore, Reason, auditoria.

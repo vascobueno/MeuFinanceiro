@@ -14,6 +14,22 @@ A soma deve fechar exatamente o principal.
 ## Transferência
 Entre contas próprias não é receita nem despesa.
 
+## Pagamento de cartão
+Pagar a fatura é **movimentação, não despesa** — mesma razão da Transferência. A compra no cartão
+já foi lançada como despesa; contar o pagamento de novo somaria o mesmo dinheiro duas vezes em todo
+relatório de gastos. Por isso o lançamento do pagamento usa `TransactionType.CardPayment`, que as
+agregações de despesa (que filtram `Expense`) excluem naturalmente.
+
+O pagamento pode sair de qualquer conta corrente, ou ser marcado como pago por outra forma — aí não
+afeta conta nenhuma, só abate a fatura. A conta pode ser trocada depois, e o débito acompanha.
+
+A fatura de um ciclo é calculada a partir dos lançamentos do cartão na janela do ciclo, definida
+pelo dia de fechamento. **Ela inclui lançamentos pendentes**, ao contrário do saldo de conta: os
+lançamentos nascem `Pending`, e excluí-los deixaria a fatura zerada. No cartão, "pendente" quer
+dizer não conferido, não "ainda não gastei".
+
+Pagamento parcial é aceito, e pagar a mais deixa o em aberto negativo — é crédito a favor, não erro.
+
 ## Investimentos
 Aplicação reduz conta e aumenta investimento.
 Resgate aumenta conta e reduz investimento.

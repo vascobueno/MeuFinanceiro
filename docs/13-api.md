@@ -77,6 +77,18 @@ POST `/api/v1/cards`
 PUT `/api/v1/cards/{id}`
 DELETE `/api/v1/cards/{id}`
 
+## Card payments (Pagamento de fatura)
+GET `/api/v1/cards/{id}/invoice?reference=yyyy-MM-dd` — fatura do ciclo, calculada a partir dos
+lançamentos (`reference` é a data de fechamento; omitida, devolve o ciclo atual). Devolve total,
+pago, em aberto, período, vencimento e os pagamentos.
+POST `/api/v1/card-payments`
+PUT `/api/v1/card-payments/{id}` (permite trocar a conta, inclusive para "outra forma")
+DELETE `/api/v1/card-payments/{id}`
+
+Uma `reference` que não seja exatamente uma data de fechamento do cartão devolve 400: aceitá-la
+deixaria pagamentos alocados a um ciclo inexistente. Ver docs/05 para a regra de que o pagamento é
+movimentação, não despesa.
+
 ## Categories
 GET `/api/v1/categories`
 POST `/api/v1/categories`
