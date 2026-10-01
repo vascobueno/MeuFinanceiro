@@ -29,6 +29,7 @@ InvestmentTransaction
 ImportFile
 Attachment
 CardPayment
+CardCycleClosing
 AuditLog
 ```
 
@@ -75,8 +76,12 @@ FK `Cascade` para os dois donos: o anexo não tem vida própria. O cascade apaga
 **não** os objetos no storage — por isso a Application remove os blobs antes de excluir o dono.
 
 ## CardPayment
-Pagamento de uma fatura de cartão. Campos: `CreditCardId`, `CycleClosingDate` (qual fatura ele
+Pagamento de uma fatura de cartão. Campos: `CreditCardId`, `CycleReference` (qual fatura ele
 quita), `PaymentDate`, `Amount`, `AccountId?` e `PaymentTransactionId?`.
+
+**A fatura é identificada pelo MÊS (`CycleReference`, dia 1), não pela data de fechamento.** A data
+pode ser ajustada por fatura (ver `CardCycleClosing`); se ela fosse a chave, cada ajuste deixaria os
+pagamentos já registrados órfãos e eles sumiriam da tela sem aviso. O mês não muda.
 
 **O ciclo é calculado, não persistido.** Não existe tabela de faturas derivadas: `CardCycleCalculator`
 traduz o `ClosingDay`/`DueDay` do cartão em períodos concretos, e a chave do ciclo é a própria data
@@ -94,6 +99,20 @@ FKs: `Restrict` para cartão e conta — excluir um deles com pagamento vinculad
 Application com mensagem clara; `SetNull` para o lançamento, porque o pagamento sobrevive a ele.
 
 Não confundir com `CardInvoice`, que é o PDF importado do banco para conciliação (docs/08).
+
+## CardCycleClosing
+Exceção ao dia de fechamento do cartão para **um** mês: `CreditCardId`, `ReferenceMonth` (dia 1) e
+`ClosingDate`. A operadora às vezes antecipa ou adia o fechamento (fim de semana, feriado), e o
+`CreditCard.ClosingDay` do cadastro vale para todos os meses.
+
+Só existe linha quando há exceção — sem ela, o fechamento é o calculado por `CardCycleCalculator`.
+
+**Invariante**: `ClosingDate` tem de cair **dentro** de `ReferenceMonth`. Sem isso, dois ciclos
+poderiam se sobrepor — o mesmo lançamento entraria em duas faturas — ou se inverter, deixando uma
+janela vazia. Os dois erram em silêncio.
+
+Único em `(CreditCardId, ReferenceMonth)`: dois fechamentos para o mesmo mês seriam ambíguos, e o
+índice é a barreira contra isso mesmo em corrida entre requisições.
 
 ## Reconciliation
 FinancialTransactionId?, BankStatementItemId?, CardInvoiceItemId?, Status, Score, AmountDifference, DateDifferenceDays, DescriptionScore, Reason, auditoria.

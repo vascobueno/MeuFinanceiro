@@ -49,5 +49,13 @@ As duas compartilham `mf-transaction-filters` e `mf-transaction-table`. O filtro
 `Origin` (`Account` / `Card`) é o que permite "todos os lançamentos de conta" — os filtros por id
 só respondem "desta conta".
 
+No menu, as duas ficam sob os grupos **Contas** e **Cartões**, cada um com *Cadastro* (a tela de
+cadastro) e *Lançamentos*. No modo recolhido os rótulos de grupo somem, então os tooltips
+desambiguam ("Contas · Lançamentos"), senão restariam quatro ícones indistinguíveis.
+
 > As rotas `lancamentos/conta` e `lancamentos/cartao` precisam ser declaradas **antes** de
 > `lancamentos/:id` em `app.routes.ts`, senão o `:id` captura "conta" e abre a tela de edição.
+
+> Datas ISO vindas da API são lidas com `parseIsoDate` (`core/services/date.util.ts`), nunca com
+> `new Date(string)` — este último é UTC e desloca o dia em fuso negativo. Foi o que travou a
+> navegação entre ciclos em cartão que fecha no dia 1.

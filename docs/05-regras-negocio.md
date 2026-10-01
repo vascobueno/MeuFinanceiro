@@ -30,6 +30,11 @@ dizer não conferido, não "ainda não gastei".
 
 Pagamento parcial é aceito, e pagar a mais deixa o em aberto negativo — é crédito a favor, não erro.
 
+O fechamento de **uma** fatura pode ser ajustado, quando a operadora antecipa ou adia aquele mês. O
+ajuste vale só para o mês escolhido e tem de ser uma data **dentro** dele; o vencimento acompanha o
+fechamento ajustado. Por isso a fatura é identificada pelo mês, e não pela data de fechamento: assim
+um ajuste não desvincula os pagamentos já registrados.
+
 ## Investimentos
 Aplicação reduz conta e aumenta investimento.
 Resgate aumenta conta e reduz investimento.

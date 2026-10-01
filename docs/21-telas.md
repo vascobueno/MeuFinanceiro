@@ -36,11 +36,11 @@ nível clicável do breadcrumb) — ver `app.routes.ts`.
 |---|---|---|
 | `/login` | `LoginComponent` | Login |
 | `/dashboard` | `DashboardComponent` | Visão geral |
-| `/lancamentos/conta` | `AccountTransactionsComponent` | Lançamentos da conta |
-| `/lancamentos/cartao` | `CardTransactionsComponent` | Lançamentos do cartão |
+| `/lancamentos/conta` | `AccountTransactionsComponent` | Lançamentos (menu: Contas › Lançamentos) |
+| `/lancamentos/cartao` | `CardTransactionsComponent` | Lançamentos (menu: Cartões › Lançamentos) |
 | `/lancamentos/novo` | `TransactionFormComponent` | Novo lançamento |
 | `/lancamentos/:id` | `TransactionFormComponent` | Editar lançamento |
-| `/contas` | `AccountListComponent` | Contas correntes |
+| `/contas` | `AccountListComponent` | Contas correntes (menu: Contas › Cadastro) |
 | `/parcelamento` | `InstallmentFormComponent` | Parcelamento |
 | `/recorrencia` | `RecurringListComponent` | Recorrências |
 | `/recorrencia/:id` | `RecurringFormComponent` | Recorrência |
