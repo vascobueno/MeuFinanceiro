@@ -1,7 +1,6 @@
 <div class="mf-list-header">
   <div>
     <h2 class="mf-page-title"><mf-icon name="mf-reconciliation-account" class="mf-page-title-icon"></mf-icon>Conciliação bancária</h2>
-    <div class="mf-sub">Compare o extrato com o sistema e trate divergências.</div>
   </div>
   @if (authService.canWrite()) {
     <button pButton type="button" (click)="showImportForm.set(!showImportForm())">Importar extrato</button>
