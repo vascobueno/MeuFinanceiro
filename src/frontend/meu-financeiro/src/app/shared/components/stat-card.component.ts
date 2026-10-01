@@ -81,7 +81,7 @@ import { CommonModule } from '@angular/common';
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 0.35rem 0.75rem;
+        padding: 0.25rem 0.75rem;
       }
       .mf-stat-card-compact .mf-stat-value {
         font-size: 1rem;
