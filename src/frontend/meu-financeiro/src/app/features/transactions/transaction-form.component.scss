@@ -5,6 +5,26 @@
   margin-bottom: 1rem;
 }
 
+// Título + a etiqueta que diz em que conta/cartão se está lançando. A origem deixou de ser
+// campo (vem da aba), então ela precisa estar visível em algum lugar — é aqui.
+.mf-form-title-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mf-origin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--mf-border, rgba(0, 0, 0, 0.12));
+  background: var(--mf-surface-2, rgba(0, 0, 0, 0.03));
+  font-size: 0.85rem;
+}
+
 .mf-form-card {
   max-width: 720px;
   padding: 1.5rem;

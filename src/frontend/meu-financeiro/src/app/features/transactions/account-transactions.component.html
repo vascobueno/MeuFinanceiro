@@ -7,28 +7,41 @@
 </div>
 
 <div class="mf-account-bar">
-  <div class="mf-account-picker">
-    <label class="mf-field-label">Conta</label>
-    <p-select
-      size="small"
-      class="mf-field-input"
-      [options]="accountOptions()"
-      optionLabel="name"
-      optionValue="id"
-      [(ngModel)]="selectedAccountId"
-      (onChange)="onAccountChange()"
-    />
-  </div>
+  @if (accounts().length > 0) {
+    <p-tabs class="mf-origin-tabs" [value]="selectedAccountId ?? ''" [scrollable]="true" (valueChange)="onSelectAccount($event)">
+      <p-tablist>
+        @for (account of accounts(); track account.id) {
+          <p-tab [value]="account.id">{{ account.name }}</p-tab>
+        }
+      </p-tablist>
+    </p-tabs>
+  }
 
+  <!-- Fora das abas de propósito: é a soma de TODAS as contas e não muda ao trocar de aba. -->
   <mf-stat-card
     class="mf-account-balance"
     size="compact"
-    label="Saldo atual"
-    [value]="balance | currency: 'BRL'"
-    [hint]="balanceHint"
+    label="Saldo total"
+    [value]="totalBalance() | currency: 'BRL'"
+    [hint]="totalHint"
     variant="hero"
   ></mf-stat-card>
 </div>
+
+@if (accounts().length > 0) {
+  <div class="mf-origin-subline">
+    Saldo desta conta <b>{{ balance | currency: 'BRL' }}</b>
+    @if (activeAccount?.bank; as bank) {
+      <span class="mf-sub">· {{ bank }}</span>
+    }
+  </div>
+} @else {
+  <!-- Sem conta não há aba nenhuma: quem acabou de se cadastrar precisa de um caminho, não de
+       uma tela vazia. O botão de novo lançamento também some — não haveria onde lançar. -->
+  <div class="mf-origin-empty">
+    Nenhuma conta cadastrada. <a routerLink="/contas">Cadastrar conta</a>
+  </div>
+}
 
 <mf-transaction-filters
   [filter]="filter"
@@ -41,8 +54,10 @@
        botão justamente de quem ainda não tem lançamento nenhum. -->
   <div class="mf-panel-header">
     <b>Lançamentos</b>
-    @if (authService.canWrite()) {
-      <a pButton size="small" routerLink="/lancamentos/conta/novo">+ Novo lançamento</a>
+    @if (authService.canWrite() && selectedAccountId) {
+      <a pButton size="small" routerLink="/lancamentos/conta/novo" [queryParams]="{ conta: selectedAccountId }">
+        + Novo lançamento
+      </a>
     }
   </div>
 

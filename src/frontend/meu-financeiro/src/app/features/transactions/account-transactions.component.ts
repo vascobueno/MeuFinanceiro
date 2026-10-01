@@ -1,9 +1,9 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
-import { Select } from 'primeng/select';
+import { Tab, TabList, Tabs } from 'primeng/tabs';
 import { MfIconComponent } from '../../shared/icons/mf-icon.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
@@ -16,6 +16,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
 import { Transaction, TransactionFilter, TransactionOrigin } from '../../core/models/transaction.model';
+import { defaultId, validId } from '../../core/services/selection.util';
 
 /**
  * Lançamentos da conta corrente, com o saldo no topo (docs/06).
@@ -31,7 +32,9 @@ import { Transaction, TransactionFilter, TransactionOrigin } from '../../core/mo
     FormsModule,
     RouterLink,
     ButtonDirective,
-    Select,
+    Tabs,
+    TabList,
+    Tab,
     MfIconComponent,
     PaginationComponent,
     StatCardComponent,
@@ -51,27 +54,25 @@ export class AccountTransactionsComponent implements OnInit {
   readonly accounts = signal<Account[]>([]);
   readonly categories = signal<Category[]>([]);
 
-  readonly accountOptions = computed(() => [
-    { id: null, name: 'Todas as contas' },
-    ...this.accounts(),
-  ]);
+  /** Soma de todas as contas — o número da caixa fora das abas. Pode ser computed: lê signal. */
+  readonly totalBalance = computed(() => this.accounts().reduce((sum, a) => sum + a.currentBalance, 0));
 
   /**
-   * Campo comum, não signal, porque é ligado por [(ngModel)] como no resto do app — e por isso
-   * os derivados abaixo são getters, não computed(): um computed não reagiria à troca.
+   * Aba ativa. Campo comum, não signal, e por isso os derivados abaixo são getters: um computed
+   * não reagiria à troca de aba.
    */
   selectedAccountId: string | null = null;
 
-  /** Saldo da conta escolhida; com "Todas", a soma das contas. */
-  get balance(): number {
-    const accounts = this.accounts();
-    return this.selectedAccountId
-      ? (accounts.find((a) => a.id === this.selectedAccountId)?.currentBalance ?? 0)
-      : accounts.reduce((sum, a) => sum + a.currentBalance, 0);
+  get activeAccount(): Account | null {
+    return this.accounts().find((a) => a.id === this.selectedAccountId) ?? null;
   }
 
-  get balanceHint(): string {
-    if (this.selectedAccountId) return 'conta selecionada';
+  /** Saldo só da conta da aba — a linha logo abaixo da faixa. */
+  get balance(): number {
+    return this.activeAccount?.currentBalance ?? 0;
+  }
+
+  get totalHint(): string {
     const total = this.accounts().length;
     return `${total} conta${total === 1 ? '' : 's'}`;
   }
@@ -96,12 +97,29 @@ export class AccountTransactionsComponent implements OnInit {
     private readonly transactionService: TransactionService,
     private readonly accountService: AccountService,
     private readonly categoryService: CategoryService,
+    private readonly router: Router,
+    private readonly route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
-    this.accountService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => this.accounts.set(r.items));
     this.categoryService.getAll().subscribe((c) => this.categories.set(c));
-    this.load();
+
+    // loading já aqui: a tabela espera a conta chegar, e sem isto piscaria "nenhum lançamento".
+    this.loading.set(true);
+    this.accountService.getAll({ page: 1, pageSize: 100 }).subscribe({
+      next: (r) => {
+        this.accounts.set(r.items);
+        // A aba vem da URL; id inválido NÃO vira outra conta aqui, cai no padrão (docs/06).
+        this.selectedAccountId =
+          validId(r.items, this.route.snapshot.queryParamMap.get('conta')) ?? defaultId(r.items);
+        if (this.selectedAccountId) this.load();
+        else this.loading.set(false);
+      },
+      error: () => {
+        this.error.set('Não foi possível carregar as contas.');
+        this.loading.set(false);
+      },
+    });
   }
 
   load(): void {
@@ -131,7 +149,19 @@ export class AccountTransactionsComponent implements OnInit {
     this.load();
   }
 
-  onAccountChange(): void {
+  onSelectAccount(id: string | number | undefined): void {
+    const accountId = String(id);
+    if (!accountId || accountId === this.selectedAccountId) return;
+
+    this.selectedAccountId = accountId;
+    // replaceUrl: trocar de aba não é passo de histórico — senão o Voltar do navegador percorre
+    // conta por conta antes de sair da tela.
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { conta: accountId },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.applyFilters();
   }
 

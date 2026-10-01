@@ -126,9 +126,54 @@ $mf-field-height: 28px;
   margin-bottom: 1rem;
 }
 
-.mf-account-picker,
-.mf-card-picker {
-  flex: 0 0 260px;
+// Faixa de abas de conta/cartão, no lugar do antigo combobox de 260px.
+//
+// min-width: 0 não é enfeite: um item de flex não encolhe abaixo do conteúdo, então sem isto a
+// faixa com muitas contas empurraria a caixa de saldo total para fora em vez de rolar.
+.mf-origin-tabs {
+  flex: 1 1 420px;
+  min-width: 0;
+  align-self: stretch;
+
+  .p-tablist-tab-list {
+    background: transparent;
+  }
+
+  .p-tab {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9rem;
+  }
+}
+
+// Na tela do cartão a faixa fica sozinha, acima da barra de fatura.
+.mf-origin-tabs-block {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+// Saldo da conta da aba — some ao trocar de aba, ao contrário da caixa de total.
+.mf-origin-subline {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.9rem;
+
+  b {
+    margin-left: 0.25rem;
+  }
+
+  .mf-sub {
+    margin-left: 0.4rem;
+  }
+}
+
+// Sem conta/cartão cadastrado não há aba nenhuma: o convite ao cadastro ocupa o lugar da faixa.
+.mf-origin-empty {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--mf-text-muted, inherit);
+
+  a {
+    margin-left: 0.25rem;
+  }
 }
 
 .mf-account-balance {
@@ -237,8 +282,7 @@ $mf-field-height: 28px;
 }
 
 @media (max-width: 640px) {
-  .mf-account-picker,
-  .mf-card-picker,
+  .mf-origin-tabs,
   .mf-account-balance {
     flex: 1 1 100%;
   }

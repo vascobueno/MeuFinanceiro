@@ -8,19 +8,22 @@
   </div>
 </div>
 
-<div class="mf-card-bar">
-  <div class="mf-card-picker">
-    <label class="mf-field-label">Cartão</label>
-    <p-select
-      size="small"
-      class="mf-field-input"
-      [options]="cards()"
-      optionLabel="name"
-      optionValue="id"
-      [(ngModel)]="selectedCardId"
-      (onChange)="onCardChange()"
-    />
+@if (cards().length > 0) {
+  <p-tabs class="mf-origin-tabs mf-origin-tabs-block" [value]="selectedCardId ?? ''" [scrollable]="true" (valueChange)="onSelectCard($event)">
+    <p-tablist>
+      @for (card of cards(); track card.id) {
+        <p-tab [value]="card.id">{{ card.name }}</p-tab>
+      }
+    </p-tablist>
+  </p-tabs>
+} @else {
+  <!-- Sem cartão não há aba, fatura nem ciclo: oferece o cadastro em vez de uma tela vazia. -->
+  <div class="mf-origin-empty">
+    Nenhum cartão cadastrado. <a routerLink="/cartoes">Cadastrar cartão</a>
   </div>
+}
+
+<div class="mf-card-bar">
 
   @if (cycle(); as c) {
     <div class="mf-cycle-nav">
@@ -232,8 +235,10 @@
   <!-- Sempre renderizado: ver o comentário equivalente em account-transactions. -->
   <div class="mf-panel-header">
     <b>Gastos do ciclo</b>
-    @if (authService.canWrite()) {
-      <a pButton size="small" routerLink="/lancamentos/cartao/novo">+ Novo lançamento</a>
+    @if (authService.canWrite() && selectedCardId) {
+      <a pButton size="small" routerLink="/lancamentos/cartao/novo" [queryParams]="{ cartao: selectedCardId }">
+        + Novo lançamento
+      </a>
     }
   </div>
 

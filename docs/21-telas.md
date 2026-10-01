@@ -36,10 +36,10 @@ nível clicável do breadcrumb) — ver `app.routes.ts`.
 |---|---|---|
 | `/login` | `LoginComponent` | Login |
 | `/dashboard` | `DashboardComponent` | Visão geral |
-| `/lancamentos/conta` | `AccountTransactionsComponent` | Lançamentos (menu: Contas › Lançamentos) |
-| `/lancamentos/cartao` | `CardTransactionsComponent` | Lançamentos (menu: Cartões › Lançamentos) |
-| `/lancamentos/conta/novo` | `TransactionFormComponent` | Novo lançamento da conta (origem pela rota) |
-| `/lancamentos/cartao/novo` | `TransactionFormComponent` | Novo lançamento do cartão (origem pela rota) |
+| `/lancamentos/conta` | `AccountTransactionsComponent` | Lançamentos (menu: Contas › Lançamentos); `?conta=<id>` guarda a aba ativa |
+| `/lancamentos/cartao` | `CardTransactionsComponent` | Lançamentos (menu: Cartões › Lançamentos); `?cartao=<id>` guarda a aba ativa |
+| `/lancamentos/conta/novo` | `TransactionFormComponent` | Novo lançamento da conta; `?conta=<id>` define QUAL conta e tira o campo |
+| `/lancamentos/cartao/novo` | `TransactionFormComponent` | Novo lançamento do cartão; `?cartao=<id>` define QUAL cartão e tira o campo |
 | `/lancamentos/novo` | `TransactionFormComponent` | Novo lançamento sem origem definida (botão da lista de Parcelamentos) |
 | `/lancamentos/:id` | `TransactionFormComponent` | Editar lançamento |
 | `/contas` | `AccountListComponent` | Contas correntes (menu: Contas › Cadastro) |

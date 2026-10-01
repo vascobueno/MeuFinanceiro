@@ -1,9 +1,10 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { Select } from 'primeng/select';
+import { Tab, TabList, Tabs } from 'primeng/tabs';
 import { DatePicker } from 'primeng/datepicker';
 import { Tooltip } from 'primeng/tooltip';
 import { ConfirmDialog } from 'primeng/confirmdialog';
@@ -26,6 +27,7 @@ import { Category } from '../../core/models/category.model';
 import { CardInvoiceCycle, CardPayment } from '../../core/models/card-payment.model';
 import { Transaction, TransactionFilter, TransactionOrigin } from '../../core/models/transaction.model';
 import { parseIsoDate, shiftMonthIso, toIsoDate } from '../../core/services/date.util';
+import { defaultId, validId } from '../../core/services/selection.util';
 
 /**
  * Lançamentos do cartão, com a fatura do ciclo no topo (docs/07).
@@ -45,6 +47,9 @@ import { parseIsoDate, shiftMonthIso, toIsoDate } from '../../core/services/date
     RouterLink,
     ButtonDirective,
     Select,
+    Tabs,
+    TabList,
+    Tab,
     DatePicker,
     Tooltip,
     ConfirmDialog,
@@ -116,6 +121,8 @@ export class CardTransactionsComponent implements OnInit {
     private readonly categoryService: CategoryService,
     private readonly cardPaymentService: CardPaymentService,
     private readonly confirmationService: ConfirmationService,
+    private readonly router: Router,
+    private readonly route: ActivatedRoute,
   ) {}
 
   get accountOptions(): Array<{ id: string | null; name: string }> {
@@ -144,8 +151,9 @@ export class CardTransactionsComponent implements OnInit {
 
     this.cardService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => {
       this.cards.set(r.items);
-      // Sem cartão escolhido não há fatura nem janela de datas — assume o primeiro ativo.
-      this.selectedCardId = r.items.find((c) => c.isActive)?.id ?? r.items[0]?.id ?? null;
+      // A aba vem da URL; id inválido não vira outro cartão aqui, cai no primeiro ativo (docs/06).
+      this.selectedCardId =
+        validId(r.items, this.route.snapshot.queryParamMap.get('cartao')) ?? defaultId(r.items);
       if (this.selectedCardId) this.loadCycle();
     });
   }
@@ -168,6 +176,21 @@ export class CardTransactionsComponent implements OnInit {
         this.cycleLoading.set(false);
       },
     });
+  }
+
+  onSelectCard(id: string | number | undefined): void {
+    const cardId = String(id ?? '');
+    if (!cardId || cardId === this.selectedCardId) return;
+
+    this.selectedCardId = cardId;
+    // replaceUrl: trocar de aba não é passo de histórico (mesma razão da tela da conta).
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { cartao: cardId },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.onCardChange();
   }
 
   onCardChange(): void {

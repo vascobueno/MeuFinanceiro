@@ -49,6 +49,28 @@ As duas compartilham `mf-transaction-filters` e `mf-transaction-table`. O filtro
 `Origin` (`Account` / `Card`) é o que permite "todos os lançamentos de conta" — os filtros por id
 só respondem "desta conta".
 
+## Abas, e não combobox
+A conta (e o cartão) é escolhida numa faixa de **abas** — `p-tabs`/`p-tablist`/`p-tab`, com
+`[scrollable]="true"` no `p-tabs`, não no `p-tablist`. Só a faixa é usada: a grade fica fora das
+abas, senão a tabela seria duplicada por conta.
+
+Não existe aba "Todas". O agregado virou uma **caixa de saldo total**, fora das abas e imune à
+troca de aba; o saldo da conta ativa fica na linha logo abaixo da faixa. No cartão não há caixa
+nem linha: a barra de fatura logo abaixo já responde o que elas responderiam.
+
+Sem conta (ou cartão) cadastrado não há aba nenhuma. Em vez de uma tela vazia, aparece o convite
+ao cadastro e o "+ Novo lançamento" **não é renderizado** — não haveria onde lançar.
+
+### A escolha mora na URL
+`?conta=<id>` e `?cartao=<id>` guardam a aba ativa. É daí que o formulário recebe a origem, e é o
+que faz a aba sobreviver a um F5 e ao pós-salvar. A troca de aba reescreve a URL com
+`replaceUrl: true`: trocar de aba não é passo de histórico, senão o Voltar do navegador percorreria
+conta por conta antes de sair da tela.
+
+> A lista de lançamentos só é carregada **depois** que as contas chegam, porque antes disso não se
+> sabe qual filtrar. Por isso `load()` fica dentro do `subscribe`, com `loading` ligado desde o
+> começo para a tela não piscar "nenhum lançamento".
+
 No menu, as duas ficam sob os grupos **Contas** e **Cartões**, cada um com *Cadastro* (a tela de
 cadastro) e *Lançamentos*. No modo recolhido os rótulos de grupo somem, então os tooltips
 desambiguam ("Contas · Lançamentos"), senão restariam quatro ícones indistinguíveis.
@@ -73,6 +95,23 @@ e precisa vir **antes** de `lancamentos/:id` pelo mesmo motivo da nota acima.
 O botão fica dentro do cabeçalho do painel da grade, à direita. Esse cabeçalho é renderizado
 **sempre**, e não só quando há linhas: condicioná-lo esconderia o "+ Novo lançamento" justamente na
 lista vazia, que é quando ele mais importa.
+
+### E QUAL conta, também
+A rota diz o tipo de origem (`data.origin`); o query param diz qual conta ou cartão. Com os dois, o
+formulário **não mostra campo de origem nenhum**: a conta aparece como etiqueta ao lado do título,
+e o "Voltar" e o pós-salvar devolvem para a mesma aba.
+
+Transferência segue a mesma lógica: a conta da aba é a origem, só o destino é escolhido — e a
+lista de destino exclui a própria conta de origem.
+
+> O id vem da URL, que é editável à mão, sobrevive à exclusão da conta e pode ser de outro grupo.
+> `validId` (`core/services/selection.util.ts`) devolve `null` quando o id não existe e **nunca
+> chuta outro**: aí o campo de conta reaparece. Se ele chutasse, o cabeçalho anunciaria uma conta e
+> o lançamento iria para outra — erro silencioso. As telas, que precisam mostrar alguma coisa,
+> completam com `?? defaultId(...)`; o formulário, não.
+
+A edição (`/lancamentos/:id`) **mantém** o campo: mover um lançamento de conta é operação legítima,
+e ali não existe aba de origem de onde herdar.
 
 > Datas ISO vindas da API são lidas com `parseIsoDate` (`core/services/date.util.ts`), nunca com
 > `new Date(string)` — este último é UTC e desloca o dia em fuso negativo. Foi o que travou a

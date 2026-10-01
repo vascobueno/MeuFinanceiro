@@ -26,6 +26,7 @@ import {
 import { Account } from '../../core/models/account.model';
 import { CreditCard } from '../../core/models/card.model';
 import { Category } from '../../core/models/category.model';
+import { validId } from '../../core/services/selection.util';
 import { MerchantSuggestion } from '../../core/models/merchant.model';
 import { AutocompleteComponent } from '../../shared/components/autocomplete.component';
 import { MoneyInputComponent } from '../../shared/components/money-input.component';
@@ -91,6 +92,46 @@ export class TransactionFormComponent implements OnInit {
    * lista de Parcelamentos, que não tem contexto de origem.
    */
   readonly fixedOrigin = signal<OriginKind | null>(null);
+
+  // Conta/cartão vindos da aba (?conta= / ?cartao=). Null significa "a rota não disse, ou disse
+  // algo que não existe" — e aí o campo volta a aparecer, em vez de gravar no lugar errado.
+  readonly fixedAccountId = signal<string | null>(null);
+  readonly fixedCardId = signal<string | null>(null);
+
+  /** Nome mostrado no cabeçalho; só resolve depois que a lista chega do servidor. */
+  get originChip(): string | null {
+    const accountId = this.fixedAccountId();
+    if (accountId) return this.accounts().find((a) => a.id === accountId)?.name ?? null;
+    const cardId = this.fixedCardId();
+    if (cardId) return this.cards().find((c) => c.id === cardId)?.name ?? null;
+    return null;
+  }
+
+  /** A aba definiu QUAL conta/cartão — e não só o tipo de origem. */
+  get originFixedById(): boolean {
+    return this.originKind === 'account' ? !!this.fixedAccountId() : !!this.fixedCardId();
+  }
+
+  /** Transferência com origem fixa: transferir para a própria conta não é operação. */
+  get destinationOptions(): Array<{ id: string | null; name: string }> {
+    return this.accountSelectOptions().filter((a) => a.id !== this.accountId);
+  }
+
+  /** Voltar e o pós-salvar devolvem para a aba de onde se veio, não para /lancamentos genérico. */
+  get backLink(): string {
+    const origin = this.fixedOrigin();
+    if (origin === 'account') return '/lancamentos/conta';
+    if (origin === 'card') return '/lancamentos/cartao';
+    return '/lancamentos';
+  }
+
+  get backQuery(): Record<string, string> {
+    const accountId = this.fixedAccountId();
+    if (accountId) return { conta: accountId };
+    const cardId = this.fixedCardId();
+    if (cardId) return { cartao: cardId };
+    return {};
+  }
 
   /** Rótulo do campo de origem, que acompanha a conta ou o cartão. */
   get originLabel(): string {
@@ -200,8 +241,14 @@ export class TransactionFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.accountService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => this.accounts.set(r.items));
-    this.cardService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => this.cards.set(r.items));
+    this.accountService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => {
+      this.accounts.set(r.items);
+      this.applyFixedAccount(r.items);
+    });
+    this.cardService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => {
+      this.cards.set(r.items);
+      this.applyFixedCard(r.items);
+    });
     this.categoryService.getAll().subscribe((c) => this.categories.set(c));
 
     const origin = this.route.snapshot.data['origin'] as OriginKind | undefined;
@@ -220,6 +267,27 @@ export class TransactionFormComponent implements OnInit {
       this.editingId.set(id);
       this.loadForEdit(id);
     }
+  }
+
+  /**
+   * A conta da aba. `validId` sem fallback de propósito: um id que não existe mais (conta
+   * excluída, link velho, outro grupo) tem de fazer o campo reaparecer, nunca escolher outra
+   * conta por conta própria — o cabeçalho anunciaria uma coisa e o lançamento iria para outra.
+   */
+  private applyFixedAccount(accounts: Account[]): void {
+    if (this.fixedOrigin() !== 'account' || this.editingId()) return;
+
+    const chosen = validId(accounts, this.route.snapshot.queryParamMap.get('conta'));
+    this.fixedAccountId.set(chosen);
+    this.accountId = chosen;
+  }
+
+  private applyFixedCard(cards: CreditCard[]): void {
+    if (this.fixedOrigin() !== 'card' || this.editingId()) return;
+
+    const chosen = validId(cards, this.route.snapshot.queryParamMap.get('cartao'));
+    this.fixedCardId.set(chosen);
+    this.creditCardId = chosen;
   }
 
   private loadForEdit(id: string): void {
@@ -314,7 +382,7 @@ export class TransactionFormComponent implements OnInit {
           notes: this.notes,
         })
         .subscribe({
-          next: () => this.router.navigate(['/lancamentos']),
+          next: () => this.router.navigate([this.backLink], { queryParams: this.backQuery }),
           error: () => {
             this.saving.set(false);
             this.error.set('Não foi possível salvar. Lançamentos conciliados não podem ser alterados (regra 12).');
@@ -364,7 +432,7 @@ export class TransactionFormComponent implements OnInit {
    * um documento só e vale para as 12 parcelas.
    */
   private uploadAttachmentsThenLeave(created: Transaction[]): void {
-    const leave = () => this.router.navigate(['/lancamentos']);
+    const leave = () => this.router.navigate([this.backLink], { queryParams: this.backQuery });
 
     const anexos = this.anexos;
     if (!anexos?.hasPending() || created.length === 0) {

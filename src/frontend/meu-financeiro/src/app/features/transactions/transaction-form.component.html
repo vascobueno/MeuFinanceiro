@@ -1,8 +1,12 @@
 <div class="mf-form-header">
-  <div>
+  <div class="mf-form-title-line">
     <h2 class="mf-page-title"><mf-icon name="mf-transactions" class="mf-page-title-icon"></mf-icon>{{ editingId() ? 'Editar lançamento' : 'Novo lançamento' }}</h2>
+    <!-- A origem não é mais campo: veio da aba. Aqui ela é só informada. -->
+    @if (originChip; as origem) {
+      <span class="mf-origin-chip">{{ originLabel }}: <b>{{ origem }}</b></span>
+    }
   </div>
-  <a pButton [outlined]="true" routerLink="/lancamentos">Voltar</a>
+  <a pButton [outlined]="true" [routerLink]="backLink" [queryParams]="backQuery">Voltar</a>
 </div>
 
 @if (!loading()) {
@@ -32,13 +36,16 @@
     <!-- Transferência: apenas contas próprias, não é receita/despesa (regra 9) -->
     @if (type === TransactionType.Transfer) {
       <div class="mf-form-grid mf-grid-2">
-        <div>
-          <label class="mf-field-label">Conta de origem</label>
-          <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
-        </div>
+        <!-- A origem já é a conta da aba (mostrada no cabeçalho); só sobra escolher o destino. -->
+        @if (!fixedAccountId()) {
+          <div>
+            <label class="mf-field-label">Conta de origem</label>
+            <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
+          </div>
+        }
         <div>
           <label class="mf-field-label">Conta de destino</label>
-          <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="destinationAccountId" />
+          <p-select size="small" class="mf-field-input" [options]="destinationOptions" optionLabel="name" optionValue="id" [(ngModel)]="destinationAccountId" />
         </div>
       </div>
     }
@@ -54,14 +61,18 @@
             <p-select size="small" class="mf-field-input" [options]="originKindOptions" optionLabel="label" optionValue="value" [(ngModel)]="originKind" />
           </div>
         }
-        <div>
-          <label class="mf-field-label">{{ originLabel }}</label>
-          @if (originKind === 'account') {
-            <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
-          } @else {
-            <p-select size="small" class="mf-field-input" [options]="cardSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="creditCardId" />
-          }
-        </div>
+        <!-- E o campo da conta/cartão some quando a aba já disse QUAL. Se o id da URL não existir,
+             originFixedById é falso e o campo volta — nunca se grava num lugar não anunciado. -->
+        @if (!originFixedById) {
+          <div>
+            <label class="mf-field-label">{{ originLabel }}</label>
+            @if (originKind === 'account') {
+              <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
+            } @else {
+              <p-select size="small" class="mf-field-input" [options]="cardSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="creditCardId" />
+            }
+          </div>
+        }
         <div>
           <label class="mf-field-label">Categoria</label>
           <p-select size="small" class="mf-field-input" [options]="categorySelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="categoryId" />
