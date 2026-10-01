@@ -86,7 +86,9 @@ import { DateRange, DateRangeComponent } from './date-range.component';
         background: var(--mf-card);
         border: 1px solid var(--mf-line);
         border-radius: var(--mf-radius);
-        padding: 1rem;
+        /* Metade da altura anterior: a caixa fechada é só o botão de abrir, e 1rem de padding
+           em cima e embaixo dobrava a altura dela sem informação nenhuma. */
+        padding: 0.3rem 0.75rem;
         margin-bottom: 1rem;
       }
       .mf-filters-toggle {
@@ -100,6 +102,7 @@ import { DateRange, DateRangeComponent } from './date-range.component';
         margin: 0;
         font: inherit;
         font-weight: 600;
+        line-height: 1.2;
         color: var(--mf-text);
         cursor: pointer;
       }

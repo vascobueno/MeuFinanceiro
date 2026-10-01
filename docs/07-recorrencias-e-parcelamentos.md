@@ -30,6 +30,17 @@ INSTALLMENT_AMOUNT:
 
 Cada parcela é independente para conciliação.
 
+## Onde se cria um parcelamento
+Só existe uma porta: a aba **Parcelamento** do formulário de lançamento
+(`TransactionFormComponent`). Havia também uma tela dedicada `/parcelamento/novo`, com a mesma
+criação escrita duas vezes; ela foi retirada e o desenho dela — os dois cartões "Como quer
+informar o parcelamento?" — é o que o formulário usa hoje.
+
+A origem vem da navegação: entrando por Contas › Lançamentos a origem é conta, por Cartões ›
+Lançamentos é cartão, e o formulário nem mostra o seletor. O botão "+ Novo parcelamento" da lista
+de parcelamentos abre `/lancamentos/novo?modo=parcelamento`, que não está sob nenhuma das duas
+áreas — ali, e só ali, o seletor de origem aparece.
+
 ## Anexos do parcelamento
 O anexo pertence ao **plano inteiro**, não a cada parcela: a nota fiscal da compra é um documento
 só e vale para todas as parcelas dela.
@@ -38,8 +49,8 @@ Como o `InstallmentPlan` não guarda conta nem cartão — a origem vive no `Fin
 cada parcela —, parcelamento de conta e de cartão são o mesmo caso: uma implementação cobre os
 dois.
 
-Pode ser anexado na criação (tela Parcelamento) e depois pelo detalhe expandido da lista de
-parcelamentos. Na tela de Lançamentos, cada parcela mostra o clipe herdado do plano, para as 12
+Pode ser anexado na criação (aba Parcelamento do formulário de lançamento) e depois pelo detalhe
+expandido da lista de parcelamentos. Na tela de Lançamentos, cada parcela mostra o clipe herdado do plano, para as 12
 linhas não parecerem sem documento.
 
 Recorrências não têm anexo: ali o documento pertenceria à recorrência, não ao lançamento gerado.

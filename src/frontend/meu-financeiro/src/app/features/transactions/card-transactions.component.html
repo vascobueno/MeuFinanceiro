@@ -6,12 +6,6 @@
       <mf-icon name="mf-cards" class="mf-page-title-icon"></mf-icon>Lançamentos do cartão
     </h2>
   </div>
-  @if (authService.canWrite()) {
-    <div class="mf-list-header-actions">
-      <a pButton [outlined]="true" routerLink="/parcelamento/novo">Parcelamento</a>
-      <a pButton routerLink="/lancamentos/novo">+ Novo lançamento</a>
-    </div>
-  }
 </div>
 
 <div class="mf-card-bar">
@@ -235,14 +229,13 @@
 ></mf-transaction-filters>
 
 <div class="mf-panel">
-  @if (!loading() && !error() && transactions().length > 0) {
-    <div class="mf-panel-header">
-      <div>
-        <b>Gastos do ciclo</b>
-        <div class="mf-sub">Os pagamentos não entram aqui — eles são lançamentos da conta</div>
-      </div>
-    </div>
-  }
+  <!-- Sempre renderizado: ver o comentário equivalente em account-transactions. -->
+  <div class="mf-panel-header">
+    <b>Gastos do ciclo</b>
+    @if (authService.canWrite()) {
+      <a pButton size="small" routerLink="/lancamentos/cartao/novo">+ Novo lançamento</a>
+    }
+  </div>
 
   <div class="mf-panel-body">
     <mf-transaction-table

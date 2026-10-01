@@ -38,10 +38,12 @@ nível clicável do breadcrumb) — ver `app.routes.ts`.
 | `/dashboard` | `DashboardComponent` | Visão geral |
 | `/lancamentos/conta` | `AccountTransactionsComponent` | Lançamentos (menu: Contas › Lançamentos) |
 | `/lancamentos/cartao` | `CardTransactionsComponent` | Lançamentos (menu: Cartões › Lançamentos) |
-| `/lancamentos/novo` | `TransactionFormComponent` | Novo lançamento |
+| `/lancamentos/conta/novo` | `TransactionFormComponent` | Novo lançamento da conta (origem pela rota) |
+| `/lancamentos/cartao/novo` | `TransactionFormComponent` | Novo lançamento do cartão (origem pela rota) |
+| `/lancamentos/novo` | `TransactionFormComponent` | Novo lançamento sem origem definida (botão da lista de Parcelamentos) |
 | `/lancamentos/:id` | `TransactionFormComponent` | Editar lançamento |
 | `/contas` | `AccountListComponent` | Contas correntes (menu: Contas › Cadastro) |
-| `/parcelamento` | `InstallmentFormComponent` | Parcelamento |
+| `/parcelamento` | `InstallmentListComponent` | Parcelamentos |
 | `/recorrencia` | `RecurringListComponent` | Recorrências |
 | `/recorrencia/:id` | `RecurringFormComponent` | Recorrência |
 | `/faturas` | `InvoiceListComponent` | Faturas |

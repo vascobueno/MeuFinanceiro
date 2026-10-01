@@ -4,12 +4,6 @@
       <mf-icon name="mf-transactions" class="mf-page-title-icon"></mf-icon>Lançamentos da conta
     </h2>
   </div>
-  @if (authService.canWrite()) {
-    <div class="mf-list-header-actions">
-      <a pButton [outlined]="true" routerLink="/parcelamento/novo">Parcelamento</a>
-      <a pButton routerLink="/lancamentos/novo">+ Novo lançamento</a>
-    </div>
-  }
 </div>
 
 <div class="mf-account-bar">
@@ -43,14 +37,14 @@
 ></mf-transaction-filters>
 
 <div class="mf-panel">
-  @if (!loading() && !error() && transactions().length > 0) {
-    <div class="mf-panel-header">
-      <div>
-        <b>Lançamentos</b>
-        <div class="mf-sub">Ordenação e paginação server-side</div>
-      </div>
-    </div>
-  }
+  <!-- Sempre renderizado: a ação de criar mora aqui, e escondê-la na lista vazia tiraria o
+       botão justamente de quem ainda não tem lançamento nenhum. -->
+  <div class="mf-panel-header">
+    <b>Lançamentos</b>
+    @if (authService.canWrite()) {
+      <a pButton size="small" routerLink="/lancamentos/conta/novo">+ Novo lançamento</a>
+    }
+  </div>
 
   <div class="mf-panel-body">
     <mf-transaction-table

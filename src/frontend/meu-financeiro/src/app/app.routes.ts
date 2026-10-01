@@ -82,6 +82,41 @@ export const routes: Routes = [
           help: 'Fatura do ciclo do cartão, calculada a partir dos seus lançamentos: total gasto, quanto já foi pago e quanto falta. Navegue entre os ciclos pelas setas. Use "Pagar fatura" para registrar o pagamento, escolhendo a conta de onde o dinheiro saiu ou marcando como pago por outra forma.',
         },
       },
+      // A origem vem da ROTA, não de um seletor: quem navega a partir de Lançamentos da Conta ou
+      // do Cartão já disse de onde é. São rotas separadas, e não um query param, porque o
+      // breadcrumb lê `parent` estático — com param, vindo do cartão ele citaria Contas.
+      {
+        path: 'lancamentos/conta/novo',
+        canActivate: [canWriteGuard],
+        loadComponent: () =>
+          import('./features/transactions/transaction-form.component').then((m) => m.TransactionFormComponent),
+        data: {
+          title: 'Novo lançamento',
+          origin: 'account',
+          section: 'Financeiro',
+          group: 'Contas',
+          // O título repete o h2 da tela de origem: "Lançamentos" sozinho não diria se viemos
+          // da conta ou do cartão, e é justamente a origem que o formulário herda daqui.
+          parent: { title: 'Lançamentos da conta', path: '/lancamentos/conta' },
+          help: 'Registre um lançamento simples, um parcelamento ou uma recorrência. A descrição sugere lançamentos anteriores parecidos para agilizar o preenchimento, e a categoria ajuda a manter seus relatórios organizados.',
+        },
+      },
+      {
+        path: 'lancamentos/cartao/novo',
+        canActivate: [canWriteGuard],
+        loadComponent: () =>
+          import('./features/transactions/transaction-form.component').then((m) => m.TransactionFormComponent),
+        data: {
+          title: 'Novo lançamento',
+          origin: 'card',
+          section: 'Financeiro',
+          group: 'Cartões',
+          parent: { title: 'Lançamentos do cartão', path: '/lancamentos/cartao' },
+          help: 'Registre um lançamento simples, um parcelamento ou uma recorrência. A descrição sugere lançamentos anteriores parecidos para agilizar o preenchimento, e a categoria ajuda a manter seus relatórios organizados.',
+        },
+      },
+      // Sem origem: usada pelo botão da lista de Parcelamentos, que não está sob Contas nem
+      // Cartões. Só aqui o seletor de origem aparece no formulário.
       {
         path: 'lancamentos/novo',
         canActivate: [canWriteGuard],
@@ -89,7 +124,7 @@ export const routes: Routes = [
           import('./features/transactions/transaction-form.component').then((m) => m.TransactionFormComponent),
         data: {
           title: 'Novo lançamento',
-          parent: { title: 'Lançamentos da conta', path: '/lancamentos/conta' },
+          parent: { title: 'Parcelamentos', path: '/parcelamento' },
           help: 'Registre um lançamento simples, um parcelamento ou uma recorrência. A descrição sugere lançamentos anteriores parecidos para agilizar o preenchimento, e a categoria ajuda a manter seus relatórios organizados.',
         },
       },
@@ -122,17 +157,6 @@ export const routes: Routes = [
           title: 'Parcelamentos',
           section: 'Financeiro',
           help: 'Lista os parcelamentos criados, com a origem, o total e quantas parcelas já foram conciliadas. Clique numa linha para ver parcela a parcela: número, vencimento, valor e status.',
-        },
-      },
-      {
-        path: 'parcelamento/novo',
-        canActivate: [canWriteGuard],
-        loadComponent: () =>
-          import('./features/installments/installment-form.component').then((m) => m.InstallmentFormComponent),
-        data: {
-          title: 'Novo parcelamento',
-          parent: { title: 'Parcelamentos', path: '/parcelamento' },
-          help: 'Divida uma compra em parcelas informando o valor total (dividido pela quantidade) ou o valor de cada parcela (multiplicado pela quantidade). A soma das parcelas sempre fecha exatamente o valor principal, com o ajuste de arredondamento ficando na última parcela. Cada parcela vira um lançamento independente.',
         },
       },
       {

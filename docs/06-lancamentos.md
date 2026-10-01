@@ -56,6 +56,24 @@ desambiguam ("Contas · Lançamentos"), senão restariam quatro ícones indistin
 > As rotas `lancamentos/conta` e `lancamentos/cartao` precisam ser declaradas **antes** de
 > `lancamentos/:id` em `app.routes.ts`, senão o `:id` captura "conta" e abre a tela de edição.
 
+## A origem vem da rota
+O botão "+ Novo lançamento" de cada tela leva a uma rota própria — `lancamentos/conta/novo` ou
+`lancamentos/cartao/novo` — com `data.origin` em `'account'` / `'card'`. O formulário lê esse dado
+e **não mostra o seletor de origem**: quem navegou já disse de onde vem. O rótulo do campo seguinte
+acompanha ("Conta" ou "Cartão"), e vindo do cartão o tipo *Transferência* sai da lista, porque
+transferência é entre contas próprias (docs/05 — regra 9).
+
+São rotas separadas, e não um query param, porque o breadcrumb lê `data.parent` estático: com
+param, o lançamento aberto a partir do cartão citaria a tela da conta. Por isso o `parent` repete o
+título da tela de origem ("Lançamentos da conta" / "Lançamentos do cartão").
+
+`lancamentos/novo`, sem origem, continua existindo para o botão da lista de parcelamentos (docs/07)
+e precisa vir **antes** de `lancamentos/:id` pelo mesmo motivo da nota acima.
+
+O botão fica dentro do cabeçalho do painel da grade, à direita. Esse cabeçalho é renderizado
+**sempre**, e não só quando há linhas: condicioná-lo esconderia o "+ Novo lançamento" justamente na
+lista vazia, que é quando ele mais importa.
+
 > Datas ISO vindas da API são lidas com `parseIsoDate` (`core/services/date.util.ts`), nunca com
 > `new Date(string)` — este último é UTC e desloca o dia em fuso negativo. Foi o que travou a
 > navegação entre ciclos em cartão que fecha no dia 1.

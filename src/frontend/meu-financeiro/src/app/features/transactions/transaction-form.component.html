@@ -25,7 +25,7 @@
 
       <div>
         <label class="mf-field-label">Tipo</label>
-        <p-select size="small" class="mf-field-input" [options]="typeOptions" optionLabel="label" optionValue="value" [(ngModel)]="type" [disabled]="!!editingId()" />
+        <p-select size="small" class="mf-field-input" [options]="availableTypeOptions" optionLabel="label" optionValue="value" [(ngModel)]="type" [disabled]="!!editingId()" />
       </div>
     </div>
 
@@ -45,23 +45,23 @@
 
     <!-- Origem conta/cartão para lançamentos que não são transferência -->
     @if (type !== TransactionType.Transfer) {
-      <div class="mf-form-grid mf-grid-3">
+      <div class="mf-form-grid" [class.mf-grid-3]="!fixedOrigin()" [class.mf-grid-2]="fixedOrigin()">
+        <!-- O seletor só aparece quando a rota não disse a origem (entrada pela lista de
+             Parcelamentos). Vindo de Lançamentos da Conta ou do Cartão, ela já é conhecida. -->
+        @if (!fixedOrigin()) {
+          <div>
+            <label class="mf-field-label">Origem</label>
+            <p-select size="small" class="mf-field-input" [options]="originKindOptions" optionLabel="label" optionValue="value" [(ngModel)]="originKind" />
+          </div>
+        }
         <div>
-          <label class="mf-field-label">Origem</label>
-          <p-select size="small" class="mf-field-input" [options]="originKindOptions" optionLabel="label" optionValue="value" [(ngModel)]="originKind" />
-        </div>
-        @if (originKind === 'account') {
-          <div>
-            <label class="mf-field-label">Conta</label>
+          <label class="mf-field-label">{{ originLabel }}</label>
+          @if (originKind === 'account') {
             <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
-          </div>
-        }
-        @if (originKind === 'card') {
-          <div>
-            <label class="mf-field-label">Cartão</label>
+          } @else {
             <p-select size="small" class="mf-field-input" [options]="cardSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="creditCardId" />
-          </div>
-        }
+          }
+        </div>
         <div>
           <label class="mf-field-label">Categoria</label>
           <p-select size="small" class="mf-field-input" [options]="categorySelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="categoryId" />
@@ -80,15 +80,67 @@
       }
     </div>
 
-    <!-- Parcelamento (Modo A: valor total / Modo B: valor da parcela) — regras 15/16/17 -->
+    <!-- Parcelamento (regras 15/16/17). O desenho em cartões veio da tela dedicada
+         /parcelamento/novo, que foi unificada aqui: era a mesma criação em dois lugares. -->
     @if (mode === 'installment' && !editingId()) {
       <div class="mf-card mf-form-subsection">
-        <h6>Parcelamento</h6>
-        <div class="mf-form-grid mf-grid-3">
-          <div>
-            <label class="mf-field-label">Modo</label>
-            <p-select size="small" class="mf-field-input" [options]="installmentModeOptions" optionLabel="label" optionValue="value" [(ngModel)]="installmentMode" />
-          </div>
+    <div class="mf-mode-label">Como quer informar o parcelamento?</div>
+    <div class="mf-mode-cards" role="radiogroup" aria-label="Como quer informar o parcelamento" (keydown)="onModeKeydown($event)">
+      <div
+        #modeCardTotal
+        class="mf-mode-card"
+        [class.selected]="installmentMode === InstallmentMode.TotalAmount"
+        role="radio"
+        [attr.aria-checked]="installmentMode === InstallmentMode.TotalAmount"
+        [attr.tabindex]="installmentMode === InstallmentMode.TotalAmount ? 0 : -1"
+        (click)="selectInstallmentMode(InstallmentMode.TotalAmount)"
+        (keydown.enter)="selectInstallmentMode(InstallmentMode.TotalAmount)"
+        (keydown.space)="$event.preventDefault(); selectInstallmentMode(InstallmentMode.TotalAmount)"
+      >
+        <span class="check" aria-hidden="true"></span>
+        <span class="icon-box" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="22" height="22">
+            <circle cx="32" cy="32" r="26" fill="#fff" opacity="0.18" />
+            <path d="M32 32 L32 6 A26 26 0 0 1 54.5 45 Z" fill="#fff" />
+            <path d="M32 32 L54.5 45 A26 26 0 0 1 9.5 45 Z" fill="#fff" opacity="0.72" />
+            <path d="M32 32 L9.5 45 A26 26 0 0 1 32 6 Z" fill="#fff" opacity="0.42" />
+          </svg>
+        </span>
+        <span class="txt">
+          <span class="title">Valor total + quantidade</span>
+          <span class="desc">Divide o total em N parcelas iguais</span>
+        </span>
+      </div>
+      <div
+        #modeCardInstallment
+        class="mf-mode-card"
+        [class.selected]="installmentMode === InstallmentMode.InstallmentAmount"
+        role="radio"
+        [attr.aria-checked]="installmentMode === InstallmentMode.InstallmentAmount"
+        [attr.tabindex]="installmentMode === InstallmentMode.InstallmentAmount ? 0 : -1"
+        (click)="selectInstallmentMode(InstallmentMode.InstallmentAmount)"
+        (keydown.enter)="selectInstallmentMode(InstallmentMode.InstallmentAmount)"
+        (keydown.space)="$event.preventDefault(); selectInstallmentMode(InstallmentMode.InstallmentAmount)"
+      >
+        <span class="check" aria-hidden="true"></span>
+        <span class="icon-box" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="22" height="22">
+            <rect x="6" y="23" width="15" height="19" rx="4" style="fill: var(--mf-primary)" opacity="0.35" />
+            <rect x="24.5" y="23" width="15" height="19" rx="4" style="fill: var(--mf-primary)" opacity="0.65" />
+            <rect x="43" y="23" width="15" height="19" rx="4" style="fill: var(--mf-primary)" />
+            <circle cx="13.5" cy="32.5" r="3.4" fill="#fff" />
+            <circle cx="32" cy="32.5" r="3.4" fill="#fff" />
+            <circle cx="50.5" cy="32.5" r="3.4" fill="#fff" />
+          </svg>
+        </span>
+        <span class="txt">
+          <span class="title">Valor da parcela + quantidade</span>
+          <span class="desc">Repete o mesmo valor N vezes</span>
+        </span>
+      </div>
+    </div>
+
+        <div class="mf-form-grid mf-grid-2">
           <div>
             <label class="mf-field-label">Quantidade</label>
             <input pInputText pSize="small" class="mf-field-input" type="number" min="1" [(ngModel)]="installmentCount" />

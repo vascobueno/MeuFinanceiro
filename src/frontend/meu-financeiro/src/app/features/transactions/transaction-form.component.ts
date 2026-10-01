@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, computed, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -85,6 +85,28 @@ export class TransactionFormComponent implements OnInit {
     { label: 'Cartão', value: 'card' },
   ];
 
+  /**
+   * Origem vinda da ROTA (/lancamentos/conta/novo ou /cartao/novo). Quando definida, o seletor de
+   * origem some: a navegação já disse de onde é. Fica null só na rota neutra, usada pelo botão da
+   * lista de Parcelamentos, que não tem contexto de origem.
+   */
+  readonly fixedOrigin = signal<OriginKind | null>(null);
+
+  /** Rótulo do campo de origem, que acompanha a conta ou o cartão. */
+  get originLabel(): string {
+    return this.originKind === 'card' ? 'Cartão' : 'Conta';
+  }
+
+  /**
+   * Transferência é entre contas próprias (regra 9) e o backend zera o cartão — oferecê-la na
+   * origem cartão seria oferecer algo que a API recusa.
+   */
+  get availableTypeOptions(): Array<{ label: string; value: TransactionType }> {
+    return this.originKind === 'card'
+      ? this.typeOptions.filter((o) => o.value !== TransactionType.Transfer)
+      : this.typeOptions;
+  }
+
   readonly statusOptions = [
     { label: 'Pendente', value: TransactionStatus.Pending },
     { label: 'Confirmado', value: TransactionStatus.Confirmed },
@@ -104,6 +126,10 @@ export class TransactionFormComponent implements OnInit {
 
   /** Só existe fora do modo recorrência, por isso é opcional. */
   @ViewChild(AttachmentsComponent) anexos?: AttachmentsComponent;
+
+  // Cartões de modo do parcelamento — radiogroup acessível, navegável por seta.
+  @ViewChild('modeCardTotal') private readonly modeCardTotal?: ElementRef<HTMLDivElement>;
+  @ViewChild('modeCardInstallment') private readonly modeCardInstallment?: ElementRef<HTMLDivElement>;
 
   readonly editingId = signal<string | null>(null);
   /** Plano, quando o lançamento em edição é uma parcela — o anexo pertence ao plano, não à parcela. */
@@ -178,6 +204,17 @@ export class TransactionFormComponent implements OnInit {
     this.cardService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => this.cards.set(r.items));
     this.categoryService.getAll().subscribe((c) => this.categories.set(c));
 
+    const origin = this.route.snapshot.data['origin'] as OriginKind | undefined;
+    if (origin) {
+      this.fixedOrigin.set(origin);
+      this.originKind = origin;
+    }
+
+    // ?modo=parcelamento abre já na aba certa — é como o botão da lista de Parcelamentos entra.
+    const modo = this.route.snapshot.queryParamMap.get('modo');
+    if (modo === 'parcelamento') this.mode = 'installment';
+    if (modo === 'recorrencia') this.mode = 'recurring';
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id && id !== 'novo') {
       this.editingId.set(id);
@@ -229,6 +266,24 @@ export class TransactionFormComponent implements OnInit {
   /** Null na criação: o id ainda não existe e o componente segura os arquivos até o save. */
   get attachmentOwnerId(): string | null {
     return this.editingPlanId() ?? this.editingId();
+  }
+
+  selectInstallmentMode(value: InstallmentMode, focus = false): void {
+    this.installmentMode = value;
+    if (focus) {
+      const target = value === InstallmentMode.TotalAmount ? this.modeCardTotal : this.modeCardInstallment;
+      target?.nativeElement.focus();
+    }
+  }
+
+  /** Seta move entre os dois cartões, como manda o padrão de radiogroup. */
+  onModeKeydown(event: KeyboardEvent): void {
+    if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    const next = this.installmentMode === InstallmentMode.TotalAmount
+      ? InstallmentMode.InstallmentAmount
+      : InstallmentMode.TotalAmount;
+    this.selectInstallmentMode(next, true);
   }
 
   onSuggestionSelected(suggestion: MerchantSuggestion): void {
