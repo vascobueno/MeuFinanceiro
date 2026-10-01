@@ -110,6 +110,13 @@
 }
 
 // ---- barra de seleção + KPI, comum às duas telas ----
+//
+// Altura de um p-select size="small". Os vizinhos do seletor a adotam para que, com os rodapés
+// alinhados (align-items: flex-end), os CENTROS também coincidam — alinhar só o rodapé deixava a
+// navegação de ciclo (botões de 2rem) e as datas (texto puro) visivelmente fora de prumo com o
+// combobox.
+$mf-field-height: 28px;
+
 .mf-account-bar,
 .mf-card-bar {
   display: flex;
@@ -133,14 +140,19 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  // min-height, e não height: ao abrir um editor o bloco cresce em vez de recortar o conteúdo.
+  min-height: $mf-field-height;
 }
 
 .mf-cycle-nav button {
   background: none;
   border: 1px solid var(--mf-line);
   border-radius: var(--mf-radius);
-  width: 2rem;
-  height: 2rem;
+  width: $mf-field-height;
+  height: $mf-field-height;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: var(--mf-text);
 }
@@ -238,5 +250,5 @@
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
+  min-height: $mf-field-height;
 }
