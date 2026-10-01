@@ -2,7 +2,8 @@
 export interface CardPayment {
   id: string;
   creditCardId: string;
-  cycleClosingDate: string;
+  /** Mês da fatura que este pagamento quita (dia 1) — a identidade do ciclo. */
+  cycleReference: string;
   paymentDate: string;
   amount: number;
   /** Null = pago por outra forma, sem sair de conta nenhuma. */
@@ -18,6 +19,8 @@ export interface CardPayment {
 export interface CardInvoiceCycle {
   creditCardId: string;
   cardName: string;
+  /** Mês de referência (dia 1). É por ele que se navega e se aloca pagamento. */
+  reference: string;
   start: string;
   closingDate: string;
   dueDate: string;
@@ -31,7 +34,7 @@ export interface CardInvoiceCycle {
 
 export interface CreateCardPaymentRequest {
   creditCardId: string;
-  cycleClosingDate: string;
+  cycleReference: string;
   paymentDate: string;
   amount: number;
   accountId?: string | null;

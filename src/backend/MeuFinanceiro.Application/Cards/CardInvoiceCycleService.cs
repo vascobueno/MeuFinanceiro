@@ -49,14 +49,15 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
                      && t.TransactionDate <= cycle.ClosingDate)
             .SumAsync(t => t.Direction == TransactionDirection.Debit ? t.Amount : -t.Amount, ct);
 
+        var cycleReference = ReferenceOf(cycle);
         var payments = await _db.CardPayments
             .AsNoTracking()
             .Where(p => p.CreditCardId == cardId
                      && p.GrupoId == _currentUser.GrupoId
-                     && p.CycleClosingDate == cycle.ClosingDate)
+                     && p.CycleReference == cycleReference)
             .OrderBy(p => p.PaymentDate)
             .Select(p => new CardPaymentResponse(
-                p.Id, p.CreditCardId, p.CycleClosingDate, p.PaymentDate, p.Amount,
+                p.Id, p.CreditCardId, p.CycleReference, p.PaymentDate, p.Amount,
                 p.AccountId, p.Account!.Name, p.PaymentTransactionId))
             .ToListAsync(ct);
 
@@ -66,6 +67,7 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
 
         return new CardInvoiceCycleResponse(
             card.Id, card.Name,
+            cycleReference,
             cycle.Start, cycle.ClosingDate, cycle.DueDate,
             total, paid, outstanding,
             isClosed,
@@ -74,21 +76,27 @@ public class CardInvoiceCycleService : ICardInvoiceCycleService
     }
 
     /// <summary>
-    /// Resolve o ciclo pedido. Uma referência que não seja exatamente uma data de fechamento do
-    /// cartão é recusada — aceitá-la deixaria pagamentos alocados a um ciclo que não existe, e
-    /// eles sumiriam da tela sem explicação.
+    /// O mês de referência de um ciclo — a sua identidade. Derivado do mês do fechamento, que por
+    /// construção (e por invariante, quando ajustado) cai sempre dentro do próprio mês.
+    /// </summary>
+    internal static DateOnly ReferenceOf(CardCycle cycle) =>
+        new(cycle.ClosingDate.Year, cycle.ClosingDate.Month, 1);
+
+    /// <summary>
+    /// Resolve o ciclo pedido. A referência é o MÊS (dia 1), não a data de fechamento: o
+    /// fechamento pode ser ajustado por fatura, e usá-lo como chave deixaria os pagamentos já
+    /// registrados órfãos a cada ajuste.
     /// </summary>
     internal static CardCycle ResolveCycle(int closingDay, int dueDay, DateOnly? reference)
     {
         if (reference is null)
             return CardCycleCalculator.CycleOf(closingDay, dueDay, DateOnly.FromDateTime(DateTime.UtcNow));
 
-        var cycle = CardCycleCalculator.CycleOf(closingDay, dueDay, reference.Value);
-        if (cycle.ClosingDate != reference.Value)
+        if (reference.Value.Day != 1)
             throw new BusinessRuleException(
-                "ciclo-invalido",
-                $"{reference:dd/MM/yyyy} não é uma data de fechamento deste cartão.");
+                "referencia-invalida",
+                $"A referência da fatura é o mês (dia 1), e {reference:dd/MM/yyyy} não é.");
 
-        return cycle;
+        return CardCycleCalculator.CycleForMonth(closingDay, dueDay, reference.Value);
     }
 }

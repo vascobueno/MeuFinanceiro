@@ -9,17 +9,18 @@ namespace MeuFinanceiro.Domain.Entities;
 /// pagar "por outra forma" não tem perna em conta nenhuma (<see cref="AccountId"/> nulo), e o
 /// pagamento é justamente a coisa que o usuário edita depois — trocar a conta de onde saiu.
 ///
-/// O ciclo que ele quita é identificado por <see cref="CycleClosingDate"/>, que é derivada do dia
-/// de fechamento do cartão (ver CardCycleCalculator) e não de uma tabela de faturas: o ciclo é
-/// calculado, não persistido.
+/// O ciclo que ele quita é identificado pelo MÊS (<see cref="CycleReference"/>), não pela data de
+/// fechamento. A data pode ser ajustada por fatura (ver CardCycleClosing) quando a operadora
+/// antecipa ou adia o fechamento — se ela fosse a chave, um ajuste deixaria os pagamentos já
+/// registrados órfãos e eles sumiriam da tela sem aviso. O mês não muda.
 /// </summary>
 public class CardPayment : GrupoOwnedEntity
 {
     public Guid CreditCardId { get; set; }
     public CreditCard? CreditCard { get; set; }
 
-    /// <summary>Qual fatura este pagamento quita — a data de fechamento do ciclo.</summary>
-    public DateOnly CycleClosingDate { get; set; }
+    /// <summary>Qual fatura este pagamento quita — o mês de referência, sempre dia 1.</summary>
+    public DateOnly CycleReference { get; set; }
 
     public DateOnly PaymentDate { get; set; }
     public decimal Amount { get; set; }

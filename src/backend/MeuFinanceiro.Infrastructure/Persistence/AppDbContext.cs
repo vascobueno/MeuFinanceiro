@@ -174,7 +174,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         // exatamente um pagamento sem lancamento.
         builder.Entity<CardPayment>(e =>
         {
-            e.HasIndex(p => new { p.CreditCardId, p.CycleClosingDate });
+            e.HasIndex(p => new { p.CreditCardId, p.CycleReference });
 
             e.HasOne(p => p.CreditCard).WithMany()
                 .HasForeignKey(p => p.CreditCardId).OnDelete(DeleteBehavior.Restrict);

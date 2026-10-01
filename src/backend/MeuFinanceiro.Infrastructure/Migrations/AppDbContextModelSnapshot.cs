@@ -460,7 +460,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid>("CreditCardId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateOnly>("CycleClosingDate")
+                    b.Property<DateOnly>("CycleReference")
                         .HasColumnType("date");
 
                     b.Property<Guid>("GrupoId")
@@ -489,7 +489,7 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasIndex("PaymentTransactionId");
 
-                    b.HasIndex("CreditCardId", "CycleClosingDate");
+                    b.HasIndex("CreditCardId", "CycleReference");
 
                     b.ToTable("CardPayments");
                 });

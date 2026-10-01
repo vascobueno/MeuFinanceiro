@@ -2,7 +2,8 @@ namespace MeuFinanceiro.Application.Cards;
 
 public record CreateCardPaymentRequest(
     Guid CreditCardId,
-    DateOnly CycleClosingDate,
+    /// <summary>Mês da fatura (dia 1). O ciclo é identificado pelo mês, não pelo fechamento.</summary>
+    DateOnly CycleReference,
     DateOnly PaymentDate,
     decimal Amount,
     /// <summary>Null = pago por outra forma (não sai de nenhuma conta).</summary>
@@ -18,7 +19,7 @@ public record UpdateCardPaymentRequest(
 public record CardPaymentResponse(
     Guid Id,
     Guid CreditCardId,
-    DateOnly CycleClosingDate,
+    DateOnly CycleReference,
     DateOnly PaymentDate,
     decimal Amount,
     Guid? AccountId,
@@ -33,6 +34,8 @@ public record CardPaymentResponse(
 public record CardInvoiceCycleResponse(
     Guid CreditCardId,
     string CardName,
+    /// <summary>Mês de referência (dia 1) — a identidade do ciclo.</summary>
+    DateOnly Reference,
     DateOnly Start,
     DateOnly ClosingDate,
     DateOnly DueDate,

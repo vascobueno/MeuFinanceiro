@@ -25,6 +25,7 @@ import { CreditCard } from '../../core/models/card.model';
 import { Category } from '../../core/models/category.model';
 import { CardInvoiceCycle, CardPayment } from '../../core/models/card-payment.model';
 import { Transaction, TransactionFilter, TransactionOrigin } from '../../core/models/transaction.model';
+import { parseIsoDate, shiftMonthIso } from '../../core/services/date.util';
 
 /**
  * Lançamentos do cartão, com a fatura do ciclo no topo (docs/07).
@@ -116,8 +117,9 @@ export class CardTransactionsComponent implements OnInit {
   get cycleLabel(): string {
     const current = this.cycle();
     if (!current) return '';
-    const closing = new Date(current.closingDate);
-    return `Fatura de ${String(closing.getMonth() + 1).padStart(2, '0')}/${closing.getFullYear()}`;
+    // parseIsoDate, e não new Date(iso): este último é UTC e desloca o mês em fuso negativo.
+    const mes = parseIsoDate(current.reference);
+    return `Fatura de ${String(mes.getMonth() + 1).padStart(2, '0')}/${mes.getFullYear()}`;
   }
 
   get cycleBadge(): { text: string; tone: 'neutral' | 'bad' } {
@@ -148,7 +150,7 @@ export class CardTransactionsComponent implements OnInit {
     this.cardPaymentService.getCycle(this.selectedCardId, this.reference).subscribe({
       next: (cycle) => {
         this.cycle.set(cycle);
-        this.reference = cycle.closingDate;
+        this.reference = cycle.reference;
         this.cycleLoading.set(false);
         this.loadTransactions();
       },
@@ -169,21 +171,17 @@ export class CardTransactionsComponent implements OnInit {
   }
 
   /**
-   * Anda um ciclo. Calcula o fechamento do mês alvo com o mesmo encurtamento que o backend
-   * aplica (dia 31 vira 28 em fevereiro), porque a referência aceita é a data exata de
-   * fechamento — qualquer outra é recusada com 400.
+   * Anda um ciclo. Como a referência é o MÊS (dia 1), basta andar o mês — o backend resolve o
+   * fechamento real, inclusive o ajustado por fatura.
+   *
+   * Antes isto replicava aqui o encurtamento de fim de mês do backend, e era onde o bug morava:
+   * em cartão que fecha no dia 1, avançar não saía do lugar e voltar pulava dois meses.
    */
   shiftCycle(months: number): void {
     const current = this.cycle();
-    const card = this.cards().find((c) => c.id === this.selectedCardId);
-    if (!current || !card) return;
+    if (!current) return;
 
-    const closing = new Date(current.closingDate);
-    const target = new Date(closing.getFullYear(), closing.getMonth() + months, 1);
-    const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-    const day = Math.min(card.closingDay, lastDay);
-
-    this.reference = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    this.reference = shiftMonthIso(current.reference, months);
     this.loadCycle();
   }
 
@@ -294,7 +292,7 @@ export class CardTransactionsComponent implements OnInit {
         })
       : this.cardPaymentService.create({
           creditCardId: this.selectedCardId,
-          cycleClosingDate: cycle.closingDate,
+          cycleReference: cycle.reference,
           paymentDate,
           amount: this.payment.amount,
           accountId: this.payment.accountId,

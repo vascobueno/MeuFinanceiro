@@ -89,11 +89,11 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
     }
 
     private static async Task<HttpResponseMessage> PagarAsync(
-        HttpClient client, Guid cardId, DateOnly closing, decimal valor, Guid? accountId) =>
+        HttpClient client, Guid cardId, DateOnly referencia, decimal valor, Guid? accountId) =>
         await client.PostAsJsonAsync("/api/v1/card-payments", new
         {
             creditCardId = cardId,
-            cycleClosingDate = Iso(closing),
+            cycleReference = Iso(referencia),
             paymentDate = Iso(Hoje),
             amount = valor,
             accountId,
@@ -167,12 +167,12 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
     }
 
     [Fact]
-    public async Task Referencia_que_nao_e_data_de_fechamento_deve_ser_recusada()
+    public async Task Referencia_que_nao_e_o_primeiro_dia_do_mes_deve_ser_recusada()
     {
         var client = await NovoUsuarioAsync();
         var cardId = await CriarCartaoAsync(client, closingDay: 28);
 
-        // Dia 15 nunca é fechamento de um cartão que fecha no 28.
+        // A referência é o MÊS (dia 1); qualquer outro dia é recusado.
         var response = await client.GetAsync(
             $"/api/v1/cards/{cardId}/invoice?reference={Iso(new DateOnly(Hoje.Year, Hoje.Month, 15))}");
 
@@ -190,9 +190,9 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         await GastarNoCartaoAsync(client, cardId, 800m);
 
         var fatura = await FaturaAsync(client, cardId);
-        var fechamento = fatura.GetProperty("closingDate").GetDateTime();
+        var referencia = fatura.GetProperty("reference").GetDateTime();
 
-        var pagamento = await PagarAsync(client, cardId, DateOnly.FromDateTime(fechamento), 800m, contaId);
+        var pagamento = await PagarAsync(client, cardId, DateOnly.FromDateTime(referencia), 800m, contaId);
         pagamento.StatusCode.Should().Be(HttpStatusCode.OK);
 
         (await SaldoAsync(client, contaId)).Should().Be(4200m);
@@ -215,8 +215,8 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         var despesasAntes = await DespesasDoPeriodoAsync(client);
         despesasAntes.Should().Be(600m);
 
-        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
-        (await PagarAsync(client, cardId, fechamento, 600m, contaId)).StatusCode.Should().Be(HttpStatusCode.OK);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        (await PagarAsync(client, cardId, referencia, 600m, contaId)).StatusCode.Should().Be(HttpStatusCode.OK);
 
         (await DespesasDoPeriodoAsync(client)).Should().Be(despesasAntes,
             "o pagamento é movimentação, não despesa — contá-lo duplicaria o mesmo dinheiro");
@@ -231,8 +231,8 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         var cardId = await CriarCartaoAsync(client);
         await GastarNoCartaoAsync(client, cardId, 250m);
 
-        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
-        (await PagarAsync(client, cardId, fechamento, 250m, accountId: null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        (await PagarAsync(client, cardId, referencia, 250m, accountId: null)).StatusCode.Should().Be(HttpStatusCode.OK);
 
         (await FaturaAsync(client, cardId)).GetProperty("outstanding").GetDecimal().Should().Be(0m);
         (await SaldoAsync(client, contaId)).Should().Be(5000m, "nenhuma conta pode ser afetada");
@@ -246,8 +246,8 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         var cardId = await CriarCartaoAsync(client);
         await GastarNoCartaoAsync(client, cardId, 1000m);
 
-        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
-        await PagarAsync(client, cardId, fechamento, 300m, contaId);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        await PagarAsync(client, cardId, referencia, 300m, contaId);
 
         var fatura = await FaturaAsync(client, cardId);
         fatura.GetProperty("paid").GetDecimal().Should().Be(300m);
@@ -259,10 +259,10 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
     {
         var client = await NovoUsuarioAsync();
         var cardId = await CriarCartaoAsync(client);
-        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
 
-        (await PagarAsync(client, cardId, fechamento, 0m, null)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await PagarAsync(client, cardId, fechamento, -50m, null)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await PagarAsync(client, cardId, referencia, 0m, null)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await PagarAsync(client, cardId, referencia, -50m, null)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     // ---------------- trocar a conta ----------------
@@ -276,8 +276,8 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         var cardId = await CriarCartaoAsync(client);
         await GastarNoCartaoAsync(client, cardId, 500m);
 
-        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
-        var criado = await PagarAsync(client, cardId, fechamento, 500m, contaA);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        var criado = await PagarAsync(client, cardId, referencia, 500m, contaA);
         var pagamentoId = JsonDocument.Parse(await criado.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetGuid();
 
         (await SaldoAsync(client, contaA)).Should().Be(2500m);
@@ -304,8 +304,8 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         var cardId = await CriarCartaoAsync(client);
         await GastarNoCartaoAsync(client, cardId, 400m);
 
-        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
-        var criado = await PagarAsync(client, cardId, fechamento, 400m, contaId);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        var criado = await PagarAsync(client, cardId, referencia, 400m, contaId);
         var pagamentoId = JsonDocument.Parse(await criado.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetGuid();
         (await SaldoAsync(client, contaId)).Should().Be(1600m);
 
@@ -331,8 +331,8 @@ public class CardPaymentEndpointTests : IClassFixture<CustomWebApplicationFactor
         var cardId = await CriarCartaoAsync(client);
         await GastarNoCartaoAsync(client, cardId, 200m);
 
-        var fechamento = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("closingDate").GetDateTime());
-        var criado = await PagarAsync(client, cardId, fechamento, 200m, contaId);
+        var referencia = DateOnly.FromDateTime((await FaturaAsync(client, cardId)).GetProperty("reference").GetDateTime());
+        var criado = await PagarAsync(client, cardId, referencia, 200m, contaId);
         var pagamentoId = JsonDocument.Parse(await criado.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetGuid();
 
         (await client.DeleteAsync($"/api/v1/card-payments/{pagamentoId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);

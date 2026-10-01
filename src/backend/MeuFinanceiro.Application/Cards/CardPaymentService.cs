@@ -32,14 +32,14 @@ public class CardPaymentService : ICardPaymentService
         var card = await FindCardAsync(request.CreditCardId, ct);
         EnsureAmount(request.Amount);
 
-        var cycle = CardInvoiceCycleService.ResolveCycle(card.ClosingDay, card.DueDay, request.CycleClosingDate);
+        var cycle = CardInvoiceCycleService.ResolveCycle(card.ClosingDay, card.DueDay, request.CycleReference);
         var account = await FindAccountAsync(request.AccountId, ct);
 
         var payment = new CardPayment
         {
             GrupoId = _currentUser.GrupoId,
             CreditCardId = card.Id,
-            CycleClosingDate = cycle.ClosingDate,
+            CycleReference = CardInvoiceCycleService.ReferenceOf(cycle),
             PaymentDate = request.PaymentDate,
             Amount = request.Amount,
             AccountId = account?.Id,
@@ -48,7 +48,7 @@ public class CardPaymentService : ICardPaymentService
 
         if (account is not null)
         {
-            var transaction = BuildPaymentTransaction(payment, card.Name, cycle.ClosingDate);
+            var transaction = BuildPaymentTransaction(payment, card.Name, payment.CycleReference);
             _db.FinancialTransactions.Add(transaction);
             payment.PaymentTransactionId = transaction.Id;
         }
@@ -90,7 +90,7 @@ public class CardPaymentService : ICardPaymentService
         else if (account is not null && existing is null)
         {
             // outra forma -> conta: passa a existir o débito.
-            var created = BuildPaymentTransaction(payment, card.Name, payment.CycleClosingDate);
+            var created = BuildPaymentTransaction(payment, card.Name, payment.CycleReference);
             _db.FinancialTransactions.Add(created);
             payment.PaymentTransactionId = created.Id;
         }
@@ -102,7 +102,7 @@ public class CardPaymentService : ICardPaymentService
             existing.AccountId = account.Id;
             existing.Amount = payment.Amount;
             existing.TransactionDate = payment.PaymentDate;
-            existing.Description = PaymentDescription(card.Name, payment.CycleClosingDate);
+            existing.Description = PaymentDescription(card.Name, payment.CycleReference);
             existing.UpdatedAt = DateTime.UtcNow;
             existing.UpdatedBy = _currentUser.UserId;
         }
@@ -132,8 +132,8 @@ public class CardPaymentService : ICardPaymentService
 
     // ---------------- apoio ----------------
 
-    private static string PaymentDescription(string cardName, DateOnly closing) =>
-        $"Pagamento fatura {cardName} {closing:MM/yyyy}";
+    private static string PaymentDescription(string cardName, DateOnly cycleReference) =>
+        $"Pagamento fatura {cardName} {cycleReference:MM/yyyy}";
 
     /// <summary>
     /// Construído à mão, e não por TransactionService.BuildTransaction, porque aquele fixa
@@ -143,11 +143,11 @@ public class CardPaymentService : ICardPaymentService
     /// Consequência aceita: pagamento com data futura só afeta o saldo quando a data chegar,
     /// porque a consulta de saldo corta em TransactionDate menor ou igual a hoje. É correto.
     /// </summary>
-    private FinancialTransaction BuildPaymentTransaction(CardPayment payment, string cardName, DateOnly closing) => new()
+    private FinancialTransaction BuildPaymentTransaction(CardPayment payment, string cardName, DateOnly cycleReference) => new()
     {
         GrupoId = _currentUser.GrupoId,
         TransactionDate = payment.PaymentDate,
-        Description = PaymentDescription(cardName, closing),
+        Description = PaymentDescription(cardName, cycleReference),
         AccountId = payment.AccountId,
         CreditCardId = null,
         Type = TransactionType.CardPayment,
@@ -201,6 +201,6 @@ public class CardPaymentService : ICardPaymentService
         ?? throw new NotFoundException("Pagamento", id);
 
     private static CardPaymentResponse ToResponse(CardPayment p, string? accountName) => new(
-        p.Id, p.CreditCardId, p.CycleClosingDate, p.PaymentDate, p.Amount,
+        p.Id, p.CreditCardId, p.CycleReference, p.PaymentDate, p.Amount,
         p.AccountId, accountName, p.PaymentTransactionId);
 }
