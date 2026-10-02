@@ -124,22 +124,19 @@
 </div>
 
 @if (cycle(); as c) {
-  <div class="mf-stat-grid">
-    <mf-stat-card size="compact" label="Total da fatura" [value]="c.total | currency: 'BRL'" [hint]="(c.start | date: 'dd/MM') + ' a ' + (c.closingDate | date: 'dd/MM')"></mf-stat-card>
-    <mf-stat-card size="compact" label="Pago" [value]="c.paid | currency: 'BRL'" [hint]="c.payments.length + ' pagamento' + (c.payments.length === 1 ? '' : 's')"></mf-stat-card>
-    <mf-stat-card
-      size="compact"
-      label="Em aberto"
-      [value]="c.outstanding | currency: 'BRL'"
-      [hint]="'vence em ' + (c.dueDate | date: 'dd/MM/yyyy')"
-      [hintTone]="c.isOverdue ? 'negative' : 'neutral'"
-      variant="hero"
-    ></mf-stat-card>
-  </div>
-
   <div class="mf-panel">
+    <!-- Total e Pago vivem aqui: são os números do que este painel lista. -->
     <div class="mf-panel-header">
-      <div><b>Pagamentos desta fatura</b></div>
+      <b>Pagamentos desta fatura</b>
+      <span class="mf-panel-metric">
+        <span class="mf-metric-label">Total da fatura</span>
+        <b>{{ c.total | currency: 'BRL' }}</b>
+      </span>
+      <span class="mf-panel-metric">
+        <span class="mf-metric-label">Pago</span>
+        <b>{{ c.paid | currency: 'BRL' }}</b>
+      </span>
+      <span class="mf-panel-header-spacer"></span>
       @if (authService.canWrite() && !showPaymentForm()) {
         <button pButton type="button" size="small" (click)="openPaymentForm()">Pagar fatura</button>
       }
@@ -235,9 +232,32 @@
   <!-- Sempre renderizado: ver o comentário equivalente em account-transactions. -->
   <div class="mf-panel-header">
     <b>Gastos do ciclo</b>
+    <!-- O @if é por conta própria: este painel é renderizado mesmo sem ciclo (cartão recém
+         cadastrado), ao contrário do de pagamentos, que inteiro vive dentro do @if. -->
+    @if (cycle(); as c) {
+      <span class="mf-panel-metric">
+        <span class="mf-metric-label">Em aberto</span>
+        <b>{{ c.outstanding | currency: 'BRL' }}</b>
+        <span class="mf-badge" [ngClass]="c.isOverdue ? 'mf-badge-bad' : ''">
+          vence em {{ c.dueDate | date: 'dd/MM/yyyy' }}
+        </span>
+      </span>
+    }
+    <span class="mf-panel-header-spacer"></span>
     @if (authService.canWrite() && selectedCardId) {
-      <a pButton size="small" routerLink="/lancamentos/cartao/novo" [queryParams]="{ cartao: selectedCardId }">
-        + Novo lançamento
+      <a
+        pButton
+        [text]="true"
+        [rounded]="true"
+        [iconOnly]="true"
+        class="mf-panel-action-icon"
+        pTooltip="Novo lançamento"
+        tooltipPosition="left"
+        aria-label="Novo lançamento"
+        routerLink="/lancamentos/cartao/novo"
+        [queryParams]="{ cartao: selectedCardId }"
+      >
+        <i class="pi pi-plus"></i>
       </a>
     }
   </div>

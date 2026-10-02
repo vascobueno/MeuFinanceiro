@@ -28,14 +28,7 @@
   ></mf-stat-card>
 </div>
 
-@if (accounts().length > 0) {
-  <div class="mf-origin-subline">
-    Saldo desta conta <b>{{ balance | currency: 'BRL' }}</b>
-    @if (activeAccount?.bank; as bank) {
-      <span class="mf-sub">· {{ bank }}</span>
-    }
-  </div>
-} @else {
+@if (accounts().length === 0) {
   <!-- Sem conta não há aba nenhuma: quem acabou de se cadastrar precisa de um caminho, não de
        uma tela vazia. O botão de novo lançamento também some — não haveria onde lançar. -->
   <div class="mf-origin-empty">
@@ -54,9 +47,30 @@
        botão justamente de quem ainda não tem lançamento nenhum. -->
   <div class="mf-panel-header">
     <b>Lançamentos</b>
+    <!-- Conta e saldo moram aqui: é o cabeçalho do que a grade está mostrando. -->
+    @if (activeAccount; as conta) {
+      <!-- O nome da conta é dado, não rótulo: fica em caixa normal, ao contrário de "SALDO". -->
+      <span class="mf-panel-origin">{{ conta.name }}</span>
+      <span class="mf-panel-metric">
+        <span class="mf-metric-label">Saldo</span>
+        <b>{{ balance | currency: 'BRL' }}</b>
+      </span>
+    }
+    <span class="mf-panel-header-spacer"></span>
     @if (authService.canWrite() && selectedAccountId) {
-      <a pButton size="small" routerLink="/lancamentos/conta/novo" [queryParams]="{ conta: selectedAccountId }">
-        + Novo lançamento
+      <a
+        pButton
+        [text]="true"
+        [rounded]="true"
+        [iconOnly]="true"
+        class="mf-panel-action-icon"
+        pTooltip="Novo lançamento"
+        tooltipPosition="left"
+        aria-label="Novo lançamento"
+        routerLink="/lancamentos/conta/novo"
+        [queryParams]="{ conta: selectedAccountId }"
+      >
+        <i class="pi pi-plus"></i>
       </a>
     }
   </div>

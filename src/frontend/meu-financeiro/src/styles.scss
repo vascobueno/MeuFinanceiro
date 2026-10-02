@@ -48,7 +48,9 @@ h6 {
   gap: 0.55rem;
   font-weight: 600;
   margin-top: 0;
-  margin-bottom: 1rem;
+  // Metade do que era (1rem). O vão visível até o objeto seguinte é a SOMA desta margem com a
+  // do cabeçalho que envolve o título (.mf-list-header e irmãs), por isso as duas caem juntas.
+  margin-bottom: 0.5rem;
 }
 
 .mf-page-title-icon {

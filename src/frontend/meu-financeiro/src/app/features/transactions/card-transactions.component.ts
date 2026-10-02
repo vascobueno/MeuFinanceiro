@@ -11,7 +11,6 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { MfIconComponent } from '../../shared/icons/mf-icon.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
-import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { MoneyInputComponent } from '../../shared/components/money-input.component';
 import { TransactionFiltersComponent } from '../../shared/components/transaction-filters.component';
 import { TransactionTableComponent } from '../../shared/components/transaction-table.component';
@@ -55,7 +54,6 @@ import { defaultId, validId } from '../../core/services/selection.util';
     ConfirmDialog,
     MfIconComponent,
     PaginationComponent,
-    StatCardComponent,
     MoneyInputComponent,
     TransactionFiltersComponent,
     TransactionTableComponent,

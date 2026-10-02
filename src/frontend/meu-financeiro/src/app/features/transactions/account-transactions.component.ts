@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
+import { Tooltip } from 'primeng/tooltip';
 import { Tab, TabList, Tabs } from 'primeng/tabs';
 import { MfIconComponent } from '../../shared/icons/mf-icon.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
@@ -32,6 +33,7 @@ import { defaultId, validId } from '../../core/services/selection.util';
     FormsModule,
     RouterLink,
     ButtonDirective,
+    Tooltip,
     Tabs,
     TabList,
     Tab,

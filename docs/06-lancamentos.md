@@ -54,9 +54,26 @@ A conta (e o cartão) é escolhida numa faixa de **abas** — `p-tabs`/`p-tablis
 `[scrollable]="true"` no `p-tabs`, não no `p-tablist`. Só a faixa é usada: a grade fica fora das
 abas, senão a tabela seria duplicada por conta.
 
-Não existe aba "Todas". O agregado virou uma **caixa de saldo total**, fora das abas e imune à
-troca de aba; o saldo da conta ativa fica na linha logo abaixo da faixa. No cartão não há caixa
-nem linha: a barra de fatura logo abaixo já responde o que elas responderiam.
+Não existe aba "Todas". O agregado virou uma **caixa de saldo total**, fora das abas (centrada
+com elas) e imune à troca de aba.
+
+### Cada número no cabeçalho do painel a que pertence
+O nome da conta ativa e o saldo dela ficam no cabeçalho do painel **Lançamentos** — é o cabeçalho
+do que a grade está mostrando, e por isso mudam ao trocar de aba.
+
+No cartão, a faixa de três cartões KPI não existe mais:
+
+| Número | Cabeçalho |
+|---|---|
+| Total da fatura, Pago | **Pagamentos desta fatura** |
+| Em aberto (+ "vence em", vermelho quando vencida) | **Gastos do ciclo** |
+
+> O "Em aberto" precisa do seu próprio `@if (cycle(); as c)` **dentro** do cabeçalho: o painel de
+> gastos é renderizado mesmo sem fatura (cartão recém-cadastrado), ao contrário do de pagamentos,
+> que inteiro vive dentro do `@if`.
+
+A ação de criar virou **ícone** (`pi-plus`) nos dois cabeçalhos, com `aria-label` — sem texto, um
+ícone não tem nome acessível, e na lista vazia ele é o único elemento acionável da grade.
 
 Sem conta (ou cartão) cadastrado não há aba nenhuma. Em vez de uma tela vazia, aparece o convite
 ao cadastro e o "+ Novo lançamento" **não é renderizado** — não haveria onde lançar.

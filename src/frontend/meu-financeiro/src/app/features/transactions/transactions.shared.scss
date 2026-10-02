@@ -8,7 +8,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   gap: 1rem;
 }
 
@@ -61,18 +61,47 @@
 .mf-panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
+  // Quebra em vez de espremer: o cabeçalho carrega título, métricas e ação, e em tela estreita
+  // sem isto a ação some para fora da caixa.
+  flex-wrap: wrap;
   padding: 1rem;
   border-bottom: 1px solid var(--mf-line);
 }
 
-// Não é global: cada tela define a sua (mesmo grid de cards/card-list.component.scss).
-.mf-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+// Empurra a ação para a direita. Substitui o space-between, que não serve mais: com três ou mais
+// filhos ele distribuiria o espaço entre todos, afastando as métricas do título.
+.mf-panel-header-spacer {
+  flex: 1 1 auto;
+}
+
+// Número que descreve o painel (saldo da conta, total da fatura, em aberto).
+// Nome da conta ao lado do título do painel.
+.mf-panel-origin {
+  color: var(--mf-muted);
+  font-size: 0.9rem;
+}
+
+.mf-panel-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.mf-metric-label {
+  color: var(--mf-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mf-panel-action-icon {
+  flex: none;
+  // Cor de ação, e não a neutra do botão de ajuda: sem texto, é a cor que diz que ele age — e
+  // na lista vazia este ícone é o único elemento acionável da grade.
+  color: var(--mf-primary);
 }
 
 .mf-panel-body {
@@ -120,10 +149,20 @@ $mf-field-height: 28px;
 .mf-account-bar,
 .mf-card-bar {
   display: flex;
-  align-items: flex-end;
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1rem;
+}
+
+// Caixa de saldo centrada verticalmente com a faixa de abas.
+.mf-account-bar {
+  align-items: center;
+}
+
+// A do cartão fica no rodapé: o alinhamento dela foi medido pelos centros em $mf-field-height
+// (navegação de ciclo, fechamento e vencimento), e mexer aqui desfaria aquilo.
+.mf-card-bar {
+  align-items: flex-end;
 }
 
 // Faixa de abas de conta/cartão, no lugar do antigo combobox de 260px.
@@ -149,20 +188,6 @@ $mf-field-height: 28px;
 .mf-origin-tabs-block {
   display: block;
   margin-bottom: 0.75rem;
-}
-
-// Saldo da conta da aba — some ao trocar de aba, ao contrário da caixa de total.
-.mf-origin-subline {
-  margin: -0.5rem 0 1rem;
-  font-size: 0.9rem;
-
-  b {
-    margin-left: 0.25rem;
-  }
-
-  .mf-sub {
-    margin-left: 0.4rem;
-  }
 }
 
 // Sem conta/cartão cadastrado não há aba nenhuma: o convite ao cadastro ocupa o lugar da faixa.
@@ -273,12 +298,6 @@ $mf-field-height: 28px;
 }
 .mf-row-delete-icon {
   color: var(--mf-red);
-}
-
-@media (max-width: 900px) {
-  .mf-stat-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
