@@ -42,54 +42,47 @@ h6 {
   font-size: 1rem;
 }
 
+/**
+ * Título de página — compacto em TODAS as telas.
+ *
+ * Era um modificador aplicado a quatro telas, o que deixava o título delas menor que o do resto
+ * do app; virou o padrão para o cabeçalho ser o mesmo em qualquer página. O vão até o objeto
+ * seguinte passa a vir só da margem do cabeçalho que envolve o título (.mf-list-header e irmãs),
+ * porque aqui ela é zero.
+ */
 .mf-page-title {
   display: flex;
   align-items: center;
   gap: 0.55rem;
   font-weight: 600;
+  font-size: 0.9rem;
   margin-top: 0;
-  // Metade do que era (1rem). O vão visível até o objeto seguinte é a SOMA desta margem com a
-  // do cabeçalho que envolve o título (.mf-list-header e irmãs), por isso as duas caem juntas.
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
+  // Mesma altura do botão de ação: assim a faixa mede igual em página que tem ação e em página
+  // que não tem, que é o que "uniforme" quer dizer aqui.
+  min-height: 1.45rem;
 }
 
-/**
- * Cabeçalho de página compacto — Recorrências, Parcelamentos e os dois cadastros.
- *
- * Global, e não copiado nas quatro folhas de componente, para os números não divergirem com o
- * tempo. A altura da faixa é ditada pelo filho mais alto, então título E ação encolhem: mexer
- * só num dos dois não muda a altura.
- */
-.mf-list-header-compact {
-  .mf-page-title {
-    font-size: 0.9rem;
-    margin-bottom: 0;
-  }
-
-  // O ícone do título tem 24px fixos (mf-icon), e era ele — não a fonte — que segurava a altura
-  // da faixa. Sem encolher o ícone, a redução parava em 24px.
-  .mf-page-title-icon,
-  .mf-page-title-icon svg {
-    width: 1.3rem;
-    height: 1.3rem;
-    font-size: 1.3rem;
-  }
-
-  // Altura fixada em vez de caçada por padding: nesta escala o cálculo do tema erra 1-2px, e
-  // é a ação que dita a altura da faixa nas telas que têm botão.
-  .p-button {
-    height: 1.45rem;
-    padding-block: 0;
-    font-size: 0.85rem;
-  }
-}
-
-.mf-page-title-icon {
+// O mf-icon fixa 24px no próprio `:host`, e era ele — não a fonte — que segurava a altura do
+// cabeçalho. O seletor é composto de propósito: `.mf-page-title-icon` sozinho empata em
+// especificidade com aquele `:host` e perde por vir antes na cascata.
+.mf-page-title .mf-page-title-icon,
+.mf-page-title .mf-page-title-icon svg {
   color: var(--mf-primary);
-  width: 1.3em;
-  height: 1.3em;
-  font-size: 1.3em;
+  width: 1.3rem;
+  height: 1.3rem;
+  font-size: 1.3rem;
   flex: none;
+}
+
+// Ação do cabeçalho de página, em qualquer tela. Altura fixada em vez de caçada por padding:
+// nessa escala o cálculo do tema erra 1-2px, e é a ação que dita a altura da faixa.
+.mf-list-header .p-button,
+.mf-form-header .p-button,
+.mf-dashboard-header .p-button {
+  height: 1.45rem;
+  padding-block: 0;
+  font-size: 0.85rem;
 }
 
 .mf-sub {

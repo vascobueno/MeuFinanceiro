@@ -53,10 +53,16 @@ abaixo do topo, porque `align-items: flex-end` com o botão (35px) mais alto que
 (32px) — daí 15px nessas páginas e 12px nas demais.
 
 A altura de um cabeçalho é ditada pelo **filho mais alto**, não pelo seu padding: encolher só o
-espaçamento para por aí. No cabeçalho de painel das telas de Lançamentos a ação encolhe junto; nas
-páginas com `.mf-list-header-compact` (Recorrências, Parcelamentos e os dois cadastros, definido em
-`styles.scss`) encolhem o título, o **ícone do título** — que tem 24px fixos e era o piso real — e
-o botão, com altura fixada em vez de caçada por padding, porque nessa escala o cálculo do tema erra
-1-2px.
+espaçamento para por aí. No cabeçalho de painel das telas de Lançamentos a ação encolhe junto.
+
+Nos cabeçalhos de **página** o compacto é o padrão, em todas as telas (`styles.scss`): título em
+0.9rem sem margem inferior, ícone em 1.3rem e ação com altura fixa de 1.45rem — fixada, e não
+caçada por padding, porque nessa escala o cálculo do tema erra 1-2px. O `.mf-page-title` tem
+`min-height` igual à da ação, para a faixa medir o mesmo com ou sem botão: 23,2px em qualquer
+página, com 12px até a borda interna e 8px até o objeto seguinte.
+
+> Duas pegadinhas de cascata aqui. O `mf-icon` fixa 24px no próprio `:host`, que empata em
+> especificidade com `.mf-page-title-icon` e vence por vir depois — por isso o seletor é composto
+> (`.mf-page-title .mf-page-title-icon`). E era o ícone, não a fonte, que segurava a altura.
 
 Não colocar segredo no frontend.
