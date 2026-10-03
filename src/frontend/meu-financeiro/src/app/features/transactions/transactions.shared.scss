@@ -264,9 +264,12 @@ $mf-field-height: 28px;
   min-height: $mf-field-height;
 }
 
+// Setas de ciclo na cor de acento. Antes eram borda --mf-line (quase invisível) sobre fundo
+// transparente, e sumiam ao lado da pill da fatura. Tudo em tokens da paleta, então acompanham
+// os 7 skins de cor sem valor fixo.
 .mf-cycle-nav button {
-  background: none;
-  border: 1px solid var(--mf-line);
+  background: var(--mf-primary-tint);
+  border: 1px solid var(--mf-primary);
   border-radius: var(--mf-radius);
   width: $mf-field-height;
   height: $mf-field-height;
@@ -274,11 +277,18 @@ $mf-field-height: 28px;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--mf-text);
+  color: var(--mf-primary-dark);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .mf-cycle-nav button:hover {
-  background: var(--mf-card);
+  background: var(--mf-primary);
+  color: #fff;
+}
+
+.mf-cycle-nav button:focus-visible {
+  outline: 2px solid var(--mf-primary-dark);
+  outline-offset: 2px;
 }
 
 .mf-cycle-label {
