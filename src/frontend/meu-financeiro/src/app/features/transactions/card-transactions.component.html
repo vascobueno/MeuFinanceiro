@@ -31,8 +31,10 @@
         <i class="pi pi-chevron-left"></i>
       </button>
       <div class="mf-cycle-label">
-        <b>{{ cycleLabel }}</b>
-        <span class="mf-badge" [ngClass]="cycleBadge.tone === 'bad' ? 'mf-badge-bad' : ''">{{ cycleBadge.text }}</span>
+        <span class="mf-panel-metric" [class.mf-panel-metric-bad]="cycleBadge.tone === 'bad'">
+          <b>{{ cycleLabel }}</b>
+          <span class="mf-metric-state">{{ cycleBadge.text }}</span>
+        </span>
       </div>
       <button type="button" pTooltip="Próximo ciclo" tooltipPosition="top" (click)="shiftCycle(1)">
         <i class="pi pi-chevron-right"></i>
