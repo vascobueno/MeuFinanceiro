@@ -238,9 +238,12 @@
       <span class="mf-panel-metric">
         <span class="mf-metric-label">Em aberto</span>
         <b>{{ c.outstanding | currency: 'BRL' }}</b>
-        <span class="mf-badge" [ngClass]="c.isOverdue ? 'mf-badge-bad' : ''">
-          vence em {{ c.dueDate | date: 'dd/MM/yyyy' }}
-        </span>
+      </span>
+      <!-- Pill própria, e não aninhada em "Em aberto": são duas informações, e aninhada ela
+           ficava com tamanho de legenda dentro de outra caixa. -->
+      <span class="mf-panel-metric" [class.mf-panel-metric-bad]="c.isOverdue">
+        <span class="mf-metric-label">Vence em</span>
+        <b>{{ c.dueDate | date: 'dd/MM/yyyy' }}</b>
       </span>
     }
     <span class="mf-panel-header-spacer"></span>

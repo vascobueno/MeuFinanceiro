@@ -61,6 +61,12 @@ caçada por padding, porque nessa escala o cálculo do tema erra 1-2px. O `.mf-p
 `min-height` igual à da ação, para a faixa medir o mesmo com ou sem botão: 23,2px em qualquer
 página, com 12px até a borda interna e 8px até o objeto seguinte.
 
+O cabeçalho das **grades** acompanha a mesma altura, por token do tema
+(`datatable.headerCell.padding` e `.sm.padding` em `app/styles/primeng-preset.ts`), e não por
+CSS: a regra do tema `.p-datatable-thead > tr > th` tem a mesma especificidade de qualquer
+seletor nosso e vence por vir depois na cascata. Antes conviviam três alturas — 38px nas grades
+sem `size="small"`, 26px nas com, e o cabeçalho de página.
+
 > Duas pegadinhas de cascata aqui. O `mf-icon` fixa 24px no próprio `:host`, que empata em
 > especificidade com `.mf-page-title-icon` e vence por vir depois — por isso o seletor é composto
 > (`.mf-page-title .mf-page-title-icon`). E era o ícone, não a fonte, que segurava a altura.

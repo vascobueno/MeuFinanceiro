@@ -72,6 +72,11 @@ No cartão, a faixa de três cartões KPI não existe mais:
 > gastos é renderizado mesmo sem fatura (cartão recém-cadastrado), ao contrário do de pagamentos,
 > que inteiro vive dentro do `@if`.
 
+Cada número vai numa **pill** (`.mf-panel-metric`), com o rótulo em caixa normal. No cartão são
+quatro: Total da fatura, Pago, Em aberto e Vence em — esta última separada, e vermelha quando a
+fatura está vencida. Na conta é só o Saldo: o nome da conta não se repete ali, porque a aba ativa
+logo acima já o diz.
+
 A ação de criar virou **ícone** (`pi-plus`) nos dois cabeçalhos, com `aria-label` — sem texto, um
 ícone não tem nome acessível, e na lista vazia ele é o único elemento acionável da grade.
 

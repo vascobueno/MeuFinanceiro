@@ -34,6 +34,17 @@ export const MfPreset = definePreset(Aura, {
     },
   },
   components: {
+    // Cabeçalho de grade na mesma altura do cabeçalho de página. Vai pelo token, e não por
+    // CSS: a regra do tema (`.p-datatable-thead > tr > th`) tem a mesma especificidade de
+    // qualquer seletor nosso e vence por vir depois na cascata.
+    datatable: {
+      headerCell: {
+        padding: '0.05rem 0.875rem',
+        // Grades com size="small" (Lançamentos, Parcelamentos) usam o token próprio; sem isto
+        // ficariam com uma altura e as demais com outra.
+        sm: { padding: '0.05rem 0.375rem' },
+      },
+    },
     // Sem isso, o spinner alterna entre 4 cores fixas do Aura (padrão "arco-íris") em vez
     // de usar a cor da marca (UI-01.2, docs/migracao-primeng/00-plano.md).
     progressspinner: {

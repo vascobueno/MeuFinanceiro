@@ -48,9 +48,8 @@
   <div class="mf-panel-header">
     <b>Lançamentos</b>
     <!-- Conta e saldo moram aqui: é o cabeçalho do que a grade está mostrando. -->
-    @if (activeAccount; as conta) {
-      <!-- O nome da conta é dado, não rótulo: fica em caixa normal, ao contrário de "SALDO". -->
-      <span class="mf-panel-origin">{{ conta.name }}</span>
+    <!-- Sem o nome da conta: a aba ativa logo acima já diz de qual conta é este saldo. -->
+    @if (activeAccount) {
       <span class="mf-panel-metric">
         <span class="mf-metric-label">Saldo</span>
         <b>{{ balance | currency: 'BRL' }}</b>

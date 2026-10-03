@@ -84,25 +84,29 @@
   padding-block: 0.05rem;
 }
 
-// Nome da conta ao lado do título do painel.
-.mf-panel-origin {
-  color: var(--mf-muted);
-  font-size: 0.9rem;
-}
-
+// Número que descreve o painel (saldo da conta, total da fatura, pago, em aberto, vencimento),
+// em pill. O rótulo fica em caixa normal: em caixa alta competia com o número ao lado.
 .mf-panel-metric {
   display: inline-flex;
   align-items: baseline;
   gap: 0.35rem;
-  font-size: 0.9rem;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--mf-line);
+  background: var(--mf-surface-2, rgba(0, 0, 0, 0.03));
+  font-size: 0.85rem;
   white-space: nowrap;
+}
+
+// Vencimento de fatura vencida — o sinal vermelho que vinha do hintTone do cartão KPI antigo.
+.mf-panel-metric-bad {
+  border-color: var(--mf-red);
+  color: var(--mf-red);
 }
 
 .mf-metric-label {
   color: var(--mf-muted);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-size: 0.85rem;
 }
 
 .mf-panel-action-icon {
