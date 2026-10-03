@@ -87,7 +87,10 @@ h6 {
  */
 p-table.p-datatable .p-datatable-thead > tr > th,
 p-table.p-datatable.p-datatable-sm .p-datatable-thead > tr > th {
-  padding-block: 0.25rem;
+  // 25px fixos: o texto do cabeçalho ocupa 21px de linha, então o que sobra para padding é
+  // pouco e qualquer cálculo por padding erra por 1px para cada lado.
+  height: 25px;
+  padding-block: 0;
 }
 
 // Ação do cabeçalho de página, em qualquer tela. Altura fixada em vez de caçada por padding:

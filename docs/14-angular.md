@@ -61,8 +61,9 @@ caçada por padding, porque nessa escala o cálculo do tema erra 1-2px. O `.mf-p
 `min-height` igual à da ação, para a faixa medir o mesmo com ou sem botão: 23,2px em qualquer
 página, com 12px até a borda interna e 8px até o objeto seguinte.
 
-Cabeçalho de **painel** e de **grade** ficam ambos em 30px (`min-height: 1.875rem` com
-`padding-block: 0.125rem`; o piso é que manda, não o conteúdo). Antes conviviam três alturas de
+Cabeçalho de **painel** em 30px e de **grade** em 25px (`height` fixo com `padding-block: 0`:
+sobram 4px para o texto de 21px, e qualquer cálculo por padding erra 1px de cada lado). No painel o piso (`min-height: 1.875rem`
+com `padding-block: 0.125rem`) é que manda, não o conteúdo. Antes conviviam três alturas de
 grade — 38px sem `size="small"`, 26px com — e cada painel com a sua.
 
 > A altura da grade vai em CSS (`styles.scss`), com especificidade **acima** da do tema
