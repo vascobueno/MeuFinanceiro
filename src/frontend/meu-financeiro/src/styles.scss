@@ -76,6 +76,21 @@ h6 {
 }
 
 /**
+ * Corpo do painel — uma definição só, global.
+ *
+ * Eram nove cópias idênticas nas folhas de componente, e cada uma viaja no pedaço preguiçoso da
+ * sua tela: quando um desses pedaços fica velho no cache do servidor de desenvolvimento, a tela
+ * continua com o valor antigo enquanto as outras já mudaram. Aqui a regra vai no `styles.css`,
+ * que é um arquivo só e recarrega junto com o resto.
+ *
+ * Topo em um quarto do original (era 1rem): esse respiro acima do cabeçalho da grade fazia a
+ * faixa parecer mais alta do que é. Laterais e rodapé seguem em 1rem.
+ */
+.mf-panel-body {
+  padding: 0.25rem 1rem 1rem;
+}
+
+/**
  * Cabeçalho de grade na mesma faixa dos cabeçalhos de painel (~30px).
  *
  * Em CSS, e não pelo token do tema (`datatable.headerCell.padding`): o tema é lido uma vez no

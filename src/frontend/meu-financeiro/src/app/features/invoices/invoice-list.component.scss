@@ -27,12 +27,6 @@
   overflow: hidden;
 }
 
-.mf-panel-body {
-  // Topo em um quarto do original (era 1rem): esse respiro acima do cabeçalho da grade fazia
-  // a faixa parecer mais alta do que é. Laterais e rodapé seguem em 1rem.
-  padding: 0.25rem 1rem 1rem;
-}
-
 .mf-invoices-table {
   width: 100%;
 }
