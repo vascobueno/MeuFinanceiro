@@ -92,20 +92,24 @@
   gap: 0.35rem;
   padding: 0.1rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid var(--mf-line);
-  background: var(--mf-surface-2, rgba(0, 0, 0, 0.03));
+  // As mesmas cores do "Saldo total" (mf-stat-card variant="hero"): gradiente da marca, texto
+  // branco e rótulo em #ffe2d4. A sombra do hero não vem junto — ela tem 30px de borrão, feita
+  // para um cartão de 100px, e numa pill de 23px vira mancha.
+  background: linear-gradient(135deg, #8f3814, var(--mf-primary, #df5830) 60%, #f0855a);
+  border: none;
+  color: #fff;
   font-size: 0.85rem;
   white-space: nowrap;
 }
 
-// Vencimento de fatura vencida — o sinal vermelho que vinha do hintTone do cartão KPI antigo.
+// Fatura vencida: mesma receita, na cor de alerta — o sinal que vinha do hintTone do cartão KPI
+// antigo. Em vermelho sobre o gradiente laranja o texto sumiria, por isso troca o gradiente.
 .mf-panel-metric-bad {
-  border-color: var(--mf-red);
-  color: var(--mf-red);
+  background: linear-gradient(135deg, #7d2018, var(--mf-red, #c0392b) 60%, #e0705f);
 }
 
 .mf-metric-label {
-  color: var(--mf-muted);
+  color: #ffe2d4;
   font-size: 0.85rem;
 }
 
