@@ -65,7 +65,9 @@
   // Quebra em vez de espremer: o cabeçalho carrega título, métricas e ação, e em tela estreita
   // sem isto a ação some para fora da caixa.
   flex-wrap: wrap;
-  padding: 1rem;
+  // Altura pela metade (era 1rem em cima e embaixo). Só o padding não bastaria: a altura da
+  // faixa é ditada pelo filho mais alto, então a ação encolhe junto, logo abaixo.
+  padding: 0.25rem 1rem;
   border-bottom: 1px solid var(--mf-line);
 }
 
@@ -76,6 +78,12 @@
 }
 
 // Número que descreve o painel (saldo da conta, total da fatura, em aberto).
+// Ação em texto do cabeçalho (Pagar fatura): mesma lógica do ícone — se ela não encolher,
+// a faixa não encolhe.
+.mf-panel-header .p-button:not(.mf-panel-action-icon) {
+  padding-block: 0.05rem;
+}
+
 // Nome da conta ao lado do título do painel.
 .mf-panel-origin {
   color: var(--mf-muted);
@@ -99,6 +107,8 @@
 
 .mf-panel-action-icon {
   flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
   // Cor de ação, e não a neutra do botão de ajuda: sem texto, é a cor que diz que ele age — e
   // na lista vazia este ícone é o único elemento acionável da grade.
   color: var(--mf-primary);

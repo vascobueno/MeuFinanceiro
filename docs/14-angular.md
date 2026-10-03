@@ -52,4 +52,11 @@ metade. A distância até a borda interna é o `padding` vertical do `.mf-conten
 abaixo do topo, porque `align-items: flex-end` com o botão (35px) mais alto que a linha do título
 (32px) — daí 15px nessas páginas e 12px nas demais.
 
+A altura de um cabeçalho é ditada pelo **filho mais alto**, não pelo seu padding: encolher só o
+espaçamento para por aí. No cabeçalho de painel das telas de Lançamentos a ação encolhe junto; nas
+páginas com `.mf-list-header-compact` (Recorrências, Parcelamentos e os dois cadastros, definido em
+`styles.scss`) encolhem o título, o **ícone do título** — que tem 24px fixos e era o piso real — e
+o botão, com altura fixada em vez de caçada por padding, porque nessa escala o cálculo do tema erra
+1-2px.
+
 Não colocar segredo no frontend.

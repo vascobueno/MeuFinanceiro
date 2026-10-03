@@ -53,6 +53,37 @@ h6 {
   margin-bottom: 0.5rem;
 }
 
+/**
+ * Cabeçalho de página compacto — Recorrências, Parcelamentos e os dois cadastros.
+ *
+ * Global, e não copiado nas quatro folhas de componente, para os números não divergirem com o
+ * tempo. A altura da faixa é ditada pelo filho mais alto, então título E ação encolhem: mexer
+ * só num dos dois não muda a altura.
+ */
+.mf-list-header-compact {
+  .mf-page-title {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+  }
+
+  // O ícone do título tem 24px fixos (mf-icon), e era ele — não a fonte — que segurava a altura
+  // da faixa. Sem encolher o ícone, a redução parava em 24px.
+  .mf-page-title-icon,
+  .mf-page-title-icon svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    font-size: 1.3rem;
+  }
+
+  // Altura fixada em vez de caçada por padding: nesta escala o cálculo do tema erra 1-2px, e
+  // é a ação que dita a altura da faixa nas telas que têm botão.
+  .p-button {
+    height: 1.45rem;
+    padding-block: 0;
+    font-size: 0.85rem;
+  }
+}
+
 .mf-page-title-icon {
   color: var(--mf-primary);
   width: 1.3em;
