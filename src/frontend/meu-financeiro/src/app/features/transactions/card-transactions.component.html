@@ -43,23 +43,25 @@
          para todos. Aqui o ajuste é só desta fatura. -->
     <div class="mf-cycle-dates">
       @if (!editingClosing()) {
-        <span class="mf-sub">Fechamento</span>
-        <b>{{ c.closingDate | date: 'dd/MM/yyyy' }}</b>
-        @if (c.isClosingOverridden) {
-          <span class="mf-badge" pTooltip="Ajustado para esta fatura" tooltipPosition="top">ajustado</span>
-        }
-        @if (authService.canWrite()) {
-          <button
-            type="button"
-            class="mf-row-edit-icon"
-            pTooltip="Ajustar o fechamento desta fatura"
-            tooltipPosition="top"
-            [attr.aria-label]="'Ajustar o fechamento desta fatura'"
-            (click)="openClosingEditor()"
-          >
-            <i class="pi pi-pencil"></i>
-          </button>
-        }
+        <span class="mf-panel-metric">
+          <span class="mf-metric-label">Fechamento</span>
+          <b>{{ c.closingDate | date: 'dd/MM/yyyy' }}</b>
+          @if (c.isClosingOverridden) {
+            <span class="mf-metric-tag" pTooltip="Ajustado para esta fatura" tooltipPosition="top">ajustado</span>
+          }
+          @if (authService.canWrite()) {
+            <button
+              type="button"
+              class="mf-metric-edit"
+              pTooltip="Ajustar o fechamento desta fatura"
+              tooltipPosition="top"
+              [attr.aria-label]="'Ajustar o fechamento desta fatura'"
+              (click)="openClosingEditor()"
+            >
+              <i class="pi pi-pencil"></i>
+            </button>
+          }
+        </span>
       } @else {
         <p-datepicker
           size="small"
@@ -84,23 +86,25 @@
          manter o dia de vencimento. Ajustável só para esta fatura. -->
     <div class="mf-cycle-dates">
       @if (!editingDue()) {
-        <span class="mf-sub">Vencimento</span>
-        <b>{{ c.dueDate | date: 'dd/MM/yyyy' }}</b>
-        @if (c.isDueOverridden) {
-          <span class="mf-badge" pTooltip="Ajustado para esta fatura" tooltipPosition="top">ajustado</span>
-        }
-        @if (authService.canWrite()) {
-          <button
-            type="button"
-            class="mf-row-edit-icon"
-            pTooltip="Ajustar o vencimento desta fatura"
-            tooltipPosition="top"
-            [attr.aria-label]="'Ajustar o vencimento desta fatura'"
-            (click)="openDueEditor()"
-          >
-            <i class="pi pi-pencil"></i>
-          </button>
-        }
+        <span class="mf-panel-metric">
+          <span class="mf-metric-label">Vencimento</span>
+          <b>{{ c.dueDate | date: 'dd/MM/yyyy' }}</b>
+          @if (c.isDueOverridden) {
+            <span class="mf-metric-tag" pTooltip="Ajustado para esta fatura" tooltipPosition="top">ajustado</span>
+          }
+          @if (authService.canWrite()) {
+            <button
+              type="button"
+              class="mf-metric-edit"
+              pTooltip="Ajustar o vencimento desta fatura"
+              tooltipPosition="top"
+              [attr.aria-label]="'Ajustar o vencimento desta fatura'"
+              (click)="openDueEditor()"
+            >
+              <i class="pi pi-pencil"></i>
+            </button>
+          }
+        </span>
       } @else {
         <p-datepicker
           size="small"

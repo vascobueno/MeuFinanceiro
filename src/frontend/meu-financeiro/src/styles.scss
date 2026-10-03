@@ -75,6 +75,21 @@ h6 {
   flex: none;
 }
 
+/**
+ * Cabeçalho de grade na mesma faixa dos cabeçalhos de painel (~30px).
+ *
+ * Em CSS, e não pelo token do tema (`datatable.headerCell.padding`): o tema é lido uma vez no
+ * boot da aplicação, então mudar o token não chega a quem está com a tela aberta — numa sessão
+ * de `ng serve` ligada há horas a mudança simplesmente não aparece, e foi o que aconteceu.
+ *
+ * A especificidade é deliberadamente maior que a do tema (`.p-datatable-thead > tr > th` e a
+ * variante `.p-datatable-sm`): empatar significa perder, porque as folhas dele vêm depois.
+ */
+p-table.p-datatable .p-datatable-thead > tr > th,
+p-table.p-datatable.p-datatable-sm .p-datatable-thead > tr > th {
+  padding-block: 0.25rem;
+}
+
 // Ação do cabeçalho de página, em qualquer tela. Altura fixada em vez de caçada por padding:
 // nessa escala o cálculo do tema erra 1-2px, e é a ação que dita a altura da faixa.
 .mf-list-header .p-button,

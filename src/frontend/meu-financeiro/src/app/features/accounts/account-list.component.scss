@@ -52,7 +52,10 @@
 }
 
 .mf-panel-header {
-  padding: 1rem;
+  // Mesma faixa de "Gastos do ciclo" (Lançamentos): 0.25rem de respiro e piso de 1.875rem, para
+  // o cabeçalho de painel medir igual em qualquer tela, com ou sem ação dentro.
+  padding: 0.125rem 1rem;
+  min-height: 1.875rem;
   border-bottom: 1px solid var(--mf-line);
 }
 

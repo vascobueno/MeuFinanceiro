@@ -61,11 +61,16 @@ caçada por padding, porque nessa escala o cálculo do tema erra 1-2px. O `.mf-p
 `min-height` igual à da ação, para a faixa medir o mesmo com ou sem botão: 23,2px em qualquer
 página, com 12px até a borda interna e 8px até o objeto seguinte.
 
-O cabeçalho das **grades** acompanha a mesma altura, por token do tema
-(`datatable.headerCell.padding` e `.sm.padding` em `app/styles/primeng-preset.ts`), e não por
-CSS: a regra do tema `.p-datatable-thead > tr > th` tem a mesma especificidade de qualquer
-seletor nosso e vence por vir depois na cascata. Antes conviviam três alturas — 38px nas grades
-sem `size="small"`, 26px nas com, e o cabeçalho de página.
+Cabeçalho de **painel** e de **grade** ficam ambos em 30px (`min-height: 1.875rem` com
+`padding-block: 0.125rem`; o piso é que manda, não o conteúdo). Antes conviviam três alturas de
+grade — 38px sem `size="small"`, 26px com — e cada painel com a sua.
+
+> A altura da grade vai em CSS (`styles.scss`), com especificidade **acima** da do tema
+> (`p-table.p-datatable .p-datatable-thead > tr > th`), e não pelo token
+> `datatable.headerCell.padding` do preset. Dois motivos: empatar em especificidade com o tema é
+> perder, porque as folhas dele vêm depois; e o preset é lido **uma vez, no boot** — mudá-lo não
+> chega a quem está com a aplicação aberta, então numa sessão de `ng serve` antiga a mudança
+> simplesmente não aparece.
 
 > Duas pegadinhas de cascata aqui. O `mf-icon` fixa 24px no próprio `:host`, que empata em
 > especificidade com `.mf-page-title-icon` e vence por vir depois — por isso o seletor é composto

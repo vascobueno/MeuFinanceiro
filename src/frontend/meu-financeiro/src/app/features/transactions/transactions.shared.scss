@@ -67,7 +67,8 @@
   flex-wrap: wrap;
   // Altura pela metade (era 1rem em cima e embaixo). Só o padding não bastaria: a altura da
   // faixa é ditada pelo filho mais alto, então a ação encolhe junto, logo abaixo.
-  padding: 0.25rem 1rem;
+  padding: 0.125rem 1rem;
+  min-height: 1.875rem;
   border-bottom: 1px solid var(--mf-line);
 }
 
@@ -113,10 +114,34 @@
   font-size: 0.85rem;
 }
 
+// "ajustado" dentro da pill: sobre o gradiente, um chip translúcido lê melhor que o .mf-badge
+// claro, que sumiria.
+.mf-metric-tag {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
+  font-size: 0.7rem;
+}
+
+// Lápis de ajustar fechamento/vencimento, agora dentro da pill: herda o branco do texto.
+.mf-metric-edit {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+
+  i {
+    font-size: 0.75rem;
+  }
+}
+
 .mf-panel-action-icon {
   flex: none;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1.4rem;
+  height: 1.4rem;
   // Cor de ação, e não a neutra do botão de ajuda: sem texto, é a cor que diz que ele age — e
   // na lista vazia este ícone é o único elemento acionável da grade.
   color: var(--mf-primary);

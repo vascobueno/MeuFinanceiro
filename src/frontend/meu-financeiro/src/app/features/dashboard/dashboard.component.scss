@@ -26,7 +26,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  // Mesma faixa de "Gastos do ciclo" (Lançamentos), para o cabeçalho de painel medir igual em
+  // qualquer tela, com ou sem ação dentro.
+  padding: 0.125rem 1rem;
+  min-height: 1.875rem;
   border-bottom: 1px solid var(--mf-line);
 }
 
