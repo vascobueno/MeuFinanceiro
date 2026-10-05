@@ -46,11 +46,12 @@ nível clicável do breadcrumb) — ver `app.routes.ts`.
 | `/parcelamento` | `InstallmentListComponent` | Parcelamentos |
 | `/recorrencia` | `RecurringListComponent` | Recorrências |
 | `/recorrencia/:id` | `RecurringFormComponent` | Recorrência |
-| `/faturas` | `InvoiceListComponent` | Faturas |
+| `/faturas` | `InvoiceListComponent` | Faturas (menu: Cartões › Faturas) |
 | `/cartoes` | `CardListComponent` | Cartões |
 | `/categorias` | `CategoryListComponent` | Categorias |
-| `/conciliacao-conta` | `BankReconciliationComponent` | Conciliação bancária |
-| `/conciliacao-cartao` | `CardReconciliationComponent` | Conciliação de cartão |
+| `/extratos` | `StatementListComponent` | Extratos (menu: Contas › Extratos) |
+| `/conciliacao-conta` | `BankReconciliationComponent` | Conciliação bancária (menu: Contas › Conciliação) |
+| `/conciliacao-cartao` | `CardReconciliationComponent` | Conciliação de cartão (menu: Cartões › Conciliação) |
 | `/investimentos` | `InvestmentsComponent` | Investimentos |
 | `/projecao` | `ProjectionComponent` | Projeção financeira |
 | `/relatorios/projecao-receitas` | `IncomeProjectionReportComponent` | Projeção de receitas |

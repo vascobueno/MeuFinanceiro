@@ -50,6 +50,16 @@
       <mf-icon name="mf-transactions" class="mf-nav-icon"></mf-icon>
       <span class="mf-nav-label">Lançamentos</span>
     </a>
+    <a class="mf-nav-link mf-nav-child" routerLink="/extratos" routerLinkActive="mf-active" pTooltip="Contas · Extratos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-invoices" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Extratos</span>
+    </a>
+    <!-- Os tooltips desambiguam as duas "Conciliação" no modo recolhido, onde os rótulos somem
+         e sobram só os ícones — mesmo motivo de "Contas · Lançamentos" / "Cartões · Lançamentos". -->
+    <a class="mf-nav-link mf-nav-child" routerLink="/conciliacao-conta" routerLinkActive="mf-active" pTooltip="Contas · Conciliação" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-reconciliation-account" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Conciliação</span>
+    </a>
     </nav>
 
     <button type="button" class="mf-nav-section-toggle mf-nav-subgroup-toggle" (click)="toggleSection('Cartões')" [attr.aria-expanded]="isSectionExpanded('Cartões')">
@@ -65,6 +75,14 @@
       <mf-icon name="mf-transactions" class="mf-nav-icon"></mf-icon>
       <span class="mf-nav-label">Lançamentos</span>
     </a>
+    <a class="mf-nav-link mf-nav-child" routerLink="/faturas" routerLinkActive="mf-active" pTooltip="Cartões · Faturas" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-invoices" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Faturas</span>
+    </a>
+    <a class="mf-nav-link mf-nav-child" routerLink="/conciliacao-cartao" routerLinkActive="mf-active" pTooltip="Cartões · Conciliação" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
+      <mf-icon name="mf-reconciliation-card" class="mf-nav-icon"></mf-icon>
+      <span class="mf-nav-label">Conciliação</span>
+    </a>
     </nav>
 
     <a class="mf-nav-link" routerLink="/recorrencia" routerLinkActive="mf-active" pTooltip="Recorrências" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
@@ -74,25 +92,6 @@
     <a class="mf-nav-link" routerLink="/parcelamento" routerLinkActive="mf-active" pTooltip="Parcelamentos" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
       <mf-icon name="mf-installments" class="mf-nav-icon"></mf-icon>
       <span class="mf-nav-label">Parcelamentos</span>
-    </a>
-    <a class="mf-nav-link" routerLink="/faturas" routerLinkActive="mf-active" pTooltip="Faturas" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
-      <mf-icon name="mf-invoices" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Faturas</span>
-    </a>
-  </nav>
-
-  <button type="button" class="mf-nav-section-toggle" (click)="toggleSection('Conciliação')" [attr.aria-expanded]="isSectionExpanded('Conciliação')">
-    <span>Conciliação</span>
-    <i class="pi pi-chevron-right mf-nav-chevron" [class.mf-open]="isSectionExpanded('Conciliação')"></i>
-  </button>
-  <nav class="mf-nav-list" [class.mf-nav-collapsed]="!isSectionExpanded('Conciliação') && !isCollapsedDesktop()">
-    <a class="mf-nav-link" routerLink="/conciliacao-conta" routerLinkActive="mf-active" pTooltip="Conta corrente" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
-      <mf-icon name="mf-reconciliation-account" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Conta corrente</span>
-    </a>
-    <a class="mf-nav-link" routerLink="/conciliacao-cartao" routerLinkActive="mf-active" pTooltip="Cartão" [tooltipDisabled]="!isCollapsedDesktop()" tooltipPosition="right">
-      <mf-icon name="mf-reconciliation-card" class="mf-nav-icon"></mf-icon>
-      <span class="mf-nav-label">Cartão</span>
     </a>
   </nav>
 

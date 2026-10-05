@@ -12,3 +12,15 @@ DEBIT_CARD_PURCHASE, ATM_WITHDRAWAL, PIX_SENT, PIX_RECEIVED, TED_RECEIVED, BOLET
 Aplicação CDB/RDB é investimento, não despesa. O exemplo mostra R$ 10.000,00 aplicados em 20/05.
 
 Validar saldo inicial + movimentos = saldo final.
+
+## Tela Extratos
+`/extratos` (menu: Contas › Extratos) lista o que a importação acima gravou: conta, período,
+saldo inicial e final, movimento do período (final − inicial), quantidade de itens e o arquivo de
+origem. É a irmã da tela Faturas do lado da conta — mesma estrutura de filtros, ordenação e
+paginação server-side, sem o Status, que não existe para extrato.
+
+Só lê. Importar extrato continua em Contas › Conciliação; a tela nova não cria nem altera nada.
+
+> `GET /api/v1/bank-statements` filtra `GrupoId` à mão, como todas as consultas do projeto — não
+> há `HasQueryFilter` global. O teste `Nao_deve_mostrar_extrato_de_outro_grupo` existe por causa
+> disso: sem o filtro, o vazamento não quebraria nada visível.

@@ -181,11 +181,23 @@ export const routes: Routes = [
         },
       },
       {
+        path: 'extratos',
+        loadComponent: () =>
+          import('./features/statements/statement-list.component').then((m) => m.StatementListComponent),
+        data: {
+          title: 'Extratos',
+          section: 'Financeiro',
+          group: 'Contas',
+          help: 'Lista os extratos bancários já importados, com o período, os saldos de abertura e fechamento, o movimento do período e quantos itens o extrato trouxe. A importação continua em Contas › Conciliação; aqui é só consulta.',
+        },
+      },
+      {
         path: 'faturas',
         loadComponent: () => import('./features/invoices/invoice-list.component').then((m) => m.InvoiceListComponent),
         data: {
           title: 'Faturas',
           section: 'Financeiro',
+          group: 'Cartões',
           help: 'Acompanhe as faturas geradas para cada cartão, com período de fechamento, vencimento, valor total e status (aberta ou vencida). Use os filtros para localizar uma fatura específica por cartão, período ou faixa de valor.',
         },
       },
@@ -217,7 +229,8 @@ export const routes: Routes = [
           ),
         data: {
           title: 'Conciliação bancária',
-          section: 'Conciliação',
+          section: 'Financeiro',
+          group: 'Contas',
           help: 'Importe um extrato bancário e confira automaticamente quais lançamentos já registrados batem com os itens do extrato, por valor e data aproximada. Aceite as sugestões corretas ou vincule manualmente os casos que o sistema não conseguiu casar sozinho.',
         },
       },
@@ -229,7 +242,8 @@ export const routes: Routes = [
           ),
         data: {
           title: 'Conciliação de cartão',
-          section: 'Conciliação',
+          section: 'Financeiro',
+          group: 'Cartões',
           help: 'Importe uma fatura de cartão e confira quais lançamentos já registrados correspondem a cada item da fatura. Funciona como a conciliação bancária, mas comparando com os itens da fatura em vez do extrato.',
         },
       },

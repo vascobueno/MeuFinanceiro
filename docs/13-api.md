@@ -107,6 +107,10 @@ POST `/api/v1/categories/{id}/subcategories`
 ## Card invoices (Faturas)
 GET `/api/v1/card-invoices` (paginação, filtros, ordenação)
 
+## Bank statements (Extratos)
+GET `/api/v1/bank-statements` (paginação, filtros, ordenação) — lista os extratos importados.
+A importação fica em Conciliação bancária, abaixo.
+
 ## Bank reconciliation (Conciliação bancária)
 POST `/api/v1/bank-statements/import`
 GET `/api/v1/reconciliations/bank`

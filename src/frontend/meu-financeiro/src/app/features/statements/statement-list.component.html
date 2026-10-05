@@ -1,0 +1,90 @@
+<div class="mf-list-header">
+  <h2 class="mf-page-title"><mf-icon name="mf-invoices" class="mf-page-title-icon"></mf-icon>Extratos</h2>
+</div>
+
+<div class="mf-filters-card">
+  <div class="mf-filters-grid">
+    <div>
+      <label class="mf-field-label">Conta</label>
+      <p-select size="small" class="mf-field-input" [options]="accountOptions()" optionLabel="label" optionValue="value" [(ngModel)]="filter.accountId" (onChange)="applyFilters()" />
+    </div>
+
+    <mf-date-range size="small" [range]="period" (rangeChange)="onPeriodChange($event)"></mf-date-range>
+
+    <div>
+      <label class="mf-field-label">Saldo final mín.</label>
+      <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="filter.minAmount" (change)="applyFilters()" />
+    </div>
+
+    <div>
+      <label class="mf-field-label">Saldo final máx.</label>
+      <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="filter.maxAmount" (change)="applyFilters()" />
+    </div>
+  </div>
+</div>
+
+<div class="mf-panel">
+  <div class="mf-panel-body">
+    <mf-list-state
+      [loading]="loading()"
+      [error]="error()"
+      [empty]="!loading() && !error() && statements().length === 0"
+      emptyMessage="Nenhum extrato encontrado. Extratos aparecem aqui depois de importados em Contas › Conciliação."
+      [onRetry]="load.bind(this)"
+    ></mf-list-state>
+
+    @if (!loading() && !error() && statements().length > 0) {
+      <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir de filter.sortBy/
+           filter.sortDir (que (onSort) também escreve) fecha um ciclo de reemissão infinita
+           no p-table — ver comentário completo em transaction-table.component.ts. -->
+      <p-table
+        [value]="statements()"
+        [customSort]="true"
+        (onSort)="onSort($event)"
+        styleClass="mf-statements-table"
+      >
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="conta">Conta <p-sort-icon field="conta" /></th>
+            <th pSortableColumn="periodo">Período <p-sort-icon field="periodo" /></th>
+            <th class="mf-col-end">Saldo inicial</th>
+            <th pSortableColumn="saldofinal" class="mf-col-end">Saldo final <p-sort-icon field="saldofinal" /></th>
+            <th pSortableColumn="movimento" class="mf-col-end">Movimento <p-sort-icon field="movimento" /></th>
+            <th class="mf-col-center">Itens</th>
+            <th>Arquivo</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-statement>
+          <tr>
+            <td>{{ statement.accountName }}</td>
+            <td>{{ statement.referenceStart | date: 'dd/MM' }} a {{ statement.referenceEnd | date: 'dd/MM/yyyy' }}</td>
+            <td class="mf-col-end">{{ statement.openingBalance | currency: 'BRL' }}</td>
+            <td class="mf-col-end">{{ statement.closingBalance | currency: 'BRL' }}</td>
+            <!-- Entrou ou saiu dinheiro no período: verde quando sobrou, vermelho quando faltou. -->
+            <td class="mf-col-end" [ngClass]="statement.netChange < 0 ? 'mf-negative' : 'mf-positive'">
+              {{ statement.netChange | currency: 'BRL' }}
+            </td>
+            <td class="mf-col-center">{{ statement.itemCount }}</td>
+            <td>
+              @if (statement.originalFileName) {
+                {{ statement.originalFileName }}
+              } @else {
+                <span class="mf-sub">—</span>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+
+    @if (!loading() && !error() && statements().length > 0) {
+      <mf-pagination
+        class="mf-pagination-block"
+        [page]="filter.page"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      ></mf-pagination>
+    }
+  </div>
+</div>

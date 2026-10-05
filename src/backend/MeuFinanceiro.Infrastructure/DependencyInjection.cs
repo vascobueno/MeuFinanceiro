@@ -10,6 +10,7 @@ using MeuFinanceiro.Application.Imports;
 using MeuFinanceiro.Application.Installments;
 using MeuFinanceiro.Application.Investments;
 using MeuFinanceiro.Application.Invoices;
+using MeuFinanceiro.Application.Statements;
 using MeuFinanceiro.Application.Merchants;
 using MeuFinanceiro.Application.Projection;
 using MeuFinanceiro.Application.Reconciliation;
@@ -73,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IFileStorageService, S3FileStorageService>();
         services.AddScoped<IExcelImportService, ExcelImportService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IStatementService, StatementService>();
         services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
         services.AddScoped<IInstallmentPlanService, InstallmentPlanService>();
         services.AddScoped<IAttachmentService, AttachmentService>();

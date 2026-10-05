@@ -1,0 +1,66 @@
+.mf-list-header {
+  margin-bottom: 0.5rem;
+}
+
+.mf-filters-card {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+// Quatro colunas, e não cinco como em Faturas: extrato não tem Status.
+// O row-gap existe para quando as colunas quebram nos @media abaixo — sem ele os campos
+// empilhados ficam colados.
+.mf-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.85rem 1rem;
+}
+
+.mf-panel {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  overflow: hidden;
+}
+
+.mf-statements-table {
+  width: 100%;
+}
+
+.mf-col-end {
+  text-align: right;
+}
+
+.mf-col-center {
+  text-align: center;
+}
+
+// Tons do movimento do período, pela paleta — acompanham os skins de cor.
+.mf-positive {
+  color: var(--mf-green);
+}
+
+.mf-negative {
+  color: var(--mf-red);
+}
+
+.mf-pagination-block {
+  display: block;
+  margin-top: 1rem;
+}
+
+@media (max-width: 1100px) {
+  .mf-filters-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .mf-filters-grid {
+    grid-template-columns: 1fr;
+  }
+}
