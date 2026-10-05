@@ -77,4 +77,10 @@ grade — 38px sem `size="small"`, 26px com — e cada painel com a sua.
 > especificidade com `.mf-page-title-icon` e vence por vir depois — por isso o seletor é composto
 > (`.mf-page-title .mf-page-title-icon`). E era o ícone, não a fonte, que segurava a altura.
 
+Ordenação das grades: a direção do clique é decidida por `nextSort` (`core/services/sort.util.ts`),
+não pelo `order` que o `p-table` emite. A tabela vive dentro de um `@if (!loading() && ...)`, some
+do DOM durante a requisição e volta como componente novo — sem estado interno, o PrimeNG compara
+com um `sortField` vazio e cai no `defaultSortOrder`, emitindo `order = 1` a cada clique. Era por
+isso que a lista nunca invertia.
+
 Não colocar segredo no frontend.

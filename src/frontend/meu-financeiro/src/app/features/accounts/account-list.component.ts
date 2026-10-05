@@ -17,6 +17,7 @@ import { Account, AccountType, CreateAccountRequest } from '../../core/models/ac
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
+import { nextSort } from '../../core/services/sort.util';
 
 /** Tela de contas (RF002), espelhando docs/screens/contas/mockup.html. */
 @Component({
@@ -109,8 +110,11 @@ export class AccountListComponent implements OnInit {
   }
 
   onSort(event: SortEvent): void {
-    this.sortBy = event.field;
-    this.sortDir = event.order === -1 ? 'desc' : 'asc';
+    // A direção vem de nextSort, e não do `order` do evento: a tabela é recriada a cada carga
+    // e o p-table emite sempre ascendente (core/services/sort.util.ts).
+    const proxima = nextSort({ sortBy: this.sortBy, sortDir: this.sortDir }, event.field, 'name');
+    this.sortBy = proxima.sortBy;
+    this.sortDir = proxima.sortDir;
     this.load();
   }
 

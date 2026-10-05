@@ -13,6 +13,7 @@ import { CreditCard } from '../../core/models/card.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { DateRange, DateRangeComponent } from '../../shared/components/date-range.component';
+import { nextSort } from '../../core/services/sort.util';
 
 /** Tela Faturas, espelhando docs/screens/faturas/mockup.html. Filtros/ordenação/paginação server-side (regra 19). */
 @Component({
@@ -112,8 +113,11 @@ export class InvoiceListComponent implements OnInit {
   }
 
   onSort(event: SortEvent): void {
-    this.filter.sortBy = event.field ?? 'fechamento';
-    this.filter.sortDir = event.order === -1 ? 'desc' : 'asc';
+    // A direção vem de nextSort, e não do `order` do evento: a tabela é recriada a cada carga
+    // e o p-table emite sempre ascendente (core/services/sort.util.ts).
+    const proxima = nextSort(this.filter, event.field, 'fechamento');
+    this.filter.sortBy = proxima.sortBy;
+    this.filter.sortDir = proxima.sortDir;
     this.load();
   }
 }

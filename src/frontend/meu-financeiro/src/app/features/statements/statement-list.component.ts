@@ -13,6 +13,7 @@ import { Account } from '../../core/models/account.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { DateRange, DateRangeComponent } from '../../shared/components/date-range.component';
+import { nextSort } from '../../core/services/sort.util';
 
 /**
  * Tela Extratos — a irmã de Faturas do lado da conta: lista o que a importação da conciliação
@@ -112,8 +113,11 @@ export class StatementListComponent implements OnInit {
   }
 
   onSort(event: SortEvent): void {
-    this.filter.sortBy = event.field ?? 'periodo';
-    this.filter.sortDir = event.order === -1 ? 'desc' : 'asc';
+    // A direção vem de nextSort, e não do `order` do evento: a tabela é recriada a cada carga
+    // e o p-table emite sempre ascendente (core/services/sort.util.ts).
+    const proxima = nextSort(this.filter, event.field, 'periodo');
+    this.filter.sortBy = proxima.sortBy;
+    this.filter.sortDir = proxima.sortDir;
     this.load();
   }
 }

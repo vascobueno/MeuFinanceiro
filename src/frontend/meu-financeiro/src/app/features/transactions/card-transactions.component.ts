@@ -27,6 +27,7 @@ import { CardInvoiceCycle, CardPayment } from '../../core/models/card-payment.mo
 import { Transaction, TransactionFilter, TransactionOrigin } from '../../core/models/transaction.model';
 import { parseIsoDate, shiftMonthIso, toIsoDate } from '../../core/services/date.util';
 import { defaultId, validId } from '../../core/services/selection.util';
+import { nextSort } from '../../core/services/sort.util';
 
 /**
  * Lançamentos do cartão, com a fatura do ciclo no topo (docs/07).
@@ -255,8 +256,11 @@ export class CardTransactionsComponent implements OnInit {
   }
 
   onSort(event: { field?: string; order?: number }): void {
-    this.sortBy = event.field ?? null;
-    this.sortDir = event.order === 1 ? 'asc' : 'desc';
+    // A direção vem de nextSort, e não do `order` do evento: a tabela é recriada a cada carga
+    // e o p-table emite sempre ascendente (core/services/sort.util.ts).
+    const proxima = nextSort({ sortBy: this.sortBy, sortDir: this.sortDir }, event.field, 'transactionDate');
+    this.sortBy = proxima.sortBy;
+    this.sortDir = proxima.sortDir;
     this.loadTransactions();
   }
 

@@ -12,6 +12,7 @@ import { RecurringService } from '../../core/services/recurring.service';
 import { RecurringTransaction } from '../../core/models/recurring.model';
 import { RecurrenceFrequency, TransactionType } from '../../core/models/transaction.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
+import { nextSort } from '../../core/services/sort.util';
 
 /**
  * Tela Recorrências: lista lançamentos recorrentes cadastrados (regra 13).
@@ -81,8 +82,11 @@ export class RecurringListComponent implements OnInit {
   }
 
   onSort(event: SortEvent): void {
-    this.filter.sortBy = event.field;
-    this.filter.sortDir = event.order === -1 ? 'desc' : 'asc';
+    // A direção vem de nextSort, e não do `order` do evento: a tabela é recriada a cada carga
+    // e o p-table emite sempre ascendente (core/services/sort.util.ts).
+    const proxima = nextSort(this.filter, event.field, 'descricao');
+    this.filter.sortBy = proxima.sortBy;
+    this.filter.sortDir = proxima.sortDir;
     this.load();
   }
 
