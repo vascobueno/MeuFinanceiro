@@ -20,12 +20,14 @@ import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { nextSort } from '../../core/services/sort.util';
 import { businessRuleOf } from '../../core/services/problem.util';
 import { BANCOS, OUTRO_BANCO, bancoPorCodigo } from '../../core/data/bancos';
+import { IssuedCardsPanelComponent } from '../cards/issued-cards-panel.component';
 
 /** Tela de contas (RF002), espelhando docs/screens/contas/mockup.html. */
 @Component({
   selector: 'mf-account-list',
   standalone: true,
   imports: [
+    IssuedCardsPanelComponent,
     CommonModule,
     FormsModule,
     MfIconComponent,
@@ -82,6 +84,9 @@ export class AccountListComponent implements OnInit {
   ]
     .map((b) => ({ label: b.code + ' – ' + b.name, value: b.code }))
     .concat({ label: 'Outro', value: OUTRO_BANCO });
+  /** Conta cujos cartões de débito estão abertos abaixo da lista. */
+  readonly selectedAccount = signal<Account | null>(null);
+
   /** Código escolhido no seletor, "outro" ou null (sem dados bancários). */
   bankChoice: string | null = null;
 
@@ -189,6 +194,10 @@ export class AccountListComponent implements OnInit {
     } else {
       Object.assign(this.newAccount, { bankCode: null, agency: '', agencyDigit: '', accountNumber: '', accountDigit: '' });
     }
+  }
+
+  toggleAccount(account: Account): void {
+    this.selectedAccount.set(this.selectedAccount()?.id === account.id ? null : account);
   }
 
   /** "033 · 0001-X / 12345-6", ou "—". */

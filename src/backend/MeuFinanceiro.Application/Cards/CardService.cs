@@ -93,8 +93,35 @@ public class CardService : ICardService
         if (hasPayments)
             throw new BusinessRuleException("cartao-possui-pagamentos", "Não é possível excluir um cartão que já possui pagamentos de fatura. Desative-o em vez de excluir.");
 
+        // Cartões do grupo: os só de crédito vão junto; o múltiplo continua como cartão de débito,
+        // e leva a bandeira do grupo — sem ela, ficaria um cartão de débito sem bandeira.
+        await DetachOrRemoveIssuedCardsAsync(_db, _db.IssuedCards.Where(c => c.CreditCardId == id),
+            c => c.AccountId is not null, c => { c.CreditCardId = null; c.Brand = card.Brand; }, ct);
+
         _db.CreditCards.Remove(card);
         await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Excluir um lado (grupo de crédito ou conta) não pode levar o múltiplo junto: ele perde só
+    /// aquela função. Os cartões que só tinham aquela função saem. Usado também por AccountService.
+    /// </summary>
+    internal static async Task DetachOrRemoveIssuedCardsAsync(IApplicationDbContext db, IQueryable<IssuedCard> cards,
+        Func<IssuedCard, bool> keeps, Action<IssuedCard> detach, CancellationToken ct)
+    {
+        var list = await cards.ToListAsync(ct);
+        var removed = list.Where(c => !keeps(c)).Select(c => c.Id).ToHashSet();
+        if (removed.Count > 0)
+        {
+            // Substituídos que apontam para um cartão que sai deixam de apontar (FK Restrict).
+            var pointing = await db.IssuedCards.Where(c => c.ReplacedById != null && removed.Contains(c.ReplacedById.Value)).ToListAsync(ct);
+            foreach (var c in pointing) c.ReplacedById = null;
+        }
+        foreach (var c in list)
+        {
+            if (keeps(c)) detach(c);
+            else db.IssuedCards.Remove(c);
+        }
     }
 
     private async Task<CreditCard> FindOwnedAsync(Guid id, CancellationToken ct)

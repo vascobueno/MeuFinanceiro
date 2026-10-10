@@ -172,7 +172,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.Property(c => c.LastFour).HasMaxLength(4).IsRequired();
             e.Property(c => c.FirstDigits).HasMaxLength(6);
             e.Property(c => c.HolderName).HasMaxLength(60);
-            e.HasOne(c => c.CreditCard).WithMany(g => g.IssuedCards).HasForeignKey(c => c.CreditCardId).OnDelete(DeleteBehavior.Cascade);
+            // Restrict nos dois: o múltiplo não pode sumir junto com um dos lados. Excluir o grupo ou
+            // a conta trata os cartões no serviço (CardService / AccountService).
+            e.HasOne(c => c.CreditCard).WithMany(g => g.IssuedCards).HasForeignKey(c => c.CreditCardId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(c => c.Account).WithMany().HasForeignKey(c => c.AccountId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(c => c.Brand).HasConversion<string>().HasMaxLength(20);
+            e.ToTable(t => t.HasCheckConstraint("CK_IssuedCards_Funcao", "\"CreditCardId\" IS NOT NULL OR \"AccountId\" IS NOT NULL"));
             e.HasOne(c => c.ReplacedBy).WithMany().HasForeignKey(c => c.ReplacedById).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(c => c.GrupoId);
             // Dois cartões ATIVOS do grupo não podem ter o mesmo final — é o que identifica a compra

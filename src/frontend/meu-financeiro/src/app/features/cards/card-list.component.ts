@@ -11,6 +11,8 @@ import { Tooltip } from 'primeng/tooltip';
 import { SortEvent } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
 import { CardService } from '../../core/services/card.service';
+import { AccountService } from '../../core/services/account.service';
+import { Account } from '../../core/models/account.model';
 import { InvoiceService } from '../../core/services/invoice.service';
 import { CreateCardRequest, CreditCard } from '../../core/models/card.model';
 import { CardInvoiceStatus } from '../../core/models/invoice.model';
@@ -71,6 +73,8 @@ export class CardListComponent implements OnInit {
   readonly brandLabel = bandeiraLabel;
   /** Grupo cujos cartões (titular, adicionais, virtuais) estão abertos abaixo da lista. */
   readonly selectedGroup = signal<CreditCard | null>(null);
+  /** Contas que podem receber o débito de um cartão do grupo (cartão múltiplo). */
+  readonly accounts = signal<Account[]>([]);
   private editingIsActive = true;
 
   get availableLimit(): number {
@@ -78,6 +82,7 @@ export class CardListComponent implements OnInit {
   }
 
   constructor(
+    private readonly accountService: AccountService,
     private readonly cardService: CardService,
     private readonly invoiceService: InvoiceService,
     private readonly confirmationService: ConfirmationService,
@@ -85,6 +90,7 @@ export class CardListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.accountService.getAll({ page: 1, pageSize: 100 }).subscribe((r) => this.accounts.set(r.items.filter((a) => a.isActive)));
     this.loadSummary();
     this.load();
   }

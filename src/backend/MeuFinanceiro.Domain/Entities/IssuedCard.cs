@@ -13,8 +13,22 @@ namespace MeuFinanceiro.Domain.Entities;
 /// </summary>
 public class IssuedCard : GrupoOwnedEntity
 {
-    public Guid CreditCardId { get; set; }
+    /// <summary>Grupo de cartões de crédito (a fatura). Nulo no cartão só de débito.</summary>
+    public Guid? CreditCardId { get; set; }
     public CreditCard? CreditCard { get; set; }
+
+    /// <summary>
+    /// Conta do débito. Com <see cref="CreditCardId"/> também preenchido, o cartão é múltiplo:
+    /// um plástico só, crédito numa fatura e débito nesta conta. Pelo menos um dos dois existe.
+    /// </summary>
+    public Guid? AccountId { get; set; }
+    public Account? Account { get; set; }
+
+    /// <summary>
+    /// Bandeira do cartão só de débito (pode ser Maestro, Visa Electron, Elo Débito). No cartão de
+    /// crédito — só ou múltiplo — é nula: vale a do grupo, porque a fatura é uma só.
+    /// </summary>
+    public CardBrand? Brand { get; set; }
 
     public IssuedCardKind Kind { get; set; } = IssuedCardKind.Titular;
 

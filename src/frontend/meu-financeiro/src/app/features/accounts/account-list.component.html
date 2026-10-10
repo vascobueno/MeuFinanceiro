@@ -146,6 +146,17 @@
               </span>
             </td>
             <td class="mf-col-end">
+              <button
+                type="button"
+                class="mf-row-edit-icon"
+                [class.mf-row-icon-active]="selectedAccount()?.id === account.id"
+                pTooltip="Cartões de débito desta conta"
+                tooltipPosition="top"
+                [attr.aria-label]="'Cartões de débito de ' + account.name"
+                (click)="toggleAccount(account)"
+              >
+                <i class="pi pi-credit-card"></i>
+              </button>
               @if (authService.canWrite()) {
                 <button
                   type="button"
@@ -185,3 +196,7 @@
     }
   </div>
 </div>
+
+@if (selectedAccount(); as account) {
+  <mf-issued-cards-panel [account]="account"></mf-issued-cards-panel>
+}

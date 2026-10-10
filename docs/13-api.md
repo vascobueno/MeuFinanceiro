@@ -109,7 +109,13 @@ GET `/api/v1/cards/{cardId}/issued-cards`
 POST `/api/v1/cards/{cardId}/issued-cards` (`kind`, `lastFour`, `firstDigits?`, `expiryMonth?`, `expiryYear?`, `holderName?`; 400 `final-duplicado` / `numero-completo-nao-guardado` / `validade-invalida`…)
 PUT `/api/v1/issued-cards/{id}`
 POST `/api/v1/issued-cards/{id}/replace` (mesmo corpo; devolve o novo; o antigo fica Substituído)
-POST `/api/v1/issued-cards/{id}/cancel`
+POST `/api/v1/issued-cards/{id}/cancel` (o múltiplo é cancelado no crédito e no débito)
+GET `/api/v1/accounts/{accountId}/debit-cards` (só de débito e múltiplos)
+POST `/api/v1/accounts/{accountId}/debit-cards` (só de débito; `brand` própria)
+
+No cartão do grupo, `accountId` torna o cartão múltiplo; na edição, `accountId` nulo tira o débito
+(400 `cartao-sem-funcao` se o cartão for só de débito). A resposta traz `function`
+(1 crédito, 2 débito, 3 múltiplo), `accountName`, `creditCardName` e `brand` efetiva.
 DELETE `/api/v1/issued-cards/{id}`
 
 `brand` de `/api/v1/cards` é o nome da bandeira (`Mastercard`, `AmericanExpress`…); na entrada

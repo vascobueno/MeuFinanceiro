@@ -9,15 +9,24 @@ import { ConfirmationService } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
 import { IssuedCardService } from '../../core/services/issued-card.service';
 import { CreditCard } from '../../core/models/card.model';
-import { IssuedCard, IssuedCardKind, IssuedCardRequest, IssuedCardStatus } from '../../core/models/issued-card.model';
+import { Account } from '../../core/models/account.model';
+import {
+  IssuedCard,
+  IssuedCardFunction,
+  IssuedCardKind,
+  IssuedCardRequest,
+  IssuedCardStatus,
+} from '../../core/models/issued-card.model';
 import { businessRuleOf } from '../../core/services/problem.util';
 import { formatExpiry, maskedNumber, onlyDigits, parseExpiry, splitCardNumber } from '../../core/services/card-number.util';
-import { bandeiraLabel } from '../../core/data/bandeiras';
+import { BANDEIRAS_CREDITO, BANDEIRAS_DEBITO, bandeiraLabel } from '../../core/data/bandeiras';
 
 type Mode = 'novo' | 'editar' | 'substituir';
 
 /**
- * Cartões de um grupo (a fatura): titular, adicionais e virtuais, com substituição e cancelamento.
+ * Cartões de um grupo de crédito (a fatura) ou de uma conta (débito): titular, adicionais e
+ * virtuais, com substituição e cancelamento. No grupo, ligar uma conta torna o cartão múltiplo;
+ * na conta, cadastra-se o cartão só de débito, com bandeira própria.
  * O número completo nunca entra em estado nenhum daqui: colar o número inteiro num dos campos o
  * divide na hora e descarta o meio (core/services/card-number.util.ts).
  */
@@ -28,9 +37,9 @@ type Mode = 'novo' | 'editar' | 'substituir';
   template: `
     <div class="mf-panel mf-issued-panel">
       <div class="mf-panel-header">
-        <b>Cartões de {{ group.name }}</b>
-        @if (group.brand) {
-          <span class="mf-sub">{{ brandLabel(group.brand) }}</span>
+        <b>{{ title() }}</b>
+        @if (group?.brand) {
+          <span class="mf-sub">{{ brandLabel(group!.brand) }}</span>
         }
         @if (authService.canWrite() && !mode()) {
           <button pButton type="button" size="small" [text]="true" class="mf-push" (click)="openNew()">+ Adicionar cartão</button>
@@ -65,6 +74,21 @@ type Mode = 'novo' | 'editar' | 'substituir';
                 <label class="mf-field-label">Nome impresso</label>
                 <input pInputText pSize="small" class="mf-field-input" maxlength="60" [(ngModel)]="form.holderName" />
               </div>
+              @if (group && mode() !== 'substituir') {
+                <!-- O mesmo plástico com débito numa conta: o cartão múltiplo. -->
+                <div>
+                  <label class="mf-field-label">Débito na conta</label>
+                  <p-select size="small" class="mf-field-input" [options]="accounts" optionLabel="name" optionValue="id"
+                            [showClear]="true" placeholder="Só crédito" [(ngModel)]="form.accountId" />
+                </div>
+              }
+              @if (showsOwnBrand()) {
+                <div>
+                  <label class="mf-field-label">Bandeira</label>
+                  <p-select size="small" class="mf-field-input" [options]="debitBrandOptions" optionLabel="label" optionValue="value"
+                            [showClear]="true" placeholder="Não informada" [(ngModel)]="form.brand" />
+                </div>
+              }
             </div>
             @if (splitNote()) {
               <div class="mf-sub mf-issued-note">{{ splitNote() }}</div>
@@ -83,8 +107,13 @@ type Mode = 'novo' | 'editar' | 'substituir';
           <div class="mf-sub">Carregando…</div>
         } @else if (cards().length === 0) {
           <div class="mf-sub mf-issued-empty">
-            Nenhum cartão cadastrado neste grupo. Cadastre o titular, os adicionais e os virtuais — o final de cada um é o
-            que a fatura mostra em cada compra.
+            @if (group) {
+              Nenhum cartão cadastrado neste grupo. Cadastre o titular, os adicionais e os virtuais — o final de cada um é o
+              que a fatura mostra em cada compra.
+            } @else {
+              Nenhum cartão de débito nesta conta. Cartão múltiplo (crédito e débito) se cadastra no grupo de crédito, em
+              Cartões › Cadastro, escolhendo esta conta em "Débito na conta".
+            }
           </div>
         } @else {
           <table class="mf-issued-table">
@@ -94,6 +123,7 @@ type Mode = 'novo' | 'editar' | 'substituir';
                 <th>Número</th>
                 <th>Validade</th>
                 <th>Nome impresso</th>
+                <th>Função</th>
                 <th>Situação</th>
                 <th></th>
               </tr>
@@ -106,12 +136,13 @@ type Mode = 'novo' | 'editar' | 'substituir';
                     {{ masked(c) }}
                     @if (c.brandMismatch) {
                       <i class="pi pi-exclamation-triangle mf-warn"
-                         [pTooltip]="'Os primeiros dígitos indicam ' + brandLabel(c.suggestedBrand) + ', mas o grupo está como ' + brandLabel(group.brand) + '. Confira.'"
+                         [pTooltip]="'Os primeiros dígitos indicam ' + brandLabel(c.suggestedBrand) + ', mas a bandeira está como ' + brandLabel(c.brand) + '. Confira.'"
                          tooltipPosition="top" aria-label="Bandeira diferente da do grupo"></i>
                     }
                   </td>
                   <td class="mf-tabular">{{ expiry(c) || '—' }}</td>
                   <td>{{ c.holderName || '—' }}</td>
+                  <td>{{ functionLabel(c) }}</td>
                   <td>
                     <span class="mf-badge" [ngClass]="statusClass(c)">{{ statusLabel(c) }}</span>
                   </td>
@@ -151,7 +182,7 @@ type Mode = 'novo' | 'editar' | 'substituir';
       .mf-push { margin-left: auto; }
       .mf-issued-form { border: 1px solid var(--mf-line); border-radius: var(--mf-radius); padding: 0.75rem; margin: 0.5rem 0 0.75rem; }
       .mf-issued-form-title { font-weight: 600; margin-bottom: 0.5rem; }
-      .mf-issued-grid { display: grid; grid-template-columns: 1fr 1fr 0.8fr 0.7fr 1.6fr; gap: 0.75rem; align-items: end; }
+      .mf-issued-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.75rem; align-items: end; }
       .mf-issued-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
       .mf-issued-note { margin-top: 0.4rem; }
       .mf-issued-empty { padding: 0.5rem 0; }
@@ -172,7 +203,14 @@ type Mode = 'novo' | 'editar' | 'substituir';
   ],
 })
 export class IssuedCardsPanelComponent implements OnChanges {
-  @Input({ required: true }) group!: CreditCard;
+  /** Grupo de crédito cujos cartões se mostram — ou, no lugar dele, a conta. */
+  @Input() group: CreditCard | null = null;
+  /** Conta cujos cartões de débito (só débito e múltiplos) se mostram. */
+  @Input() account: Account | null = null;
+  /** Contas que podem receber o débito de um cartão do grupo. */
+  @Input() accounts: Account[] = [];
+
+  readonly debitBrandOptions = [...BANDEIRAS_CREDITO, ...BANDEIRAS_DEBITO];
 
   readonly IssuedCardStatus = IssuedCardStatus;
   readonly kindOptions = [
@@ -208,7 +246,8 @@ export class IssuedCardsPanelComponent implements OnChanges {
   load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.service.getByGroup(this.group.id).subscribe({
+    const cards$ = this.group ? this.service.getByGroup(this.group.id) : this.service.getByAccount(this.account!.id);
+    cards$.subscribe({
       next: (cards) => {
         this.cards.set(cards);
         this.loading.set(false);
@@ -223,8 +262,10 @@ export class IssuedCardsPanelComponent implements OnChanges {
   openNew(): void {
     this.editingId = null;
     this.replacing = null;
-    // O primeiro cartão do grupo costuma ser o do titular; os seguintes, adicionais.
-    this.form = AnyForm.empty(this.cards().length === 0 ? IssuedCardKind.Titular : IssuedCardKind.Adicional);
+    // No grupo, o primeiro cartão costuma ser o do titular e os seguintes, adicionais. Na conta não
+    // há essa ordem: o cartão de débito é quase sempre do titular.
+    const kind = this.group && this.cards().length > 0 ? IssuedCardKind.Adicional : IssuedCardKind.Titular;
+    this.form = AnyForm.empty(kind);
     this.openForm('novo');
   }
 
@@ -237,6 +278,9 @@ export class IssuedCardsPanelComponent implements OnChanges {
       lastFour: c.lastFour,
       expiry: formatExpiry(c.expiryMonth, c.expiryYear),
       holderName: c.holderName ?? '',
+      accountId: c.accountId,
+      brand: c.creditCardId ? null : c.brand,
+      creditLinked: c.creditCardId !== null,
     };
     this.openForm('editar');
   }
@@ -245,7 +289,15 @@ export class IssuedCardsPanelComponent implements OnChanges {
   openReplace(c: IssuedCard): void {
     this.editingId = null;
     this.replacing = c;
-    this.form = { ...AnyForm.empty(c.kind), firstDigits: c.firstDigits ?? '', lastFour: c.lastFour, holderName: c.holderName ?? '' };
+    this.form = {
+      ...AnyForm.empty(c.kind),
+      firstDigits: c.firstDigits ?? '',
+      lastFour: c.lastFour,
+      holderName: c.holderName ?? '',
+      accountId: c.accountId,
+      brand: c.creditCardId ? null : c.brand,
+      creditLinked: c.creditCardId !== null,
+    };
     this.openForm('substituir');
   }
 
@@ -312,6 +364,9 @@ export class IssuedCardsPanelComponent implements OnChanges {
       expiryMonth: expiry?.month ?? null,
       expiryYear: expiry?.year ?? null,
       holderName: this.form.holderName.trim() || null,
+      // Na conta, o débito é sempre nesta conta; no grupo, o escolhido (ou nenhum: só crédito).
+      accountId: this.account ? this.account.id : this.form.accountId,
+      brand: this.showsOwnBrand() ? this.form.brand : null,
     };
 
     const mode = this.mode();
@@ -320,7 +375,9 @@ export class IssuedCardsPanelComponent implements OnChanges {
         ? this.service.update(this.editingId, request)
         : mode === 'substituir' && this.replacing
           ? this.service.replace(this.replacing.id, request)
-          : this.service.create(this.group.id, request);
+          : this.group
+            ? this.service.create(this.group.id, request)
+            : this.service.createDebit(this.account!.id, request);
 
     this.saving.set(true);
     this.formError.set(null);
@@ -361,6 +418,22 @@ export class IssuedCardsPanelComponent implements OnChanges {
     this.error.set(businessRuleOf(err)?.message ?? 'Não foi possível concluir a operação.');
   }
 
+  title(): string {
+    return this.group ? `Cartões de ${this.group.name}` : `Cartões de débito de ${this.account?.name ?? ''}`;
+  }
+
+  /** Bandeira própria só no cartão só de débito; no de crédito vale a do grupo. */
+  showsOwnBrand(): boolean {
+    return !this.group && !this.form.creditLinked;
+  }
+
+  functionLabel(c: IssuedCard): string {
+    if (c.function === IssuedCardFunction.Multiplo)
+      return this.group ? `Crédito e débito · ${c.accountName}` : `Crédito e débito · ${c.creditCardName}`;
+    if (c.function === IssuedCardFunction.Debito) return c.brand ? `Débito · ${bandeiraLabel(c.brand)}` : 'Débito';
+    return 'Crédito';
+  }
+
   masked(c: IssuedCard): string {
     return maskedNumber(c.firstDigits, c.lastFour);
   }
@@ -396,10 +469,14 @@ interface IssuedCardForm {
   lastFour: string;
   expiry: string;
   holderName: string;
+  accountId: string | null;
+  brand: string | null;
+  /** O cartão já está num grupo de crédito (editando um múltiplo a partir da conta). */
+  creditLinked: boolean;
 }
 
 const AnyForm = {
   empty(kind: IssuedCardKind = IssuedCardKind.Titular): IssuedCardForm {
-    return { kind, firstDigits: '', lastFour: '', expiry: '', holderName: '' };
+    return { kind, firstDigits: '', lastFour: '', expiry: '', holderName: '', accountId: null, brand: null, creditLinked: false };
   },
 };

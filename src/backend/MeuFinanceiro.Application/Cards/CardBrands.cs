@@ -46,6 +46,44 @@ public static class CardBrands
         return brand;
     }
 
+    /// <summary>Qualquer bandeira, inclusive as de débito — para o cartão só de débito.</summary>
+    public static CardBrand? ParseAny(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var value = raw.Trim();
+        if (Aliases.TryGetValue(value, out var alias)) return alias;
+        if (Enum.TryParse(value.Replace(" ", ""), ignoreCase: true, out CardBrand brand) && Enum.IsDefined(brand) && !int.TryParse(value, out _))
+            return brand;
+        throw new BusinessRuleException("bandeira-invalida",
+            $"Bandeira \"{value}\" não reconhecida. Escolha uma da lista ou \"Outra\".");
+    }
+
+    /// <summary>
+    /// A versão de débito pertence à família da de crédito: dígitos de Visa num Visa Electron, ou
+    /// de Mastercard num Maestro, não são divergência.
+    /// </summary>
+    public static bool SameFamily(CardBrand a, CardBrand b) => Family(a) == Family(b);
+
+    private static CardBrand Family(CardBrand brand) => brand switch
+    {
+        CardBrand.VisaElectron => CardBrand.Visa,
+        CardBrand.Maestro => CardBrand.Mastercard,
+        CardBrand.EloDebito => CardBrand.Elo,
+        _ => brand,
+    };
+
+    /// <summary>
+    /// Cartão de débito a sugerir para uma compra no débito de bandeira conhecida ("COMPRA CARTAO
+    /// DEB MC" é Mastercard): só quando há exatamente UM cartão ativo da família dessa bandeira com
+    /// débito na conta. Com dois, sugerir um deles seria chute.
+    /// </summary>
+    public static T? PickDebitCard<T>(IEnumerable<T> activeDebitCards, Func<T, CardBrand?> brandOf, CardBrand purchaseBrand)
+        where T : class
+    {
+        var same = activeDebitCards.Where(c => brandOf(c) is { } b && SameFamily(b, purchaseBrand)).Take(2).ToList();
+        return same.Count == 1 ? same[0] : null;
+    }
+
     private sealed record Range(string Start, string End, CardBrand Brand)
     {
         public int Length => Start.Length;

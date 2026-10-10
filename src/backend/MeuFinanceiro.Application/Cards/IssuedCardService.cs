@@ -9,7 +9,9 @@ namespace MeuFinanceiro.Application.Cards;
 public interface IIssuedCardService
 {
     Task<IReadOnlyList<IssuedCardResponse>> GetByGroupAsync(Guid creditCardId, CancellationToken ct = default);
+    Task<IReadOnlyList<IssuedCardResponse>> GetByAccountAsync(Guid accountId, CancellationToken ct = default);
     Task<IssuedCardResponse> CreateAsync(Guid creditCardId, IssuedCardRequest request, CancellationToken ct = default);
+    Task<IssuedCardResponse> CreateDebitAsync(Guid accountId, IssuedCardRequest request, CancellationToken ct = default);
     Task<IssuedCardResponse> UpdateAsync(Guid id, IssuedCardRequest request, CancellationToken ct = default);
     Task<IssuedCardResponse> ReplaceAsync(Guid id, IssuedCardRequest request, CancellationToken ct = default);
     Task<IssuedCardResponse> CancelAsync(Guid id, CancellationToken ct = default);
@@ -17,8 +19,11 @@ public interface IIssuedCardService
 }
 
 /// <summary>
-/// Cartões de um grupo (docs/04). Não há regra de "um titular só": o mesmo grupo pode ter dois
-/// cartões de titular ativos (o banco emite um novo e o antigo continua valendo até vencer).
+/// Cartões (docs/04). Um cartão tem uma ou duas funções: crédito (está num grupo de cartões, a
+/// fatura), débito (está ligado a uma conta) ou as duas — o cartão "múltiplo". É um registro só,
+/// então cancelar ou substituir o múltiplo vale para os dois lados.
+///
+/// Não há regra de "um titular só": o mesmo grupo pode ter dois cartões de titular ativos.
 /// </summary>
 public class IssuedCardService : IIssuedCardService
 {
@@ -33,49 +38,98 @@ public class IssuedCardService : IIssuedCardService
 
     public async Task<IReadOnlyList<IssuedCardResponse>> GetByGroupAsync(Guid creditCardId, CancellationToken ct = default)
     {
-        var group = await FindGroupAsync(creditCardId, ct);
-        var cards = await _db.IssuedCards.AsNoTracking()
-            .Where(c => c.GrupoId == _currentUser.GrupoId && c.CreditCardId == creditCardId)
-            .OrderBy(c => c.Status).ThenBy(c => c.Kind).ThenBy(c => c.LastFour)
-            .ToListAsync(ct);
-        return cards.Select(c => ToResponse(c, group.Brand)).ToList();
+        await FindGroupAsync(creditCardId, ct);
+        return await ListAsync(c => c.CreditCardId == creditCardId, ct);
     }
 
+    /// <summary>Os cartões com débito nesta conta: os só de débito e os múltiplos.</summary>
+    public async Task<IReadOnlyList<IssuedCardResponse>> GetByAccountAsync(Guid accountId, CancellationToken ct = default)
+    {
+        await FindAccountAsync(accountId, ct);
+        return await ListAsync(c => c.AccountId == accountId, ct);
+    }
+
+    private async Task<IReadOnlyList<IssuedCardResponse>> ListAsync(
+        System.Linq.Expressions.Expression<Func<IssuedCard, bool>> filter, CancellationToken ct)
+    {
+        var cards = await _db.IssuedCards.AsNoTracking()
+            .Include(c => c.CreditCard).Include(c => c.Account)
+            .Where(c => c.GrupoId == _currentUser.GrupoId)
+            .Where(filter)
+            .OrderBy(c => c.Status).ThenBy(c => c.Kind).ThenBy(c => c.LastFour)
+            .ToListAsync(ct);
+        return cards.Select(ToResponse).ToList();
+    }
+
+    /// <summary>Cartão de crédito do grupo; com <c>AccountId</c>, é múltiplo (débito nessa conta).</summary>
     public async Task<IssuedCardResponse> CreateAsync(Guid creditCardId, IssuedCardRequest request, CancellationToken ct = default)
     {
         var group = await FindGroupAsync(creditCardId, ct);
+        var account = request.AccountId is { } accountId ? await FindAccountAsync(accountId, ct) : null;
+        return await CreateCoreAsync(group, account, request, ct);
+    }
+
+    /// <summary>Cartão só de débito, ligado à conta, com bandeira própria.</summary>
+    public async Task<IssuedCardResponse> CreateDebitAsync(Guid accountId, IssuedCardRequest request, CancellationToken ct = default)
+    {
+        var account = await FindAccountAsync(accountId, ct);
+        return await CreateCoreAsync(null, account, request, ct);
+    }
+
+    private async Task<IssuedCardResponse> CreateCoreAsync(CreditCard? group, Account? account, IssuedCardRequest request, CancellationToken ct)
+    {
         var data = Normalize(request);
+        var brand = BrandFor(group, request.Brand);
         await EnsureUniqueActiveFinalAsync(data.LastFour, exceptId: null, ct);
 
         var card = new IssuedCard
         {
             GrupoId = _currentUser.GrupoId,
-            CreditCardId = group.Id,
+            CreditCardId = group?.Id,
+            CreditCard = group,
+            AccountId = account?.Id,
+            Account = account,
+            Brand = brand,
             CreatedBy = _currentUser.UserId,
         };
         Apply(card, data);
         _db.IssuedCards.Add(card);
         await _db.SaveChangesAsync(ct);
-        return ToResponse(card, group.Brand);
+        return ToResponse(card);
     }
 
+    /// <summary>
+    /// Edita os dados do cartão e a função de débito: mudar <c>AccountId</c> liga o débito a outra
+    /// conta, e nulo tira o débito — de um cartão de crédito. Um cartão só de débito não pode ficar
+    /// sem conta (não teria função nenhuma); o grupo de crédito não muda por aqui.
+    /// </summary>
     public async Task<IssuedCardResponse> UpdateAsync(Guid id, IssuedCardRequest request, CancellationToken ct = default)
     {
         var card = await FindOwnedAsync(id, ct);
         var data = Normalize(request);
+
+        Account? account = null;
+        if (request.AccountId is { } accountId) account = await FindAccountAsync(accountId, ct);
+        if (account is null && card.CreditCardId is null)
+            throw new BusinessRuleException("cartao-sem-funcao",
+                "Um cartão só de débito precisa de uma conta. Para deixar de usá-lo, cancele o cartão.");
+
         if (card.Status == IssuedCardStatus.Ativo) await EnsureUniqueActiveFinalAsync(data.LastFour, card.Id, ct);
 
         Apply(card, data);
+        card.AccountId = account?.Id;
+        card.Account = account;
+        card.Brand = BrandFor(card.CreditCard, request.Brand);
         card.UpdatedAt = DateTime.UtcNow;
         card.UpdatedBy = _currentUser.UserId;
         await _db.SaveChangesAsync(ct);
-        return ToResponse(card, card.CreditCard!.Brand);
+        return ToResponse(card);
     }
 
     /// <summary>
-    /// Troca um cartão por outro no mesmo grupo (renovação, perda, roubo): o antigo vira
-    /// Substituído e aponta o novo. O novo pode ter o mesmo final — a renovação costuma manter o
-    /// número e mudar só a validade.
+    /// Troca um cartão por outro (renovação, perda, roubo): o antigo vira Substituído e aponta o
+    /// novo, que herda as funções do antigo — o mesmo grupo e a mesma conta. O novo pode ter o mesmo
+    /// final: a renovação costuma manter o número e mudar só a validade.
     /// </summary>
     public async Task<IssuedCardResponse> ReplaceAsync(Guid id, IssuedCardRequest request, CancellationToken ct = default)
     {
@@ -99,6 +153,10 @@ public class IssuedCardService : IIssuedCardService
         {
             GrupoId = _currentUser.GrupoId,
             CreditCardId = old.CreditCardId,
+            CreditCard = old.CreditCard,
+            AccountId = old.AccountId,
+            Account = old.Account,
+            Brand = old.CreditCardId is null ? BrandFor(null, request.Brand) ?? old.Brand : null,
             CreatedBy = _currentUser.UserId,
         };
         Apply(replacement, data);
@@ -106,9 +164,10 @@ public class IssuedCardService : IIssuedCardService
         old.ReplacedById = replacement.Id;
         await _db.SaveChangesAsync(ct);
 
-        return ToResponse(replacement, old.CreditCard!.Brand);
+        return ToResponse(replacement);
     }
 
+    /// <summary>Cancela o cartão — o múltiplo deixa de valer no crédito e no débito.</summary>
     public async Task<IssuedCardResponse> CancelAsync(Guid id, CancellationToken ct = default)
     {
         var card = await FindOwnedAsync(id, ct);
@@ -116,7 +175,7 @@ public class IssuedCardService : IIssuedCardService
         card.UpdatedAt = DateTime.UtcNow;
         card.UpdatedBy = _currentUser.UserId;
         await _db.SaveChangesAsync(ct);
-        return ToResponse(card, card.CreditCard!.Brand);
+        return ToResponse(card);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -132,6 +191,17 @@ public class IssuedCardService : IIssuedCardService
     }
 
     // ---------------- regras ----------------
+
+    /// <summary>
+    /// A bandeira de um cartão de crédito (só ou múltiplo) é a do grupo — a fatura é uma só. Só o
+    /// cartão só de débito tem bandeira própria, e ela pode ser de débito (Maestro, Visa Electron,
+    /// Elo Débito) ou não.
+    /// </summary>
+    private static CardBrand? BrandFor(CreditCard? group, string? requested)
+    {
+        if (group is not null) return null;
+        return CardBrands.ParseAny(requested);
+    }
 
     private sealed record CardData(IssuedCardKind Kind, string LastFour, string? FirstDigits, int? Month, int? Year, string? Holder);
 
@@ -177,15 +247,16 @@ public class IssuedCardService : IIssuedCardService
     }
 
     /// <summary>
-    /// O final identifica o cartão na fatura ("final 1234"), então dois cartões ativos do grupo não
-    /// podem ter o mesmo. Substituídos e cancelados não contam: a renovação mantém o número.
+    /// O final identifica o cartão na fatura e no extrato, então dois cartões ativos do grupo de
+    /// usuários não podem ter o mesmo. Substituídos e cancelados não contam: a renovação mantém o
+    /// número. O múltiplo é um cartão só, então não conflita consigo mesmo nos dois lados.
     /// </summary>
     private async Task EnsureUniqueActiveFinalAsync(string lastFour, Guid? exceptId, CancellationToken ct)
     {
         var other = await _db.IssuedCards.AsNoTracking()
             .Where(c => c.GrupoId == _currentUser.GrupoId && c.Status == IssuedCardStatus.Ativo
                         && c.LastFour == lastFour && c.Id != exceptId)
-            .Select(c => c.CreditCard!.Name)
+            .Select(c => c.CreditCard != null ? c.CreditCard.Name : c.Account!.Name)
             .FirstOrDefaultAsync(ct);
         if (other is not null)
             throw new BusinessRuleException("final-duplicado",
@@ -194,15 +265,27 @@ public class IssuedCardService : IIssuedCardService
 
     private static string Digits(string? value) => value is null ? "" : new string(value.Where(char.IsDigit).ToArray());
 
-    private IssuedCardResponse ToResponse(IssuedCard c, CardBrand? groupBrand)
+    private static IssuedCardResponse ToResponse(IssuedCard c)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
         // Vale até o último dia do mês impresso.
         var expired = c.ExpiryMonth is { } m && c.ExpiryYear is { } y && new DateOnly(y, m, 1).AddMonths(1) <= today;
+
+        // Bandeira efetiva: a do grupo no crédito, a própria no só de débito.
+        var effective = c.CreditCard?.Brand ?? c.Brand;
         var suggested = CardBrands.SuggestFromDigits(c.FirstDigits);
+        var mismatch = suggested is not null && effective is not null && !CardBrands.SameFamily(suggested.Value, effective.Value);
+
+        var function = (c.CreditCardId, c.AccountId) switch
+        {
+            (not null, not null) => IssuedCardFunction.Multiplo,
+            (null, not null) => IssuedCardFunction.Debito,
+            _ => IssuedCardFunction.Credito,
+        };
+
         return new IssuedCardResponse(c.Id, c.CreditCardId, c.Kind, c.FirstDigits, c.LastFour, c.ExpiryMonth, c.ExpiryYear,
-            c.HolderName, c.Status, expired, c.ReplacedById, suggested?.ToString(),
-            suggested is not null && groupBrand is not null && suggested != groupBrand);
+            c.HolderName, c.Status, expired, c.ReplacedById, suggested?.ToString(), mismatch,
+            function, c.AccountId, c.Account?.Name, c.CreditCard?.Name, effective?.ToString());
     }
 
     private async Task<CreditCard> FindGroupAsync(Guid id, CancellationToken ct)
@@ -212,9 +295,16 @@ public class IssuedCardService : IIssuedCardService
         return card;
     }
 
+    private async Task<Account> FindAccountAsync(Guid id, CancellationToken ct)
+    {
+        var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id, ct) ?? throw new NotFoundException(nameof(Account), id);
+        if (account.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+        return account;
+    }
+
     private async Task<IssuedCard> FindOwnedAsync(Guid id, CancellationToken ct)
     {
-        var card = await _db.IssuedCards.Include(c => c.CreditCard).FirstOrDefaultAsync(c => c.Id == id, ct)
+        var card = await _db.IssuedCards.Include(c => c.CreditCard).Include(c => c.Account).FirstOrDefaultAsync(c => c.Id == id, ct)
             ?? throw new NotFoundException(nameof(IssuedCard), id);
         if (card.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
         return card;

@@ -25,6 +25,19 @@ public class IssuedCardsController : ControllerBase
         return Created($"/api/v1/issued-cards/{result.Id}", result);
     }
 
+    /// <summary>Cartões com débito nesta conta: os só de débito e os múltiplos.</summary>
+    [HttpGet("accounts/{accountId:guid}/debit-cards")]
+    public async Task<ActionResult<IReadOnlyList<IssuedCardResponse>>> GetByAccount(Guid accountId, CancellationToken ct)
+        => Ok(await _service.GetByAccountAsync(accountId, ct));
+
+    /// <summary>Cartão só de débito, com bandeira própria.</summary>
+    [HttpPost("accounts/{accountId:guid}/debit-cards")]
+    public async Task<ActionResult<IssuedCardResponse>> CreateDebit(Guid accountId, IssuedCardRequest request, CancellationToken ct)
+    {
+        var result = await _service.CreateDebitAsync(accountId, request, ct);
+        return Created($"/api/v1/issued-cards/{result.Id}", result);
+    }
+
     [HttpPut("issued-cards/{id:guid}")]
     public async Task<ActionResult<IssuedCardResponse>> Update(Guid id, IssuedCardRequest request, CancellationToken ct)
         => Ok(await _service.UpdateAsync(id, request, ct));

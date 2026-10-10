@@ -1180,13 +1180,20 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Brand")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreditCardId")
+                    b.Property<Guid?>("CreditCardId")
                         .HasColumnType("uuid");
 
                     b.Property<int?>("ExpiryMonth")
@@ -1231,6 +1238,8 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountId");
+
                     b.HasIndex("CreditCardId");
 
                     b.HasIndex("GrupoId");
@@ -1241,7 +1250,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("\"Status\" = 1");
 
-                    b.ToTable("IssuedCards");
+                    b.ToTable("IssuedCards", t =>
+                        {
+                            t.HasCheckConstraint("CK_IssuedCards_Funcao", "\"CreditCardId\" IS NOT NULL OR \"AccountId\" IS NOT NULL");
+                        });
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.Merchant", b =>
@@ -2078,11 +2090,15 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.IssuedCard", b =>
                 {
+                    b.HasOne("MeuFinanceiro.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MeuFinanceiro.Domain.Entities.CreditCard", "CreditCard")
                         .WithMany("IssuedCards")
                         .HasForeignKey("CreditCardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MeuFinanceiro.Domain.Entities.Grupo", null)
                         .WithMany()
@@ -2094,6 +2110,8 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ReplacedById")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Account");
 
                     b.Navigation("CreditCard");
 

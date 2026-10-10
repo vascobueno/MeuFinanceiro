@@ -72,7 +72,20 @@ fatura é uma só. Maestro, VisaElectron e EloDebito existem no enum só para o 
 o grupo de crédito os recusa (`bandeira-de-debito`). A API aceita os apelidos antigos ("Master",
 "Amex"); a migração converteu o texto livre que havia (desconhecido → Outra).
 
-`IssuedCard` é cada cartão do grupo:
+`IssuedCard` é cada cartão — de crédito, de débito ou os dois:
+
+- **Função** — `CreditCardId` (grupo de crédito, a fatura) e/ou `AccountId` (conta do débito);
+  pelo menos um (`CK_IssuedCards_Funcao`). Só crédito, só débito, ou **múltiplo** com os dois: um
+  plástico só, então cancelar ou substituir vale para os dois lados, e a substituição herda o
+  grupo e a conta. A bandeira do crédito (só ou múltiplo) é a do grupo; só o cartão só de débito
+  tem `Brand` própria, que pode ser de débito (Maestro, Visa Electron, Elo Débito). Dígitos de
+  Mastercard num Maestro não são divergência (mesma família).
+- **Excluir um lado** — excluir o grupo apaga os cartões só de crédito e deixa o múltiplo como
+  só de débito, com a bandeira do grupo; excluir a conta apaga os só de débito e deixa o múltiplo
+  como só de crédito. As FKs são Restrict e o serviço faz isso explicitamente.
+- **Sugestão de cartão de débito** (`CardBrands.PickDebitCard`) — para uma compra no débito de
+  bandeira conhecida, só quando há exatamente um cartão ativo dessa família com débito na conta.
+  Usada na ligação de lançamentos a cartões (etapa 11).
 
 - `Kind` — Titular, Adicional ou Online (virtual). **Não há regra de um titular só**: o mesmo grupo
   pode ter dois cartões de titular ativos.

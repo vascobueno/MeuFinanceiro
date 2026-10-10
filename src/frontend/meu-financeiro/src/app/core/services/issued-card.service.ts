@@ -14,6 +14,16 @@ export class IssuedCardService {
     return this.http.get<IssuedCard[]>(`${this.baseUrl}/cards/${creditCardId}/issued-cards`);
   }
 
+  /** Cartões com débito na conta: os só de débito e os múltiplos. */
+  getByAccount(accountId: string): Observable<IssuedCard[]> {
+    return this.http.get<IssuedCard[]>(`${this.baseUrl}/accounts/${accountId}/debit-cards`);
+  }
+
+  /** Cartão só de débito, com bandeira própria. */
+  createDebit(accountId: string, request: IssuedCardRequest): Observable<IssuedCard> {
+    return this.http.post<IssuedCard>(`${this.baseUrl}/accounts/${accountId}/debit-cards`, request);
+  }
+
   create(creditCardId: string, request: IssuedCardRequest): Observable<IssuedCard> {
     return this.http.post<IssuedCard>(`${this.baseUrl}/cards/${creditCardId}/issued-cards`, request);
   }

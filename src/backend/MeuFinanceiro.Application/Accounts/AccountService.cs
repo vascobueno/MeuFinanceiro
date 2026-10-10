@@ -108,6 +108,10 @@ public class AccountService : IAccountService
                 "conta-possui-lancamentos",
                 "Não é possível excluir uma conta que já possui lançamentos. Desative-a em vez de excluir.");
 
+        // Cartões com débito nesta conta: os só de débito vão junto; o múltiplo fica só de crédito.
+        await Cards.CardService.DetachOrRemoveIssuedCardsAsync(_db, _db.IssuedCards.Where(c => c.AccountId == id),
+            c => c.CreditCardId is not null, c => c.AccountId = null, ct);
+
         _db.Accounts.Remove(account);
         await _db.SaveChangesAsync(ct);
     }
