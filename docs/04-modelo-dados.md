@@ -58,8 +58,10 @@ Name, Bank (nome), Type, InitialBalance, IsActive, mais:
   nem no "Saldo total"; a resposta traz `AvailableBalance` = saldo + limite, que a tela de
   lançamentos da conta mostra como "Disponível" quando há limite.
 
-A lista de bancos do formulário (`core/data/bancos.ts`) é só conveniência da tela; o backend
-aceita qualquer código de 3 dígitos.
+A lista de bancos do formulário (`core/data/bancos.ts`) vem da relação oficial do Banco Central
+(Participantes do STR, 460 instituições com código, baixada em 10/10/2026); os 31 mais comuns têm
+nome curto e aparecem primeiro. É só conveniência da tela: o backend aceita qualquer código de 3
+dígitos, e banco que surgir depois entra por "Outro".
 
 ## FinancialTransaction
 Id, **GrupoId** (dono real do dado, compartilhado entre os membros do grupo — não é

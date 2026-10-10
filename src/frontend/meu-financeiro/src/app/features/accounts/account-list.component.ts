@@ -74,10 +74,14 @@ export class AccountListComponent implements OnInit {
   private editingIsActive = true;
 
   readonly OUTRO_BANCO = OUTRO_BANCO;
+  // Os mais comuns primeiro, pelo nome; os demais (lista do Banco Central) pelo código. O filtro
+  // do seletor procura em todos, pelo código ou pelo nome.
   readonly bankOptions = [
-    ...BANCOS.map((b) => ({ label: b.code + ' – ' + b.name, value: b.code })),
-    { label: 'Outro', value: OUTRO_BANCO },
-  ];
+    ...[...BANCOS].filter((b) => b.popular).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    ...BANCOS.filter((b) => !b.popular),
+  ]
+    .map((b) => ({ label: b.code + ' – ' + b.name, value: b.code }))
+    .concat({ label: 'Outro', value: OUTRO_BANCO });
   /** Código escolhido no seletor, "outro" ou null (sem dados bancários). */
   bankChoice: string | null = null;
 
