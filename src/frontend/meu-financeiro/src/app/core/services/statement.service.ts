@@ -12,6 +12,11 @@ export class StatementService {
 
   constructor(private readonly http: HttpClient) {}
 
+  /** Exclui um extrato importado por engano (o servidor bloqueia se houver conciliação aceita). */
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
   getAll(filter: Partial<BankStatementFilter> = {}): Observable<PagedResult<BankStatement>> {
     const params = toHttpParams({ page: 1, pageSize: 20, ...filter });
     return this.http.get<PagedResult<BankStatement>>(this.baseUrl, { params });

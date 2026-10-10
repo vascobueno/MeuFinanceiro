@@ -21,6 +21,12 @@ public class BankReconciliationController : ControllerBase
     public async Task<ActionResult<BankStatementResponse>> Import(ImportBankStatementRequest request, CancellationToken ct)
         => Ok(await _service.ImportAsync(request, ct));
 
+    /// <summary>Lê o texto colado do extrato e devolve os movimentos normalizados, sem gravar nada.</summary>
+    [HttpPost("bank-statements/parse")]
+    public ActionResult<Application.Reconciliation.Import.ParsedBankStatementResponse> Parse(
+        Application.Reconciliation.Import.ParseBankStatementRequest request)
+        => Ok(_service.Parse(request));
+
     [HttpGet("reconciliations/bank")]
     public async Task<ActionResult<IReadOnlyList<BankReconciliationResponse>>> GetAll(
         [FromQuery] Guid? accountId, [FromQuery] string? status, CancellationToken ct)

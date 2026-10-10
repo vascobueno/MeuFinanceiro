@@ -1,5 +1,6 @@
 using MeuFinanceiro.Application.Common;
 using MeuFinanceiro.Application.Invoices;
+using MeuFinanceiro.Application.Reconciliation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,10 +13,20 @@ namespace MeuFinanceiro.Api.Controllers;
 public class CardInvoicesController : ControllerBase
 {
     private readonly IInvoiceService _invoiceService;
+    private readonly ICardReconciliationService _reconciliationService;
 
-    public CardInvoicesController(IInvoiceService invoiceService)
+    public CardInvoicesController(IInvoiceService invoiceService, ICardReconciliationService reconciliationService)
     {
         _invoiceService = invoiceService;
+        _reconciliationService = reconciliationService;
+    }
+
+    /// <summary>Exclui uma fatura importada por engano (bloqueado se houver conciliação aceita).</summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _reconciliationService.DeleteInvoiceAsync(id, ct);
+        return NoContent();
     }
 
     [HttpGet]

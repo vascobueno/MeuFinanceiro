@@ -1,3 +1,5 @@
+<p-confirm-dialog />
+
 <div class="mf-list-header">
   <h2 class="mf-page-title"><mf-icon name="mf-invoices" class="mf-page-title-icon"></mf-icon>Extratos</h2>
 </div>
@@ -52,6 +54,8 @@
             <th pSortableColumn="movimento" class="mf-col-end">Movimento <p-sort-icon field="movimento" /></th>
             <th class="mf-col-center">Itens</th>
             <th>Arquivo</th>
+            <th class="mf-col-center">Confere</th>
+            <th></th>
           </tr>
         </ng-template>
         <ng-template #body let-statement>
@@ -70,6 +74,22 @@
                 {{ statement.originalFileName }}
               } @else {
                 <span class="mf-sub">—</span>
+              }
+            </td>
+            <td class="mf-col-center">
+              <!-- Saldos x movimentos na importação: ✓ fechou, ✗ entrou com confirmação sem fechar. -->
+              @if (statement.balanceValidated) {
+                <i class="pi pi-check-circle mf-ok" pTooltip="Os valores fecham" tooltipPosition="top" aria-label="Confere"></i>
+              } @else {
+                <i class="pi pi-times-circle mf-bad" pTooltip="Saldo inicial + movimentos não fecha com o saldo final" tooltipPosition="top" aria-label="Não confere"></i>
+              }
+            </td>
+            <td class="mf-col-end">
+              @if (authService.canWrite()) {
+                <button type="button" class="mf-row-delete-icon" pTooltip="Excluir" tooltipPosition="top"
+                        [attr.aria-label]="'Excluir extrato'" (click)="confirmRemove(statement.id)">
+                  <i class="pi pi-trash"></i>
+                </button>
               }
             </td>
           </tr>

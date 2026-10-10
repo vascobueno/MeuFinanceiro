@@ -5,7 +5,11 @@ import { MfIconComponent } from '../../shared/icons/mf-icon.component';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Table, SortIcon, SortableColumn } from 'primeng/table';
-import { SortEvent } from 'primeng/api';
+import { ConfirmationService, SortEvent } from 'primeng/api';
+import { ConfirmDialog } from 'primeng/confirmdialog';
+import { Tooltip } from 'primeng/tooltip';
+import { AuthService } from '../../core/services/auth.service';
+import { businessRuleOf } from '../../core/services/problem.util';
 import { InvoiceService } from '../../core/services/invoice.service';
 import { CardService } from '../../core/services/card.service';
 import { CardInvoice, CardInvoiceFilter, CardInvoiceStatus } from '../../core/models/invoice.model';
@@ -31,7 +35,10 @@ import { nextSort } from '../../core/services/sort.util';
     ListStateComponent,
     PaginationComponent,
     DateRangeComponent,
+    ConfirmDialog,
+    Tooltip,
   ],
+  providers: [ConfirmationService],
   templateUrl: './invoice-list.component.html',
   styleUrl: './invoice-list.component.scss',
 })
@@ -68,6 +75,8 @@ export class InvoiceListComponent implements OnInit {
 
   constructor(
     private readonly invoiceService: InvoiceService,
+    private readonly confirmationService: ConfirmationService,
+    readonly authService: AuthService,
     private readonly cardService: CardService,
   ) {}
 
@@ -119,5 +128,23 @@ export class InvoiceListComponent implements OnInit {
     this.filter.sortBy = proxima.sortBy;
     this.filter.sortDir = proxima.sortDir;
     this.load();
+  }
+
+  /**
+   * Exclui a fatura importada por engano. O servidor recusa se algum item já levou um
+   * lançamento a "conciliado" — a mensagem dele diz o que fazer.
+   */
+  confirmRemove(id: string): void {
+    this.confirmationService.confirm({
+      header: 'Excluir fatura',
+      message: 'Excluir a fatura importada, com seus itens e as sugestões de conciliação? Essa ação não pode ser desfeita.',
+      acceptLabel: 'Excluir',
+      rejectLabel: 'Cancelar',
+      accept: () =>
+        this.invoiceService.delete(id).subscribe({
+          next: () => this.load(),
+          error: (err) => this.error.set(businessRuleOf(err)?.message ?? 'Não foi possível excluir a fatura.'),
+        }),
+    });
   }
 }

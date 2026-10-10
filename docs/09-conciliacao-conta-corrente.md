@@ -13,13 +13,49 @@ Aplicação CDB/RDB é investimento, não despesa. O exemplo mostra R$ 10.000,00
 
 Validar saldo inicial + movimentos = saldo final.
 
+## Importação do extrato
+O texto colado é lido **no backend** (`POST /api/v1/bank-statements/parse`, `StatementTextReader`),
+não mais na tela. A tela só mostra o resultado e envia os itens para a importação.
+
+Dois modos de leitura:
+- **Estruturado**: `data;descrição;valor[;documento][;tipo]` (ou separado por tabulação).
+- **Como o banco imprime**: linhas no formato do extrato colado do PDF.
+  - Valor com sinal no fim (`1.288,46-`), no começo (`-1.288,46`) ou com `R$`.
+  - Data `dd/MM` (o ano vem do fim do período; uma data depois do fim + 7 dias é do ano anterior),
+    `dd/MM/aaaa` ou `aaaa-MM-dd`. Linha sem data herda a data da anterior.
+  - Até dois valores no fim da linha: o movimento e o saldo do dia (o saldo é ignorado).
+  - Linha sem valor continua a descrição da anterior (estabelecimento, nome do pagador).
+  - `SALDO EM` / `SALDO ANTERIOR` preenchem o saldo inicial e o final.
+  - Só valores com exatamente duas casas contam como dinheiro — é o que separa o valor do número
+    de documento e de uma cotação de quatro casas.
+
+Cada linha que não dá para ler volta com o número da linha e o motivo; nada é importado até
+corrigir.
+
+**Não fecha** — se saldo inicial + movimentos ≠ saldo final, a importação é recusada com a regra
+`extrato-nao-fecha` e a diferença em reais. A tela oferece "Importar mesmo assim", que reenvia com
+`ConfirmUnbalanced: true`. O resultado fica gravado em `BalanceValidated` e aparece na coluna
+**Confere** da tela Extratos.
+
+**Duplicidade** — cada extrato grava um `ContentHash` (SHA-256 de conta, período, saldos e itens
+com a descrição normalizada). Importar o mesmo conteúdo de novo é recusado com
+`extrato-duplicado`; índice único filtrado `(GrupoId, ContentHash)` garante isso no banco também.
+Extratos importados antes desta regra ficam com hash nulo e não são comparados.
+
 ## Tela Extratos
 `/extratos` (menu: Contas › Extratos) lista o que a importação acima gravou: conta, período,
 saldo inicial e final, movimento do período (final − inicial), quantidade de itens e o arquivo de
 origem. É a irmã da tela Faturas do lado da conta — mesma estrutura de filtros, ordenação e
 paginação server-side, sem o Status, que não existe para extrato.
 
-Só lê. Importar extrato continua em Contas › Conciliação; a tela nova não cria nem altera nada.
+Importar extrato continua em Contas › Conciliação. Aqui só se lista e se **exclui**: excluir
+apaga o extrato, os itens e as sugestões de conciliação, e libera reimportar o mesmo conteúdo — é o
+caminho quando uma importação entrou errada. É recusado (`extrato-com-conciliacao-aceita`) se algum
+item já tem conciliação aceita: desfaça a conciliação antes.
+
+> A exclusão carrega e remove os itens explicitamente. Deixar para o cascade do banco fazia o EF
+> apagar o extrato antes das conciliações e o Postgres recusava pela FK — o banco em memória dos
+> testes não tem FK e não pega isso.
 
 > `GET /api/v1/bank-statements` filtra `GrupoId` à mão, como todas as consultas do projeto — não
 > há `HasQueryFilter` global. O teste `Nao_deve_mostrar_extrato_de_outro_grupo` existe por causa

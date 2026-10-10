@@ -30,5 +30,6 @@ public record CardInvoiceListItemResponse(
     DateOnly ClosingDate,
     DateOnly DueDate,
     decimal TotalAmount,
-    CardInvoiceStatus Status
+    CardInvoiceStatus Status,
+    bool BalanceValidated
 );

@@ -20,8 +20,9 @@
   <div class="mf-card mf-import-card">
     <h6>Importar extrato bancário</h6>
     <p class="mf-sub">
-      Cole um movimento por linha no formato <code>data;descrição;tipo;valor</code> (valor com sinal: positivo para
-      entrada, negativo para saída). Ex.: <code>2026-05-20;Aplicação CDB;INVESTMENT;-10000.00</code>
+      Cole os movimentos como aparecem no extrato — <code>02/01 COMPRA CARTAO DEB MC 200652 18,00-</code> —, com a data só
+      na primeira linha do dia e a descrição continuando na linha de baixo, se for o caso. Também vale uma linha por movimento
+      no formato <code>data;descrição;valor</code>. As linhas <code>SALDO EM</code> preenchem os saldos.
     </p>
 
     <div class="mf-import-grid">
@@ -51,6 +52,27 @@
       <label class="mf-field-label">Movimentos</label>
       <textarea pTextarea class="mf-field-input" rows="6" placeholder="2026-05-20;Aplicação CDB;INVESTMENT;-10000.00" [(ngModel)]="itemsRaw"></textarea>
     </div>
+
+    @if (parseErrors().length > 0) {
+      <div class="mf-import-feedback-error" role="alert">
+        <b>Algumas linhas não puderam ser lidas — nada foi importado:</b>
+        <ul class="mf-parse-errors">
+          @for (e of parseErrors(); track e.line) {
+            <li>Linha {{ e.line }}: {{ e.message }} <code>{{ e.content }}</code></li>
+          }
+        </ul>
+      </div>
+    }
+
+    @if (unbalancedMessage(); as aviso) {
+      <div class="mf-form-warning" role="alert">
+        <span>{{ aviso }}</span>
+        <div class="mf-warning-actions">
+          <button pButton type="button" size="small" [disabled]="importing()" (click)="confirmUnbalanced()">Importar mesmo assim</button>
+          <button pButton type="button" size="small" [outlined]="true" (click)="cancelUnbalanced()">Revisar</button>
+        </div>
+      </div>
+    }
 
     @if (importResult()) {
       <div class="mf-form-info">{{ importResult() }}</div>

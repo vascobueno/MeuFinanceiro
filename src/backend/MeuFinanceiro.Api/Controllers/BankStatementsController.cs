@@ -1,4 +1,5 @@
 using MeuFinanceiro.Application.Common;
+using MeuFinanceiro.Application.Reconciliation;
 using MeuFinanceiro.Application.Statements;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,10 +16,20 @@ namespace MeuFinanceiro.Api.Controllers;
 public class BankStatementsController : ControllerBase
 {
     private readonly IStatementService _statementService;
+    private readonly IBankReconciliationService _reconciliationService;
 
-    public BankStatementsController(IStatementService statementService)
+    public BankStatementsController(IStatementService statementService, IBankReconciliationService reconciliationService)
     {
         _statementService = statementService;
+        _reconciliationService = reconciliationService;
+    }
+
+    /// <summary>Exclui um extrato importado por engano (bloqueado se houver conciliação aceita).</summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _reconciliationService.DeleteStatementAsync(id, ct);
+        return NoContent();
     }
 
     [HttpGet]

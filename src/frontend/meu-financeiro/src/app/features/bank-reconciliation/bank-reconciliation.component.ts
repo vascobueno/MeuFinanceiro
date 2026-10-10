@@ -11,7 +11,8 @@ import { Table, SortIcon, SortableColumn } from 'primeng/table';
 import { AuthService } from '../../core/services/auth.service';
 import { ReconciliationService } from '../../core/services/reconciliation.service';
 import { AccountService } from '../../core/services/account.service';
-import { BankReconciliationItem, BankStatementItemRequest } from '../../core/models/reconciliation.model';
+import { BankReconciliationItem, ImportBankStatementRequest, ImportLineError } from '../../core/models/reconciliation.model';
+import { businessRuleOf } from '../../core/services/problem.util';
 import { Account } from '../../core/models/account.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
@@ -82,10 +83,15 @@ export class BankReconciliationComponent implements OnInit {
   referenceEnd: Date | null = null;
   openingBalance: number | null = null;
   closingBalance: number | null = null;
-  /** Uma linha por movimento: data;descrição;tipo;valor (valor com sinal: + entrada, - saída). */
+  /** Texto colado do extrato — o servidor lê (formato do banco ou data;descrição;valor). */
   itemsRaw = '';
   readonly importing = signal(false);
   readonly importResult = signal<string | null>(null);
+  /** Linhas que o servidor não conseguiu ler, com o motivo. */
+  readonly parseErrors = signal<ImportLineError[]>([]);
+  /** Extrato que não fecha: a mensagem com a diferença, à espera de confirmação. */
+  readonly unbalancedMessage = signal<string | null>(null);
+  private pendingImport: ImportBankStatementRequest | null = null;
 
   constructor(
     private readonly reconciliationService: ReconciliationService,
@@ -117,55 +123,103 @@ export class BankReconciliationComponent implements OnInit {
     });
   }
 
-  parseItems(): BankStatementItemRequest[] {
-    return this.itemsRaw
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .map((line) => {
-        const [date, description, itemType, amount] = line.split(';').map((v) => v.trim());
-        return { date, description, itemType: itemType || 'OTHER_EXPENSE', amount: Number(amount) };
-      });
+  /**
+   * A leitura do texto é do servidor: antes era um `Number(valor)` aqui, e qualquer valor no
+   * formato do extrato (`1.288,46-`) virava NaN e a importação era recusada sem explicação.
+   */
+  submitImport(): void {
+    this.importResult.set(null);
+    this.parseErrors.set([]);
+    this.unbalancedMessage.set(null);
+
+    const referenceStart = this.toIsoDate(this.referenceStart);
+    const referenceEnd = this.toIsoDate(this.referenceEnd);
+    if (!this.importAccountId || !referenceStart || !referenceEnd) {
+      this.importResult.set('Preencha conta, início e fim do período — o período dá o ano às datas dd/MM do extrato.');
+      return;
+    }
+    if (!this.itemsRaw.trim()) {
+      this.importResult.set('Cole os movimentos do extrato.');
+      return;
+    }
+
+    const accountId = this.importAccountId;
+    this.importing.set(true);
+    this.reconciliationService.parseBankStatement({ text: this.itemsRaw, referenceStart, referenceEnd }).subscribe({
+      next: (parsed) => {
+        if (parsed.errors.length > 0) {
+          this.importing.set(false);
+          this.parseErrors.set(parsed.errors);
+          return;
+        }
+        if (parsed.items.length === 0) {
+          this.importing.set(false);
+          this.importResult.set('Nenhum movimento encontrado no texto colado.');
+          return;
+        }
+        // As linhas "SALDO EM dd/MM" do próprio extrato preenchem os saldos que estiverem vazios.
+        if (this.openingBalance == null && parsed.openingBalance != null) this.openingBalance = parsed.openingBalance;
+        if (this.closingBalance == null && parsed.closingBalance != null) this.closingBalance = parsed.closingBalance;
+        if (this.openingBalance == null || this.closingBalance == null) {
+          this.importing.set(false);
+          this.importResult.set(`${parsed.items.length} movimentos lidos. Informe o saldo inicial e o final para importar.`);
+          return;
+        }
+
+        this.sendImport({
+          accountId,
+          referenceStart,
+          referenceEnd,
+          openingBalance: this.openingBalance,
+          closingBalance: this.closingBalance,
+          items: parsed.items,
+        });
+      },
+      error: () => {
+        this.importing.set(false);
+        this.importResult.set('Não foi possível ler o texto colado.');
+      },
+    });
   }
 
-  submitImport(): void {
-    if (!this.importAccountId || this.openingBalance == null || this.closingBalance == null) {
-      this.importResult.set('Preencha conta, saldo inicial e saldo final.');
-      return;
-    }
+  /** "Importar mesmo assim" depois do aviso de que o extrato não fecha. */
+  confirmUnbalanced(): void {
+    if (this.pendingImport) this.sendImport({ ...this.pendingImport, confirmUnbalanced: true });
+  }
 
-    const items = this.parseItems();
-    if (items.length === 0) {
-      this.importResult.set('Informe ao menos um movimento.');
-      return;
-    }
+  cancelUnbalanced(): void {
+    this.pendingImport = null;
+    this.unbalancedMessage.set(null);
+  }
 
+  private sendImport(request: ImportBankStatementRequest): void {
     this.importing.set(true);
-    this.reconciliationService
-      .importBankStatement({
-        accountId: this.importAccountId,
-        referenceStart: this.toIsoDate(this.referenceStart) ?? '',
-        referenceEnd: this.toIsoDate(this.referenceEnd) ?? '',
-        openingBalance: this.openingBalance,
-        closingBalance: this.closingBalance,
-        items,
-      })
-      .subscribe({
-        next: (statement) => {
-          this.importing.set(false);
-          this.importResult.set(
-            statement.balanceValidated
-              ? `Extrato importado (${statement.itemCount} itens). Saldo inicial + movimentos fecha com o saldo final. ✅`
-              : `Extrato importado (${statement.itemCount} itens), mas a soma dos movimentos não fechou com o saldo final informado. Revise os valores. ⚠️`,
-          );
-          this.itemsRaw = '';
-          this.load();
-        },
-        error: () => {
-          this.importing.set(false);
-          this.importResult.set('Não foi possível importar o extrato.');
-        },
-      });
+    this.unbalancedMessage.set(null);
+
+    this.reconciliationService.importBankStatement(request).subscribe({
+      next: (statement) => {
+        this.importing.set(false);
+        this.pendingImport = null;
+        this.importResult.set(
+          statement.balanceValidated
+            ? `Extrato importado (${statement.itemCount} itens). Saldo inicial + movimentos fecha com o saldo final. ✅`
+            : `Extrato importado (${statement.itemCount} itens) sem fechar com o saldo final, como confirmado. ⚠️`,
+        );
+        this.itemsRaw = '';
+        this.load();
+      },
+      error: (err) => {
+        this.importing.set(false);
+        const rule = businessRuleOf(err);
+        if (rule?.rule === 'extrato-nao-fecha') {
+          this.pendingImport = request;
+          this.unbalancedMessage.set(rule.message);
+          return;
+        }
+        // Duplicado e demais regras já vêm com a mensagem em português.
+        this.importResult.set(rule?.message ?? 'Não foi possível importar o extrato.');
+      },
+    });
   }
 
   accept(item: BankReconciliationItem): void {

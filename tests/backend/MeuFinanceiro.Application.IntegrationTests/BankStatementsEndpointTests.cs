@@ -66,7 +66,10 @@ public class BankStatementsEndpointTests : IClassFixture<CustomWebApplicationFac
             arquivo,
             Enumerable.Range(0, itens)
                 .Select(i => new BankStatementItemRequest(fim.AddDays(-i - 1), $"Item {i}", null, "OTHER_EXPENSE", -10m))
-                .ToList());
+                .ToList(),
+            // Estes testes são da LISTAGEM: os saldos são escolhidos para ordenar e filtrar, não
+            // para fechar. A importação desequilibrada é confirmada de propósito.
+            ConfirmUnbalanced: true);
 
         var response = await _client.PostAsJsonAsync("/api/v1/bank-statements/import", request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);

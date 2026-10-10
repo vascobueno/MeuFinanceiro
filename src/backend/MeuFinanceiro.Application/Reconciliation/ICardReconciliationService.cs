@@ -3,6 +3,8 @@ namespace MeuFinanceiro.Application.Reconciliation;
 public interface ICardReconciliationService
 {
     Task<CardInvoiceResponse> ImportAsync(ImportCardInvoiceRequest request, CancellationToken ct = default);
+    Import.ParsedCardInvoiceResponse Parse(Import.ParseCardInvoiceRequest request);
+    Task DeleteInvoiceAsync(Guid invoiceId, CancellationToken ct = default);
     Task<IReadOnlyList<CardReconciliationResponse>> GetAllAsync(Guid? creditCardId, string? status, CancellationToken ct = default);
     Task<CardReconciliationResponse> AcceptAsync(Guid reconciliationId, CancellationToken ct = default);
     Task<CardReconciliationResponse> LinkManuallyAsync(ManualCardReconciliationRequest request, CancellationToken ct = default);

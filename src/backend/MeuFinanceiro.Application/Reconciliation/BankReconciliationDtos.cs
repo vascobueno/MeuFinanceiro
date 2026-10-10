@@ -10,7 +10,9 @@ public record ImportBankStatementRequest(
     decimal OpeningBalance,
     decimal ClosingBalance,
     string? OriginalFileName,
-    IReadOnlyList<BankStatementItemRequest> Items
+    IReadOnlyList<BankStatementItemRequest> Items,
+    // Extrato que não fecha só entra com confirmação explícita de quem importa.
+    bool ConfirmUnbalanced = false
 );
 
 public record BankStatementResponse(

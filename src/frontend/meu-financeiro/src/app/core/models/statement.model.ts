@@ -15,6 +15,8 @@ export interface BankStatement {
   netChange: number;
   itemCount: number;
   originalFileName: string | null;
+  /** Saldo inicial + movimentos bateu com o saldo final na importação. */
+  balanceValidated: boolean;
 }
 
 export interface BankStatementFilter extends PagedRequest {

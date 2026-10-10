@@ -105,21 +105,25 @@ DELETE `/api/v1/categories/{id}`
 POST `/api/v1/categories/{id}/subcategories`
 
 ## Card invoices (Faturas)
-GET `/api/v1/card-invoices` (paginação, filtros, ordenação)
+GET `/api/v1/card-invoices` (paginação, filtros, ordenação; `balanceValidated` por fatura)
+DELETE `/api/v1/card-invoices/{id}` (204; 400 `fatura-com-conciliacao-aceita`)
 
 ## Bank statements (Extratos)
 GET `/api/v1/bank-statements` (paginação, filtros, ordenação) — lista os extratos importados.
+DELETE `/api/v1/bank-statements/{id}` (204; 400 `extrato-com-conciliacao-aceita`)
 A importação fica em Conciliação bancária, abaixo.
 
 ## Bank reconciliation (Conciliação bancária)
-POST `/api/v1/bank-statements/import`
+POST `/api/v1/bank-statements/parse` (texto → itens, erros por linha, saldos lidos, soma)
+POST `/api/v1/bank-statements/import` (`confirmUnbalanced`; 400 `extrato-nao-fecha` / `extrato-duplicado`)
 GET `/api/v1/reconciliations/bank`
 POST `/api/v1/reconciliations/bank/{id}/accept`
 POST `/api/v1/reconciliations/bank/manual`
 POST `/api/v1/reconciliations/bank/{id}/undo`
 
 ## Card reconciliation (Conciliação de cartão)
-POST `/api/v1/card-invoices/import`
+POST `/api/v1/card-invoices/parse`
+POST `/api/v1/card-invoices/import` (`previousBalance`, `confirmUnbalanced`; 400 `fatura-nao-fecha` / `fatura-duplicada`)
 GET `/api/v1/reconciliations/card`
 POST `/api/v1/reconciliations/card/{id}/accept`
 POST `/api/v1/reconciliations/card/manual`

@@ -17,6 +17,8 @@ export interface CardInvoice {
   dueDate: string;
   totalAmount: number;
   status: CardInvoiceStatus;
+  /** Saldo anterior + itens bateu com o total na importação. */
+  balanceValidated: boolean;
 }
 
 export interface CardInvoiceFilter extends PagedRequest {

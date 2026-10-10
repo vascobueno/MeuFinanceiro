@@ -11,7 +11,8 @@ import { Table, SortIcon, SortableColumn } from 'primeng/table';
 import { AuthService } from '../../core/services/auth.service';
 import { ReconciliationService } from '../../core/services/reconciliation.service';
 import { CardService } from '../../core/services/card.service';
-import { CardInvoiceItemRequest, CardReconciliationItem } from '../../core/models/reconciliation.model';
+import { CardReconciliationItem, ImportCardInvoiceRequest, ImportLineError } from '../../core/models/reconciliation.model';
+import { businessRuleOf } from '../../core/services/problem.util';
 import { CreditCard } from '../../core/models/card.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
@@ -74,10 +75,15 @@ export class CardReconciliationComponent implements OnInit {
   closingDate: Date | null = null;
   dueDate: Date | null = null;
   totalAmount: number | null = null;
+  /** Saldo da fatura anterior: a fatura fecha como saldo anterior + itens = total. */
+  previousBalance: number | null = null;
   /** Uma linha por item: data;descrição;parcela;valor */
   itemsRaw = '';
   readonly importing = signal(false);
   readonly importResult = signal<string | null>(null);
+  readonly parseErrors = signal<ImportLineError[]>([]);
+  readonly unbalancedMessage = signal<string | null>(null);
+  private pendingImport: ImportCardInvoiceRequest | null = null;
 
   constructor(
     private readonly reconciliationService: ReconciliationService,
@@ -109,54 +115,90 @@ export class CardReconciliationComponent implements OnInit {
     });
   }
 
-  parseItems(): CardInvoiceItemRequest[] {
-    return this.itemsRaw
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .map((line) => {
-        const [date, description, installmentLabel, amount] = line.split(';').map((v) => v.trim());
-        return { date, description, installmentLabel: installmentLabel || undefined, amount: Number(amount) };
-      });
+  /** Leitura do texto pelo servidor — ver o comentário equivalente na conciliação bancária. */
+  submitImport(): void {
+    this.importResult.set(null);
+    this.parseErrors.set([]);
+    this.unbalancedMessage.set(null);
+
+    const closingDate = this.toIsoDate(this.closingDate);
+    const dueDate = this.toIsoDate(this.dueDate);
+    if (!this.importCardId || !closingDate || !dueDate || this.totalAmount == null) {
+      this.importResult.set('Preencha cartão, fechamento, vencimento e total — o fechamento dá o ano às datas dd/MM da fatura.');
+      return;
+    }
+    if (!this.itemsRaw.trim()) {
+      this.importResult.set('Cole os itens da fatura.');
+      return;
+    }
+
+    const creditCardId = this.importCardId;
+    const totalAmount = this.totalAmount;
+    this.importing.set(true);
+    this.reconciliationService.parseCardInvoice({ text: this.itemsRaw, closingDate }).subscribe({
+      next: (parsed) => {
+        if (parsed.errors.length > 0) {
+          this.importing.set(false);
+          this.parseErrors.set(parsed.errors);
+          return;
+        }
+        if (parsed.items.length === 0) {
+          this.importing.set(false);
+          this.importResult.set('Nenhum item encontrado no texto colado.');
+          return;
+        }
+        this.sendImport({
+          creditCardId,
+          closingDate,
+          dueDate,
+          totalAmount,
+          previousBalance: this.previousBalance ?? 0,
+          items: parsed.items,
+        });
+      },
+      error: () => {
+        this.importing.set(false);
+        this.importResult.set('Não foi possível ler o texto colado.');
+      },
+    });
   }
 
-  submitImport(): void {
-    if (!this.importCardId || this.totalAmount == null) {
-      this.importResult.set('Preencha o cartão e o valor total da fatura.');
-      return;
-    }
+  confirmUnbalanced(): void {
+    if (this.pendingImport) this.sendImport({ ...this.pendingImport, confirmUnbalanced: true });
+  }
 
-    const items = this.parseItems();
-    if (items.length === 0) {
-      this.importResult.set('Informe ao menos um item da fatura.');
-      return;
-    }
+  cancelUnbalanced(): void {
+    this.pendingImport = null;
+    this.unbalancedMessage.set(null);
+  }
 
+  private sendImport(request: ImportCardInvoiceRequest): void {
     this.importing.set(true);
-    this.reconciliationService
-      .importCardInvoice({
-        creditCardId: this.importCardId,
-        closingDate: this.toIsoDate(this.closingDate) ?? '',
-        dueDate: this.toIsoDate(this.dueDate) ?? '',
-        totalAmount: this.totalAmount,
-        items,
-      })
-      .subscribe({
-        next: (invoice) => {
-          this.importing.set(false);
-          this.importResult.set(
-            invoice.totalValidated
-              ? `Fatura importada (${invoice.itemCount} itens) e o total confere. ✅`
-              : `Fatura importada (${invoice.itemCount} itens), mas a soma dos itens não fechou com o total informado. ⚠️`,
-          );
-          this.itemsRaw = '';
-          this.load();
-        },
-        error: () => {
-          this.importing.set(false);
-          this.importResult.set('Não foi possível importar a fatura.');
-        },
-      });
+    this.unbalancedMessage.set(null);
+
+    this.reconciliationService.importCardInvoice(request).subscribe({
+      next: (invoice) => {
+        this.importing.set(false);
+        this.pendingImport = null;
+        this.importResult.set(
+          invoice.totalValidated
+            ? `Fatura importada (${invoice.itemCount} itens) e o total confere. ✅`
+            : `Fatura importada (${invoice.itemCount} itens) sem fechar com o total, como confirmado. ⚠️`,
+        );
+        this.itemsRaw = '';
+        this.load();
+      },
+      error: (err) => {
+        this.importing.set(false);
+        const rule = businessRuleOf(err);
+        if (rule?.rule === 'fatura-nao-fecha') {
+          this.pendingImport = request;
+          this.unbalancedMessage.set(rule.message);
+          return;
+        }
+        this.importResult.set(rule?.message ?? 'Não foi possível importar a fatura.');
+      },
+    });
   }
 
   accept(item: CardReconciliationItem): void {

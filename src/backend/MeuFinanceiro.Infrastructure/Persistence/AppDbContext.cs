@@ -134,6 +134,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
         builder.Entity<BankStatementItem>(e => e.HasIndex(i => i.Date));
         builder.Entity<CardInvoiceItem>(e => e.HasIndex(i => i.Date));
+
+        // Mesmo conteúdo não entra duas vezes no mesmo grupo. Filtrado em não-nulo: extratos e
+        // faturas importados antes desta regra ficam sem hash e não colidem entre si. O banco em
+        // memória dos testes ignora o índice — a regra também existe no serviço.
+        builder.Entity<BankStatement>(e =>
+        {
+            e.Property(b => b.ContentHash).HasMaxLength(64);
+            // Declarado à parte: sem isto o EF remove o índice de GrupoId achando que o composto
+            // abaixo o cobre — mas o composto é filtrado e não serve às linhas sem hash.
+            e.HasIndex(b => b.GrupoId);
+            e.HasIndex(b => new { b.GrupoId, b.ContentHash }).IsUnique().HasFilter("\"ContentHash\" IS NOT NULL");
+        });
+        builder.Entity<CardInvoice>(e =>
+        {
+            e.Property(i => i.ContentHash).HasMaxLength(64);
+            // Declarado à parte: sem isto o EF remove o índice de GrupoId achando que o composto
+            // abaixo o cobre — mas o composto é filtrado e não serve às linhas sem hash.
+            e.HasIndex(i => i.GrupoId);
+            e.HasIndex(i => new { i.GrupoId, i.ContentHash }).IsUnique().HasFilter("\"ContentHash\" IS NOT NULL");
+        });
         builder.Entity<Reconciliation>(e => e.HasIndex(r => r.Status));
         builder.Entity<Merchant>(e => e.HasIndex(m => new { m.GrupoId, m.Name }));
 

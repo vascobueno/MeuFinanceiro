@@ -1,3 +1,4 @@
+using MeuFinanceiro.Application.Reconciliation.Import;
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
 using MeuFinanceiro.Domain.Entities;
@@ -29,7 +30,30 @@ public class CardReconciliationService : ICardReconciliationService
         if (card.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
         var itemsSum = request.Items.Sum(i => i.Amount);
-        var totalValidated = itemsSum == request.TotalAmount;
+        // A fatura fecha como saldo anterior + itens (o pagamento entra negativo) = total.
+        var totalValidated = request.PreviousBalance + itemsSum == request.TotalAmount;
+
+        if (!totalValidated && !request.ConfirmUnbalanced)
+        {
+            var computed = request.PreviousBalance + itemsSum;
+            throw new BusinessRuleException("fatura-nao-fecha",
+                $"A soma dos itens não bate com o total da fatura: saldo anterior {ImportValueParser.FormatBrl(request.PreviousBalance)} " +
+                $"+ itens {ImportValueParser.FormatBrl(itemsSum)} = {ImportValueParser.FormatBrl(computed)}, mas o total informado é " +
+                $"{ImportValueParser.FormatBrl(request.TotalAmount)} (diferença de {ImportValueParser.FormatBrl(request.TotalAmount - computed)}). " +
+                "Confira os valores ou importe mesmo assim.");
+        }
+
+        var contentHash = ImportContentHash.ForInvoice(request);
+        var existing = await _db.CardInvoices.AsNoTracking()
+            .Where(i => i.GrupoId == _currentUser.GrupoId && i.ContentHash == contentHash)
+            .Select(i => new { i.CreatedAt })
+            .FirstOrDefaultAsync(ct);
+        if (existing is not null)
+        {
+            throw new BusinessRuleException("fatura-duplicada",
+                $"Esta fatura já foi importada em {existing.CreatedAt.ToLocalTime():dd/MM/yyyy}. " +
+                "Se a importação anterior estava errada, exclua-a na tela Faturas e importe de novo.");
+        }
 
         var invoice = new CardInvoice
         {
@@ -38,7 +62,10 @@ public class CardReconciliationService : ICardReconciliationService
             ClosingDate = request.ClosingDate,
             DueDate = request.DueDate,
             TotalAmount = request.TotalAmount,
+            PreviousBalance = request.PreviousBalance,
             OriginalFileName = request.OriginalFileName,
+            ContentHash = contentHash,
+            BalanceValidated = totalValidated,
             CreatedBy = _currentUser.UserId
         };
         _db.CardInvoices.Add(invoice);
@@ -126,6 +153,40 @@ public class CardReconciliationService : ICardReconciliationService
 
         var reconciliations = await query.OrderByDescending(r => r.CardInvoiceItem!.Date).ToListAsync(ct);
         return reconciliations.Select(ToResponse).ToList();
+    }
+
+    public ParsedCardInvoiceResponse Parse(ParseCardInvoiceRequest request) =>
+        InvoiceTextReader.Read(request.Text, request.ClosingDate);
+
+    /// <summary>
+    /// Exclui uma fatura importada por engano, com itens e sugestões. Bloqueado se algum item já
+    /// levou um lançamento a "conciliado" — ver BankReconciliationService.DeleteStatementAsync.
+    /// </summary>
+    public async Task DeleteInvoiceAsync(Guid invoiceId, CancellationToken ct = default)
+    {
+        var invoice = await _db.CardInvoices.FirstOrDefaultAsync(i => i.Id == invoiceId, ct)
+            ?? throw new NotFoundException(nameof(CardInvoice), invoiceId);
+        if (invoice.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+
+        var reconciliations = await _db.Reconciliations
+            .Include(r => r.FinancialTransaction)
+            .Where(r => r.GrupoId == _currentUser.GrupoId && r.CardInvoiceItem!.CardInvoiceId == invoiceId)
+            .ToListAsync(ct);
+
+        if (reconciliations.Any(r => r.FinancialTransaction?.Status == TransactionStatus.Reconciled))
+        {
+            throw new BusinessRuleException("fatura-com-conciliacao-aceita",
+                "Esta fatura tem conciliações aceitas. Desfaça-as na tela de conciliação antes de excluir.");
+        }
+
+        // Itens carregados explicitamente — ver o comentário em BankReconciliationService.
+        var items = await _db.CardInvoiceItems.Where(i => i.CardInvoiceId == invoiceId).ToListAsync(ct);
+
+        _db.Reconciliations.RemoveRange(reconciliations);
+        _db.CardInvoiceItems.RemoveRange(items);
+        _db.CardInvoices.Remove(invoice);
+        await _db.SaveChangesAsync(ct);
+        await _auditService.LogAsync("Delete", nameof(CardInvoice), invoiceId.ToString(), null, null, ct);
     }
 
     public async Task<CardReconciliationResponse> AcceptAsync(Guid reconciliationId, CancellationToken ct = default)

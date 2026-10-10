@@ -57,7 +57,8 @@ public class InvoiceService : IInvoiceService
             i.ClosingDate,
             i.DueDate,
             i.TotalAmount,
-            i.DueDate >= today ? CardInvoiceStatus.Aberta : CardInvoiceStatus.Vencida
+            i.DueDate >= today ? CardInvoiceStatus.Aberta : CardInvoiceStatus.Vencida,
+            i.BalanceValidated
         )).ToList();
 
         return PagedResult<CardInvoiceListItemResponse>.Create(items, filter.Page, filter.PageSize, totalItems);

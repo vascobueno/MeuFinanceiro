@@ -5,7 +5,11 @@ import { MfIconComponent } from '../../shared/icons/mf-icon.component';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Table, SortIcon, SortableColumn } from 'primeng/table';
-import { SortEvent } from 'primeng/api';
+import { ConfirmationService, SortEvent } from 'primeng/api';
+import { ConfirmDialog } from 'primeng/confirmdialog';
+import { Tooltip } from 'primeng/tooltip';
+import { AuthService } from '../../core/services/auth.service';
+import { businessRuleOf } from '../../core/services/problem.util';
 import { StatementService } from '../../core/services/statement.service';
 import { AccountService } from '../../core/services/account.service';
 import { BankStatement, BankStatementFilter } from '../../core/models/statement.model';
@@ -36,7 +40,10 @@ import { nextSort } from '../../core/services/sort.util';
     ListStateComponent,
     PaginationComponent,
     DateRangeComponent,
+    ConfirmDialog,
+    Tooltip,
   ],
+  providers: [ConfirmationService],
   templateUrl: './statement-list.component.html',
   styleUrl: './statement-list.component.scss',
 })
@@ -68,6 +75,8 @@ export class StatementListComponent implements OnInit {
 
   constructor(
     private readonly statementService: StatementService,
+    private readonly confirmationService: ConfirmationService,
+    readonly authService: AuthService,
     private readonly accountService: AccountService,
   ) {}
 
@@ -119,5 +128,23 @@ export class StatementListComponent implements OnInit {
     this.filter.sortBy = proxima.sortBy;
     this.filter.sortDir = proxima.sortDir;
     this.load();
+  }
+
+  /**
+   * Exclui o extrato importado por engano. O servidor recusa se algum item já levou um
+   * lançamento a "conciliado" — a mensagem dele diz o que fazer.
+   */
+  confirmRemove(id: string): void {
+    this.confirmationService.confirm({
+      header: 'Excluir extrato',
+      message: 'Excluir o extrato importado, com seus itens e as sugestões de conciliação? Esse ação não pode ser desfeita.',
+      acceptLabel: 'Excluir',
+      rejectLabel: 'Cancelar',
+      accept: () =>
+        this.statementService.delete(id).subscribe({
+          next: () => this.load(),
+          error: (err) => this.error.set(businessRuleOf(err)?.message ?? 'Não foi possível excluir o extrato.'),
+        }),
+    });
   }
 }

@@ -244,8 +244,15 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid>("AccountId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("BalanceValidated")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("ClosingBalance")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -285,6 +292,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.HasIndex("AccountId");
 
                     b.HasIndex("GrupoId");
+
+                    b.HasIndex("GrupoId", "ContentHash")
+                        .IsUnique()
+                        .HasFilter("\"ContentHash\" IS NOT NULL");
 
                     b.ToTable("BankStatements");
                 });
@@ -394,8 +405,15 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("BalanceValidated")
+                        .HasColumnType("boolean");
+
                     b.Property<DateOnly>("ClosingDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -418,6 +436,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<string>("OriginalFileName")
                         .HasColumnType("text");
 
+                    b.Property<decimal>("PreviousBalance")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("bytea");
 
@@ -435,6 +456,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.HasIndex("CreditCardId");
 
                     b.HasIndex("GrupoId");
+
+                    b.HasIndex("GrupoId", "ContentHash")
+                        .IsUnique()
+                        .HasFilter("\"ContentHash\" IS NOT NULL");
 
                     b.ToTable("CardInvoices");
                 });

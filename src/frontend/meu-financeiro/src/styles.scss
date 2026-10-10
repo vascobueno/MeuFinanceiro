@@ -265,3 +265,47 @@ p-table.p-datatable.p-datatable-sm .p-datatable-thead > tr > th {
     max-width: none !important;
   }
 }
+
+/**
+ * Retorno da importação de extrato e fatura — usado pelas duas telas de conciliação, por isso
+ * global e não copiado em cada uma.
+ */
+.mf-import-feedback-error,
+.mf-form-warning {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.mf-import-feedback-error {
+  background: rgba(192, 57, 43, 0.08);
+  color: var(--mf-red);
+}
+
+// Extrato ou fatura que não fecha: aviso com a diferença e as duas saídas.
+.mf-form-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(184, 121, 44, 0.1);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-yellow);
+}
+
+.mf-warning-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mf-parse-errors {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+
+  code {
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
+}

@@ -14,6 +14,41 @@ export interface ImportBankStatementRequest {
   closingBalance: number;
   originalFileName?: string;
   items: BankStatementItemRequest[];
+  /** Extrato que não fecha só entra com a confirmação explícita de quem importa. */
+  confirmUnbalanced?: boolean;
+}
+
+/** Linha do texto colado que não pôde ser lida, com o motivo em português. */
+export interface ImportLineError {
+  line: number;
+  content: string;
+  message: string;
+}
+
+export interface ParseBankStatementRequest {
+  text: string;
+  referenceStart: string;
+  referenceEnd: string;
+}
+
+/** O servidor lê o texto colado; os saldos vêm quando o texto trazia as linhas "SALDO EM". */
+export interface ParsedBankStatement {
+  items: BankStatementItemRequest[];
+  errors: ImportLineError[];
+  openingBalance: number | null;
+  closingBalance: number | null;
+  movementsSum: number;
+}
+
+export interface ParseCardInvoiceRequest {
+  text: string;
+  closingDate: string;
+}
+
+export interface ParsedCardInvoice {
+  items: CardInvoiceItemRequest[];
+  errors: ImportLineError[];
+  itemsSum: number;
 }
 
 export interface BankStatement {
@@ -56,6 +91,9 @@ export interface ImportCardInvoiceRequest {
   totalAmount: number;
   originalFileName?: string;
   items: CardInvoiceItemRequest[];
+  /** Saldo da fatura anterior: a fatura fecha como saldo anterior + itens = total. */
+  previousBalance?: number;
+  confirmUnbalanced?: boolean;
 }
 
 export interface CardInvoice {

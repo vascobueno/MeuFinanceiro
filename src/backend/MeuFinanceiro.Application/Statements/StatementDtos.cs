@@ -32,5 +32,6 @@ public record BankStatementListItemResponse(
     decimal ClosingBalance,
     decimal NetChange,
     int ItemCount,
-    string? OriginalFileName
+    string? OriginalFileName,
+    bool BalanceValidated
 );

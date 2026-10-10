@@ -14,5 +14,15 @@ public class BankStatement : GrupoOwnedEntity
     public string? OriginalFileName { get; set; }
     public string? FileHash { get; set; }
 
+    /// <summary>
+    /// Impressão digital do CONTEÚDO (conta, período, saldos e itens normalizados), e não do
+    /// arquivo: na colagem não há arquivo, e o mesmo arquivo renomeado passaria. Único por grupo —
+    /// é o que impede o mesmo extrato de entrar duas vezes.
+    /// </summary>
+    public string? ContentHash { get; set; }
+
+    /// <summary>Saldo inicial + soma dos movimentos bateu com o saldo final na importação.</summary>
+    public bool BalanceValidated { get; set; }
+
     public ICollection<BankStatementItem> Items { get; set; } = new List<BankStatementItem>();
 }

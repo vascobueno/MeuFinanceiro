@@ -9,7 +9,10 @@ public record ImportCardInvoiceRequest(
     DateOnly DueDate,
     decimal TotalAmount,
     string? OriginalFileName,
-    IReadOnlyList<CardInvoiceItemRequest> Items
+    IReadOnlyList<CardInvoiceItemRequest> Items,
+    // Saldo da fatura anterior: a fatura fecha como saldo anterior + itens = total.
+    decimal PreviousBalance = 0,
+    bool ConfirmUnbalanced = false
 );
 
 public record CardInvoiceResponse(

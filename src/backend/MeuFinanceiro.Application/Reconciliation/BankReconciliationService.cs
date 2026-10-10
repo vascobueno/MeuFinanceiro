@@ -1,3 +1,4 @@
+using MeuFinanceiro.Application.Reconciliation.Import;
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
 using MeuFinanceiro.Domain.Entities;
@@ -35,6 +36,30 @@ public class BankReconciliationService : IBankReconciliationService
         var movementsSum = request.Items.Sum(i => i.Amount);
         var balanceValidated = request.OpeningBalance + movementsSum == request.ClosingBalance;
 
+        // Antes o extrato que não fecha entrava calado, e o aviso só existia na resposta.
+        if (!balanceValidated && !request.ConfirmUnbalanced)
+        {
+            var computed = request.OpeningBalance + movementsSum;
+            throw new BusinessRuleException("extrato-nao-fecha",
+                $"A soma dos movimentos não bate com o saldo final: saldo inicial {ImportValueParser.FormatBrl(request.OpeningBalance)} " +
+                $"+ movimentos {ImportValueParser.FormatBrl(movementsSum)} = {ImportValueParser.FormatBrl(computed)}, mas o saldo final " +
+                $"informado é {ImportValueParser.FormatBrl(request.ClosingBalance)} (diferença de " +
+                $"{ImportValueParser.FormatBrl(request.ClosingBalance - computed)}). Confira os valores ou importe mesmo assim.");
+        }
+
+        // O mesmo extrato importado duas vezes virava dois, com itens de conciliação em dobro.
+        var contentHash = ImportContentHash.ForStatement(request);
+        var existing = await _db.BankStatements.AsNoTracking()
+            .Where(s => s.GrupoId == _currentUser.GrupoId && s.ContentHash == contentHash)
+            .Select(s => new { s.CreatedAt })
+            .FirstOrDefaultAsync(ct);
+        if (existing is not null)
+        {
+            throw new BusinessRuleException("extrato-duplicado",
+                $"Este extrato já foi importado em {existing.CreatedAt.ToLocalTime():dd/MM/yyyy}. " +
+                "Se a importação anterior estava errada, exclua-a na tela Extratos e importe de novo.");
+        }
+
         var statement = new BankStatement
         {
             GrupoId = _currentUser.GrupoId,
@@ -44,6 +69,8 @@ public class BankReconciliationService : IBankReconciliationService
             OpeningBalance = request.OpeningBalance,
             ClosingBalance = request.ClosingBalance,
             OriginalFileName = request.OriginalFileName,
+            ContentHash = contentHash,
+            BalanceValidated = balanceValidated,
             CreatedBy = _currentUser.UserId
         };
         _db.BankStatements.Add(statement);
@@ -134,6 +161,44 @@ public class BankReconciliationService : IBankReconciliationService
         var reconciliations = await query.OrderByDescending(r => r.BankStatementItem!.Date).ToListAsync(ct);
 
         return reconciliations.Select(ToResponse).ToList();
+    }
+
+    public ParsedBankStatementResponse Parse(ParseBankStatementRequest request) =>
+        StatementTextReader.Read(request.Text, request.ReferenceStart, request.ReferenceEnd);
+
+    /// <summary>
+    /// Exclui um extrato importado por engano, com os itens e as sugestões de conciliação.
+    /// Bloqueado se algum item já levou um lançamento a "conciliado": desfazer aquilo em silêncio
+    /// apagaria uma conferência que o usuário fez.
+    /// </summary>
+    public async Task DeleteStatementAsync(Guid statementId, CancellationToken ct = default)
+    {
+        var statement = await _db.BankStatements.FirstOrDefaultAsync(s => s.Id == statementId, ct)
+            ?? throw new NotFoundException(nameof(BankStatement), statementId);
+        if (statement.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+
+        var reconciliations = await _db.Reconciliations
+            .Include(r => r.FinancialTransaction)
+            .Where(r => r.GrupoId == _currentUser.GrupoId && r.BankStatementItem!.BankStatementId == statementId)
+            .ToListAsync(ct);
+
+        if (reconciliations.Any(r => r.FinancialTransaction?.Status == TransactionStatus.Reconciled))
+        {
+            throw new BusinessRuleException("extrato-com-conciliacao-aceita",
+                "Este extrato tem conciliações aceitas. Desfaça-as na tela de conciliação antes de excluir.");
+        }
+
+        // Os itens são carregados e removidos explicitamente, em vez de confiar no cascade do
+        // banco: sem eles rastreados, o EF não sabe que as conciliações dependem dos itens e
+        // pode apagar o extrato primeiro — e aí o cascade dos itens esbarra na chave estrangeira
+        // das conciliações (erro 23503 no PostgreSQL; o banco em memória dos testes não acusa).
+        var items = await _db.BankStatementItems.Where(i => i.BankStatementId == statementId).ToListAsync(ct);
+
+        _db.Reconciliations.RemoveRange(reconciliations);
+        _db.BankStatementItems.RemoveRange(items);
+        _db.BankStatements.Remove(statement);
+        await _db.SaveChangesAsync(ct);
+        await _auditService.LogAsync("Delete", nameof(BankStatement), statementId.ToString(), null, null, ct);
     }
 
     public async Task<BankReconciliationResponse> AcceptAsync(Guid reconciliationId, CancellationToken ct = default)

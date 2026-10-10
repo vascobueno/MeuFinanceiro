@@ -35,9 +35,6 @@
   text-align: right;
 }
 
-.mf-col-center {
-  text-align: center;
-}
 
 // Tons do movimento do período, pela paleta — acompanham os skins de cor.
 .mf-positive {
@@ -63,4 +60,25 @@
   .mf-filters-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.mf-col-center {
+  text-align: center;
+}
+
+// Confere / não confere — cores da paleta.
+.mf-ok {
+  color: var(--mf-green);
+}
+
+.mf-bad {
+  color: var(--mf-red);
+}
+
+.mf-row-delete-icon {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--mf-red);
+  padding: 0.15rem 0.3rem;
 }

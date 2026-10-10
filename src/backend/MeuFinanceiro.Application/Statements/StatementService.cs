@@ -66,7 +66,8 @@ public class StatementService : IStatementService
                 s.ClosingBalance,
                 s.ClosingBalance - s.OpeningBalance,
                 s.Items.Count,
-                s.OriginalFileName))
+                s.OriginalFileName,
+                s.BalanceValidated))
             .ToListAsync(ct);
 
         return PagedResult<BankStatementListItemResponse>.Create(items, filter.Page, filter.PageSize, totalItems);
