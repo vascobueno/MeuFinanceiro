@@ -46,6 +46,9 @@ public static class ForeignPurchase
     /// </summary>
     public static void CopyFromInvoiceItem(FinancialTransaction t, CardInvoiceItem item)
     {
+        // O cartão da seção da fatura também vale para o lançamento que não o tinha.
+        if (t.IssuedCardId is null && item.IssuedCardId is not null) t.IssuedCardId = item.IssuedCardId;
+
         if (t.ForeignAmount is not null || item.ForeignAmount is null) return;
         t.ForeignAmount = Math.Abs(item.ForeignAmount.Value);
         t.ForeignCurrency = item.ForeignCurrency;

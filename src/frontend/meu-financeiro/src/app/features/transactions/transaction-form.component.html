@@ -58,7 +58,7 @@
         @if (!fixedOrigin()) {
           <div>
             <label class="mf-field-label">Origem</label>
-            <p-select size="small" class="mf-field-input" [options]="originKindOptions" optionLabel="label" optionValue="value" [(ngModel)]="originKind" />
+            <p-select size="small" class="mf-field-input" [options]="originKindOptions" optionLabel="label" optionValue="value" [(ngModel)]="originKind" (onChange)="refreshIssuedCards()" />
           </div>
         }
         <!-- E o campo da conta/cartão some quando a aba já disse QUAL. Se o id da URL não existir,
@@ -67,9 +67,9 @@
           <div>
             <label class="mf-field-label">{{ originLabel }}</label>
             @if (originKind === 'account') {
-              <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" />
+              <p-select size="small" class="mf-field-input" [options]="accountSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="accountId" (onChange)="refreshIssuedCards()" />
             } @else {
-              <p-select size="small" class="mf-field-input" [options]="cardSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="creditCardId" />
+              <p-select size="small" class="mf-field-input" [options]="cardSelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="creditCardId" (onChange)="refreshIssuedCards()" />
             }
           </div>
         }
@@ -77,6 +77,15 @@
           <label class="mf-field-label">Categoria</label>
           <p-select size="small" class="mf-field-input" [options]="categorySelectOptions()" optionLabel="name" optionValue="id" [(ngModel)]="categoryId" />
         </div>
+        <!-- Só aparece quando há cartões cadastrados para a origem: no cartão, os do grupo de
+             fatura; na conta, os com débito nela. -->
+        @if (issuedCardOptions().length > 0) {
+          <div>
+            <label class="mf-field-label">Cartão usado</label>
+            <p-select size="small" class="mf-field-input" [options]="issuedCardOptions()" optionLabel="label" optionValue="value"
+                      [showClear]="true" placeholder="Não informado" [(ngModel)]="issuedCardId" />
+          </div>
+        }
       </div>
     }
 

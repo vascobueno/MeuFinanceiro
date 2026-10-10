@@ -270,6 +270,7 @@ public class BankReconciliationService : IBankReconciliationService
 
         reconciliation.Status = ReconciliationStatus.Matched;
         reconciliation.AcceptedAt = DateTime.UtcNow;
+        await SuggestDebitCardAsync(reconciliation, ct);
 
         var transaction = await _db.FinancialTransactions.FirstAsync(t => t.Id == reconciliation.FinancialTransactionId, ct);
         transaction.Status = TransactionStatus.Reconciled;
@@ -311,6 +312,7 @@ public class BankReconciliationService : IBankReconciliationService
         reconciliation.FinancialTransactionId = transaction.Id;
         reconciliation.Status = ReconciliationStatus.ManuallyMatched;
         reconciliation.AcceptedAt = DateTime.UtcNow;
+        await SuggestDebitCardAsync(reconciliation, ct);
         reconciliation.Reason = "Vinculado manualmente pelo usuário.";
         reconciliation.UpdatedAt = DateTime.UtcNow;
         reconciliation.UpdatedBy = _currentUser.UserId;
@@ -354,6 +356,30 @@ public class BankReconciliationService : IBankReconciliationService
     }
 
     // ----------------- helpers -----------------
+
+    /// <summary>
+    /// Compra no débito conciliada: se o lançamento não diz qual cartão foi, e a descrição do
+    /// extrato traz a bandeira ("COMPRA CARTAO DEB MC"), liga ao cartão de débito da conta — só se
+    /// houver exatamente um ativo daquela bandeira (CardBrands.PickDebitCard). Com dois, não chuta.
+    /// </summary>
+    private async Task SuggestDebitCardAsync(Domain.Entities.Reconciliation reconciliation, CancellationToken ct)
+    {
+        if (reconciliation.FinancialTransactionId is null || reconciliation.BankStatementItemId is null) return;
+        var item = await _db.BankStatementItems.Include(i => i.BankStatement)
+            .FirstOrDefaultAsync(i => i.Id == reconciliation.BankStatementItemId, ct);
+        if (item is null || item.ItemType != StatementItemClassifier.DebitCardPurchase) return;
+        if (Cards.CardBrands.FromStatementText(item.Description) is not { } brand) return;
+
+        var transaction = await _db.FinancialTransactions.FirstOrDefaultAsync(t => t.Id == reconciliation.FinancialTransactionId, ct);
+        if (transaction is null || transaction.IssuedCardId is not null) return;
+
+        var accountId = item.BankStatement!.AccountId;
+        var cards = await _db.IssuedCards.AsNoTracking().Include(c => c.CreditCard)
+            .Where(c => c.GrupoId == _currentUser.GrupoId && c.AccountId == accountId && c.Status == IssuedCardStatus.Ativo)
+            .ToListAsync(ct);
+        var picked = Cards.CardBrands.PickDebitCard(cards, c => c.CreditCard?.Brand ?? c.Brand, brand);
+        if (picked is not null) transaction.IssuedCardId = picked.Id;
+    }
 
     private (FinancialTransaction transaction, ReconciliationScorer.ScoreResult score)? FindBestCandidate(
         BankStatementItem item, List<FinancialTransaction> candidates)

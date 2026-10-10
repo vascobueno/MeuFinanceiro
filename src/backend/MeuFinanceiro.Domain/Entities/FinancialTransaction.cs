@@ -29,6 +29,13 @@ public class FinancialTransaction : GrupoOwnedEntity
     public Guid? CreditCardId { get; set; }
     public CreditCard? CreditCard { get; set; }
 
+    /// <summary>
+    /// O cartão usado (titular, adicional, virtual; no débito, o cartão da conta). Opcional. Tem de
+    /// ser do grupo de fatura do lançamento, ou ter débito na conta dele.
+    /// </summary>
+    public Guid? IssuedCardId { get; set; }
+    public IssuedCard? IssuedCard { get; set; }
+
     public TransactionType Type { get; set; }
     public TransactionDirection Direction { get; set; }
     public decimal Amount { get; set; }

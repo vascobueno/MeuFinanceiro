@@ -414,6 +414,7 @@ public class CardReconciliationService : ICardReconciliationService
             Amount = Math.Abs(item.Amount),
             Status = TransactionStatus.Reconciled,
             Notes = "Lançado a partir da fatura importada.",
+            IssuedCardId = item.IssuedCardId,
             CreatedBy = _currentUser.UserId,
         };
         Transactions.ForeignPurchase.CopyFromInvoiceItem(transaction, item);

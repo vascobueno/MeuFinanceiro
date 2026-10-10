@@ -41,6 +41,7 @@ public class TransactionService : ITransactionService
             .Include(t => t.Category)
             .Include(t => t.Account)
             .Include(t => t.CreditCard)
+            .Include(t => t.IssuedCard)
             .Include(t => t.Installment!).ThenInclude(i => i.InstallmentPlan)
             .Where(t => t.GrupoId == _currentUser.GrupoId);
 
@@ -88,6 +89,9 @@ public class TransactionService : ITransactionService
     public async Task<IReadOnlyList<TransactionResponse>> CreateAsync(CreateTransactionRequest request, CancellationToken ct = default)
     {
         TransactionOriginRules.Validate(request.AccountId, request.CreditCardId, request.Type);
+        _issuedCardForCreate = request.Type == TransactionType.Transfer
+            ? null
+            : await EnsureIssuedCardFitsAsync(request.IssuedCardId, request.AccountId, request.CreditCardId, ct);
 
         if (request.Type == TransactionType.Transfer)
             return await CreateTransferAsync(request, ct);
@@ -123,6 +127,9 @@ public class TransactionService : ITransactionService
         transaction.Status = request.Status;
         transaction.Notes = request.Notes;
         ForeignPurchase.Apply(transaction, request.Foreign);
+        var issuedCard = await EnsureIssuedCardFitsAsync(request.IssuedCardId, request.AccountId, request.CreditCardId, ct);
+        transaction.IssuedCardId = issuedCard?.Id;
+        transaction.IssuedCard = issuedCard;
         transaction.UpdatedAt = DateTime.UtcNow;
         transaction.UpdatedBy = _currentUser.UserId;
 
@@ -298,8 +305,36 @@ public class TransactionService : ITransactionService
         Amount = request.Amount,
         Status = TransactionStatus.Pending,
         Notes = request.Notes,
+        // Parcelas herdam do pedido; a transferência não chega aqui com cartão (validado acima).
+        IssuedCardId = request.Type == TransactionType.Transfer ? null : _issuedCardForCreate?.Id,
+        IssuedCard = request.Type == TransactionType.Transfer ? null : _issuedCardForCreate,
         CreatedBy = _currentUser.UserId
     }.WithForeign(request.Installment is null && request.Recurring is null ? request.Foreign : null);
+
+    /// <summary>
+    /// O cartão usado tem de ser do grupo de usuários e combinar com a origem: no lançamento do
+    /// cartão de crédito, um cartão daquele grupo de fatura; no da conta, um cartão com débito nela.
+    /// </summary>
+    /// <remarks>Devolve o cartão rastreado, para a resposta trazer o final sem outra consulta.</remarks>
+    private async Task<IssuedCard?> EnsureIssuedCardFitsAsync(Guid? issuedCardId, Guid? accountId, Guid? creditCardId, CancellationToken ct)
+    {
+        if (issuedCardId is not { } id) return null;
+        var card = await _db.IssuedCards.FirstOrDefaultAsync(c => c.Id == id, ct)
+            ?? throw new NotFoundException(nameof(IssuedCard), id);
+        if (card.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+
+        if (creditCardId is not null && card.CreditCardId != creditCardId)
+            throw new BusinessRuleException("cartao-de-outra-fatura", "Este cartão não é do cartão de crédito do lançamento.");
+        if (accountId is not null && card.AccountId != accountId)
+            throw new BusinessRuleException("cartao-sem-debito-na-conta", "Este cartão não tem débito na conta do lançamento.");
+        return card;
+    }
+
+    /// <summary>
+    /// O cartão validado em CreateAsync, para BuildTransaction pôr em cada lançamento criado —
+    /// inclusive em cada parcela. O serviço é por requisição, então o campo vive só nela.
+    /// </summary>
+    private IssuedCard? _issuedCardForCreate;
 
     private async Task<FinancialTransaction> FindOwnedAsync(Guid id, CancellationToken ct)
     {
@@ -307,6 +342,7 @@ public class TransactionService : ITransactionService
             .Include(t => t.Category)
             .Include(t => t.Account)
             .Include(t => t.CreditCard)
+            .Include(t => t.IssuedCard)
             .Include(t => t.Installment!).ThenInclude(i => i.InstallmentPlan)
             .FirstOrDefaultAsync(t => t.Id == id, ct) ?? throw new NotFoundException(nameof(FinancialTransaction), id);
 
@@ -394,6 +430,9 @@ public class TransactionService : ITransactionService
         t.RecurringTransactionId,
         t.Notes,
         attachmentCount,
-        ForeignPurchase.ToResponse(t)
+        ForeignPurchase.ToResponse(t),
+        t.IssuedCardId,
+        t.IssuedCard?.LastFour,
+        t.IssuedCard?.Kind
     );
 }

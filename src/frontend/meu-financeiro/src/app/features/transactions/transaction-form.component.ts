@@ -33,6 +33,8 @@ import { MoneyInputComponent } from '../../shared/components/money-input.compone
 import { AttachmentsComponent } from '../../shared/components/attachments.component';
 import { ForeignPurchase, brlFromForeign } from '../../core/services/foreign.util';
 import { businessRuleOf } from '../../core/services/problem.util';
+import { IssuedCardService } from '../../core/services/issued-card.service';
+import { IssuedCardKind, IssuedCardStatus } from '../../core/models/issued-card.model';
 
 type EntryMode = 'simple' | 'installment' | 'recurring';
 type OriginKind = 'account' | 'card';
@@ -42,6 +44,12 @@ type OriginKind = 'account' | 'card';
  * docs/screens/recorrencia/mockup.html e docs/screens/parcelamento/mockup.html. Em modo edição (rota /lancamentos/:id) permite apenas
  * ajustes de um lançamento já existente (regra 12: lançamentos conciliados são bloqueados pela API).
  */
+const KIND_LABEL: Record<number, string> = {
+  [IssuedCardKind.Titular]: 'Titular',
+  [IssuedCardKind.Adicional]: 'Adicional',
+  [IssuedCardKind.Online]: 'Virtual',
+};
+
 @Component({
   selector: 'mf-transaction-form',
   standalone: true,
@@ -204,6 +212,9 @@ export class TransactionFormComponent implements OnInit {
   categoryId: string | null = null;
   accountId: string | null = null;
   creditCardId: string | null = null;
+  /** O cartão usado: do grupo de fatura (crédito) ou com débito na conta. Opcional. */
+  issuedCardId: string | null = null;
+  readonly issuedCardOptions = signal<{ label: string; value: string }[]>([]);
   destinationAccountId: string | null = null;
   amount: number | null = null;
   notes = '';
@@ -241,6 +252,7 @@ export class TransactionFormComponent implements OnInit {
   }
 
   constructor(
+    private readonly issuedCardService: IssuedCardService,
     private readonly transactionService: TransactionService,
     private readonly accountService: AccountService,
     private readonly cardService: CardService,
@@ -289,6 +301,7 @@ export class TransactionFormComponent implements OnInit {
     const chosen = validId(accounts, this.route.snapshot.queryParamMap.get('conta'));
     this.fixedAccountId.set(chosen);
     this.accountId = chosen;
+    this.refreshIssuedCards();
   }
 
   private applyFixedCard(cards: CreditCard[]): void {
@@ -297,6 +310,7 @@ export class TransactionFormComponent implements OnInit {
     const chosen = validId(cards, this.route.snapshot.queryParamMap.get('cartao'));
     this.fixedCardId.set(chosen);
     this.creditCardId = chosen;
+    this.refreshIssuedCards();
   }
 
   private loadForEdit(id: string): void {
@@ -321,6 +335,8 @@ export class TransactionFormComponent implements OnInit {
     this.accountId = transaction.accountId ?? null;
     this.creditCardId = transaction.creditCardId ?? null;
     this.originKind = transaction.creditCardId ? 'card' : 'account';
+    this.issuedCardId = transaction.issuedCardId ?? null;
+    this.refreshIssuedCards();
     this.amount = transaction.amount;
     this.notes = transaction.notes ?? '';
     const f = transaction.foreign;
@@ -374,6 +390,37 @@ export class TransactionFormComponent implements OnInit {
     if (suggestion.defaultCategoryId) this.categoryId = suggestion.defaultCategoryId;
   }
 
+  /**
+   * Cartões que podem ter sido usados: os do grupo de fatura (no cartão) ou os com débito na conta.
+   * Cancelados ficam de fora; substituídos aparecem, porque a compra pode ser de antes da troca.
+   */
+  refreshIssuedCards(): void {
+    const source$ =
+      this.originKind === 'card' && this.creditCardId
+        ? this.issuedCardService.getByGroup(this.creditCardId)
+        : this.originKind === 'account' && this.accountId
+          ? this.issuedCardService.getByAccount(this.accountId)
+          : null;
+    if (!source$) {
+      this.issuedCardOptions.set([]);
+      return;
+    }
+    source$.subscribe({
+      next: (cards) => {
+        const usable = cards.filter((c) => c.status !== IssuedCardStatus.Cancelado);
+        this.issuedCardOptions.set(
+          usable.map((c) => ({
+            label: `${KIND_LABEL[c.kind]} •••• ${c.lastFour}${c.status === IssuedCardStatus.Substituido ? ' (substituído)' : ''}`,
+            value: c.id,
+          })),
+        );
+        // Trocou de conta ou de cartão: o cartão escolhido antes não vale mais.
+        if (this.issuedCardId && !usable.some((c) => c.id === this.issuedCardId)) this.issuedCardId = null;
+      },
+      error: () => this.issuedCardOptions.set([]),
+    });
+  }
+
   private foreignPayload(): ForeignPurchase | null {
     if (!this.foreignOn || !this.foreignAmount) return null;
     return {
@@ -415,6 +462,7 @@ export class TransactionFormComponent implements OnInit {
           status: this.status,
           notes: this.notes,
           foreign: this.foreignPayload(),
+          issuedCardId: this.issuedCardId,
         })
         .subscribe({
           next: () => this.router.navigate([this.backLink], { queryParams: this.backQuery }),
@@ -441,6 +489,7 @@ export class TransactionFormComponent implements OnInit {
       notes: this.notes,
       // O valor estrangeiro é da compra, não de cada parcela: só no lançamento simples.
       foreign: this.mode === 'simple' && this.type !== TransactionType.Transfer ? this.foreignPayload() : null,
+      issuedCardId: this.type !== TransactionType.Transfer ? this.issuedCardId : null,
       installment:
         this.mode === 'installment'
           ? {

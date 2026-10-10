@@ -150,3 +150,17 @@ estrangeiro × cotação. A grade mostra "US$ 21,22 × 5,4970 · origem EUR 19,5
 Parcelamento e recorrência não levam (o valor estrangeiro é da compra, não de cada parcela). Na
 edição, mandar sem `foreign` tira os dados. Ao conciliar com o item da fatura (aceitar, vincular
 ou "Lançar"), o lançamento que não tinha câmbio fica com o da fatura — o que o banco usou.
+
+## Cartão usado
+Opcional: o cartão do lançamento (`IssuedCardId`) — titular, adicional ou virtual no cartão de
+crédito; o cartão com débito na conta no lançamento da conta. Tem de ser do grupo de usuários
+(403) e combinar com a origem: `cartao-de-outra-fatura` / `cartao-sem-debito-na-conta`. As
+parcelas herdam; transferência e recorrência não levam. No formulário, "Cartão usado" só aparece
+quando a origem tem cartões cadastrados (cancelados ficam de fora; substituídos aparecem, porque a
+compra pode ser de antes da troca); a grade ganha a coluna "Cartão" quando algum lançamento diz
+qual foi. Na edição, mandar sem `issuedCardId` tira a indicação.
+
+Preenchido também pela conciliação, só quando o lançamento não tinha: aceitar ou "Lançar" o item
+da fatura leva o cartão da seção; aceitar a compra no débito do extrato leva o cartão de débito da
+conta **se** a descrição trouxer a bandeira ("DEB MC" = Mastercard) e houver exatamente um cartão
+ativo dela com débito na conta (`CardBrands.PickDebitCard`). Com dois, não chuta.

@@ -57,6 +57,9 @@ import { formatForeign } from '../../core/services/foreign.util';
             <th pSortableColumn="transactionDate">Data <p-sort-icon field="transactionDate" /></th>
             <th pSortableColumn="description">Descrição <p-sort-icon field="description" /></th>
             <th>Categoria</th>
+            @if (hasIssuedCards) {
+              <th>Cartão</th>
+            }
             <th pSortableColumn="amount" class="mf-col-end">Valor <p-sort-icon field="amount" /></th>
             <th pSortableColumn="status">Status <p-sort-icon field="status" /></th>
             <th></th>
@@ -101,6 +104,9 @@ import { formatForeign } from '../../core/services/foreign.util';
               }
             </td>
             <td>{{ transaction.categoryName || '—' }}</td>
+            @if (hasIssuedCards) {
+              <td class="mf-tabular">{{ issuedCardLabel(transaction) }}</td>
+            }
             <td class="mf-col-end">{{ transaction.amount | currency: 'BRL' }}</td>
             <td><mf-status-badge [status]="transaction.status"></mf-status-badge></td>
             <td class="mf-col-end">
@@ -180,6 +186,17 @@ export class TransactionTableComponent {
   @Output() sort = new EventEmitter<{ field?: string; order?: number }>();
   /** Emitido só depois da confirmação. */
   @Output() remove = new EventEmitter<Transaction>();
+
+  /** A coluna Cartão só aparece quando algum lançamento da lista diz qual cartão foi. */
+  get hasIssuedCards(): boolean {
+    return this.transactions.some((t) => !!t.issuedCardLastFour);
+  }
+
+  issuedCardLabel(transaction: Transaction): string {
+    if (!transaction.issuedCardLastFour) return '—';
+    const kind = transaction.issuedCardKind === 3 ? 'Virtual ' : transaction.issuedCardKind === 2 ? 'Adic. ' : '';
+    return `${kind}•••• ${transaction.issuedCardLastFour}`;
+  }
 
   /** "US$ 21,22 × 5,4970" sob a descrição da compra no exterior. */
   foreignLine(transaction: Transaction): string {

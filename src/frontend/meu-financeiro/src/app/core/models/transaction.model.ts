@@ -63,6 +63,8 @@ export interface CreateTransactionRequest {
   recurring?: RecurringRequest | null;
   /** Compra no exterior; nulo na edição tira os dados. */
   foreign?: ForeignPurchase | null;
+  /** O cartão usado (opcional). As parcelas herdam. */
+  issuedCardId?: string | null;
 }
 
 export interface UpdateTransactionRequest {
@@ -78,6 +80,7 @@ export interface UpdateTransactionRequest {
   notes?: string | null;
   /** Compra no exterior; nulo na edição tira os dados. */
   foreign?: ForeignPurchase | null;
+  issuedCardId?: string | null;
 }
 
 export interface Transaction {
@@ -107,6 +110,10 @@ export interface Transaction {
   notes?: string;
   /** Compra no exterior; nulo na edição tira os dados. */
   foreign?: ForeignPurchase | null;
+  issuedCardId?: string | null;
+  issuedCardLastFour?: string | null;
+  /** 1 titular, 2 adicional, 3 virtual. */
+  issuedCardKind?: number | null;
 }
 
 /** De onde o lançamento saiu — as duas telas de Lançamentos (docs/06). */

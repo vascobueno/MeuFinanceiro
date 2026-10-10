@@ -84,6 +84,22 @@ public static class CardBrands
         return same.Count == 1 ? same[0] : null;
     }
 
+    /// <summary>
+    /// Bandeira da compra no débito pela descrição do extrato: "COMPRA CARTAO DEB MC" é Mastercard,
+    /// "VS"/"VISA" é Visa, "ELO" é Elo. Sem bandeira na descrição, nada.
+    /// </summary>
+    public static CardBrand? FromStatementText(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description)) return null;
+        var words = description.ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        if (words.Contains("MC") || words.Contains("MASTER") || words.Contains("MASTERCARD") || words.Contains("MAESTRO")) return CardBrand.Mastercard;
+        if (words.Contains("VS") || words.Contains("VISA") || words.Contains("ELECTRON")) return CardBrand.Visa;
+        if (words.Contains("ELO")) return CardBrand.Elo;
+        if (words.Contains("HIPER") || words.Contains("HIPERCARD")) return CardBrand.Hipercard;
+        if (words.Contains("AMEX")) return CardBrand.AmericanExpress;
+        return null;
+    }
+
     private sealed record Range(string Start, string End, CardBrand Brand)
     {
         public int Length => Start.Length;

@@ -785,6 +785,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid?>("InstallmentId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("IssuedCardId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("MerchantId")
                         .HasColumnType("uuid");
 
@@ -835,6 +838,8 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.HasIndex("InstallmentId")
                         .IsUnique();
+
+                    b.HasIndex("IssuedCardId");
 
                     b.HasIndex("MerchantId");
 
@@ -2054,6 +2059,11 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .HasForeignKey("MeuFinanceiro.Domain.Entities.FinancialTransaction", "InstallmentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("MeuFinanceiro.Domain.Entities.IssuedCard", "IssuedCard")
+                        .WithMany()
+                        .HasForeignKey("IssuedCardId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MeuFinanceiro.Domain.Entities.Merchant", "Merchant")
                         .WithMany()
                         .HasForeignKey("MerchantId")
@@ -2076,6 +2086,8 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Navigation("CreditCard");
 
                     b.Navigation("Installment");
+
+                    b.Navigation("IssuedCard");
 
                     b.Navigation("Merchant");
 

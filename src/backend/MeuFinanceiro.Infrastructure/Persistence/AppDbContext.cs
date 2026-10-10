@@ -163,6 +163,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         builder.Entity<FinancialTransaction>(e =>
         {
             e.Property(t => t.ForeignCurrency).HasMaxLength(3);
+            // Cartão excluído não leva o lançamento: ele só perde a indicação de qual cartão foi.
+            e.HasOne(t => t.IssuedCard).WithMany().HasForeignKey(t => t.IssuedCardId).OnDelete(DeleteBehavior.SetNull);
             e.Property(t => t.OriginalCurrency).HasMaxLength(3);
             e.Property(t => t.ExchangeRate).HasColumnType("decimal(18,6)");
         });

@@ -23,7 +23,9 @@ public record CreateTransactionRequest(
     string? Notes,
     InstallmentRequest? Installment,
     RecurringRequest? Recurring,
-    ForeignPurchaseRequest? Foreign = null
+    ForeignPurchaseRequest? Foreign = null,
+    /// <summary>O cartão usado. As parcelas herdam; recorrência e transferência não levam.</summary>
+    Guid? IssuedCardId = null
 );
 
 /// <summary>
@@ -52,7 +54,8 @@ public record UpdateTransactionRequest(
     TransactionStatus Status,
     string? Notes,
     // Nulo tira os dados de compra no exterior; o cliente manda o que quer manter.
-    ForeignPurchaseRequest? Foreign = null
+    ForeignPurchaseRequest? Foreign = null,
+    Guid? IssuedCardId = null
 );
 
 public record TransactionResponse(
@@ -82,7 +85,10 @@ public record TransactionResponse(
     /// <summary>Quantos anexos — só para a lista mostrar o clipe sem abrir cada lançamento.
     /// Numa parcela, inclui os anexos do plano.</summary>
     int AttachmentCount = 0,
-    ForeignPurchaseResponse? Foreign = null
+    ForeignPurchaseResponse? Foreign = null,
+    Guid? IssuedCardId = null,
+    string? IssuedCardLastFour = null,
+    IssuedCardKind? IssuedCardKind = null
 );
 
 /// <summary>Filtros server-side de docs/06-lancamentos.md (período, descrição, categoria, conta, cartão, tipo, status, valor).</summary>
