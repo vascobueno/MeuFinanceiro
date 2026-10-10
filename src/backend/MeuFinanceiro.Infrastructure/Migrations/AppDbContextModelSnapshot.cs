@@ -328,6 +328,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<string>("Document")
                         .HasColumnType("text");
 
+                    b.Property<DateOnly?>("EffectiveDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("ItemType")
                         .IsRequired()
                         .HasColumnType("text");

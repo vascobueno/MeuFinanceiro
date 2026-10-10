@@ -1,7 +1,10 @@
 namespace MeuFinanceiro.Application.Reconciliation;
 
 /// <summary>docs/09-conciliacao-conta-corrente.md — item normalizado do extrato bancário.</summary>
-public record BankStatementItemRequest(DateOnly Date, string Description, string? Document, string ItemType, decimal Amount);
+/// <param name="EffectiveDate">Data da compra no débito, quando o extrato a traz e ela difere da do
+/// lançamento. A conciliação compara com ela — é a data em que o usuário registra a compra.</param>
+public record BankStatementItemRequest(DateOnly Date, string Description, string? Document, string? ItemType, decimal Amount,
+    DateOnly? EffectiveDate = null);
 
 public record ImportBankStatementRequest(
     Guid AccountId,
@@ -38,7 +41,9 @@ public record BankReconciliationResponse(
     int Score,
     decimal AmountDifference,
     int DateDifferenceDays,
-    string? Reason
+    string? Reason,
+    string ItemType = "OTHER_EXPENSE",
+    DateOnly? ItemEffectiveDate = null
 );
 
 public record ManualReconciliationRequest(Guid BankStatementItemId, Guid FinancialTransactionId);

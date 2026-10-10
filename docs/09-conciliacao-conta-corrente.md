@@ -7,7 +7,22 @@ O extrato informa saldo de conta corrente de R$ 30.536,79 em 30/04 e R$ 33.293,3
 Há também saldos por período e saldo disponível; estes devem ser armazenados separadamente do saldo simples da conta.
 
 Tipos:
-DEBIT_CARD_PURCHASE, ATM_WITHDRAWAL, PIX_SENT, PIX_RECEIVED, TED_RECEIVED, BOLETO_PAYMENT, TAX_PAYMENT, DIRECT_DEBIT, INVESTMENT, INVESTMENT_INTEREST, TRANSFER, OTHER_INCOME, OTHER_EXPENSE.
+DEBIT_CARD_PURCHASE, ATM_WITHDRAWAL, PIX_SENT, PIX_RECEIVED, TED_SENT, TED_RECEIVED, BOLETO_PAYMENT, BILL_PAYMENT (fatura de cartão paga pela conta), TAX_PAYMENT, DIRECT_DEBIT, BANK_FEE, INTEREST_CHARGE, INVESTMENT, INVESTMENT_REDEMPTION, INVESTMENT_INTEREST, TRANSFER, OTHER_INCOME, OTHER_EXPENSE.
+
+**Classificação** — o tipo sai da descrição e do sinal (`StatementItemClassifier`), com regras
+em ordem e palavra inteira ("TED" não casa em "CREDITED"). O sinal separa os pares: Pix e TED
+enviados ou recebidos, aplicação ou resgate. Na colagem estruturada vale o tipo informado se for
+um dos conhecidos; vazio ou desconhecido é classificado — também na importação, para clientes que
+mandem sem tipo. A tela de conciliação mostra o tipo em português.
+
+Extratos importados antes da classificação mantêm OTHER_EXPENSE/OTHER_INCOME.
+
+**Data da compra no débito** — o extrato imprime a compra na data do débito e, na linha do
+estabelecimento, a data da compra (`08/01 COMPRA CARTAO DEB MC … 18,00-` / `02/01 LOJA`). Quando
+ela é anterior (até 10 dias), vira `EffectiveDate` e sai da descrição; a conciliação compara com
+ela, porque é a data em que a compra é registrada. A tela mostra "compra em dd/MM" sob a data.
+O prefixo do banco ("COMPRA CARTAO DEB MC") deixa a descrição só parecida, então a compra
+costuma chegar a "Possível", não a "Conciliado".
 
 Aplicação CDB/RDB é investimento, não despesa. O exemplo mostra R$ 10.000,00 aplicados em 20/05.
 

@@ -22,6 +22,9 @@ public static partial class StatementTextReader
 {
     private const int MinDocumentDigits = 5;
 
+    /// <summary>Quantos dias a compra no débito pode ter antes do lançamento no extrato.</summary>
+    private const int MaxPurchaseLagDays = 10;
+
     public static ParsedBankStatementResponse Read(string? text, DateOnly referenceStart, DateOnly referenceEnd)
     {
         var items = new List<MutableItem>();
@@ -86,7 +89,22 @@ public static partial class StatementTextReader
                 // Sem valor: continuação da descrição do movimento anterior.
                 if (items.Count > 0 && HasLetters(line))
                 {
-                    items[^1].Description = $"{items[^1].Description} {line}".Trim();
+                    var previous = items[^1];
+                    // Na compra no débito a continuação é "dd/MM ESTABELECIMENTO": a data da
+                    // compra, que pode ser dias antes do lançamento (compra no sábado, débito na
+                    // segunda). Vira EffectiveDate e sai da descrição.
+                    if (date is not null && !previous.PurchaseDateRead
+                        && StatementItemClassifier.Classify(previous.Description, previous.Amount) == StatementItemClassifier.DebitCardPurchase
+                        && date.Value <= previous.Date && previous.Date.DayNumber - date.Value.DayNumber <= MaxPurchaseLagDays)
+                    {
+                        previous.PurchaseDateRead = true;
+                        if (date.Value < previous.Date) previous.EffectiveDate = date;
+                        previous.Description = $"{previous.Description} {string.Join(' ', tokens)}".Trim();
+                    }
+                    else
+                    {
+                        previous.Description = $"{previous.Description} {line}".Trim();
+                    }
                 }
                 else if (date is not null)
                 {
@@ -125,7 +143,9 @@ public static partial class StatementTextReader
         }
 
         var result = items.Select(i => new BankStatementItemRequest(
-            i.Date, i.Description, i.Document, i.ItemType ?? DefaultType(i.Amount), i.Amount)).ToList();
+            i.Date, i.Description, i.Document,
+            StatementItemClassifier.Resolve(i.ItemType, i.Description, i.Amount), i.Amount,
+            i.EffectiveDate)).ToList();
 
         return new ParsedBankStatementResponse(result, errors, opening, closing, result.Sum(i => i.Amount));
     }
@@ -184,8 +204,6 @@ public static partial class StatementTextReader
 
     private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value.ToUpperInvariant();
 
-    private static string DefaultType(decimal amount) => amount < 0 ? "OTHER_EXPENSE" : "OTHER_INCOME";
-
     private static bool IsDocument(string token) =>
         token == "-" || (token.Length >= MinDocumentDigits && token.All(char.IsDigit));
 
@@ -200,6 +218,8 @@ public static partial class StatementTextReader
         public string? Document { get; } = document;
         public string? ItemType { get; } = itemType;
         public decimal Amount { get; } = amount;
+        public DateOnly? EffectiveDate { get; set; }
+        public bool PurchaseDateRead { get; set; }
     }
 
     [GeneratedRegex(@"\s+")]

@@ -95,8 +95,11 @@ public class ImportReadersTests
         r.Items[0].Date.Should().Be(new DateOnly(2023, 1, 2));
         r.Items[0].Amount.Should().Be(-18.00m);
         r.Items[0].Document.Should().Be("200652");
-        // A segunda linha (estabelecimento) é continuação, não outro movimento.
-        r.Items[0].Description.Should().Be("COMPRA CARTAO DEB MC 02/01 LOJA FICTICIA A");
+        // A segunda linha (estabelecimento) é continuação, não outro movimento. A data dela é a da
+        // compra: igual à do lançamento, sai da descrição e não vira EffectiveDate.
+        r.Items[0].Description.Should().Be("COMPRA CARTAO DEB MC LOJA FICTICIA A");
+        r.Items[0].ItemType.Should().Be("DEBIT_CARD_PURCHASE");
+        r.Items[0].EffectiveDate.Should().BeNull();
 
         // Sem data na linha: herda a do movimento anterior. O segundo valor é o saldo do dia.
         r.Items[1].Date.Should().Be(new DateOnly(2023, 1, 2));
@@ -106,10 +109,11 @@ public class ImportReadersTests
         r.Items[2].Document.Should().BeNull();
         r.Items[2].Amount.Should().Be(-1288.46m);
         r.Items[2].Description.Should().Be("PAGAMENTO DE BOLETO OUTROS BANCOS");
+        r.Items[2].ItemType.Should().Be("BOLETO_PAYMENT");
 
         r.Items[3].Amount.Should().Be(259.76m);
         r.Items[3].Description.Should().Be("PIX RECEBIDO PORTADOR FICTICIO");
-        r.Items[3].ItemType.Should().Be("OTHER_INCOME");
+        r.Items[3].ItemType.Should().Be("PIX_RECEIVED");
 
         r.OpeningBalance.Should().Be(1782.59m);
         r.ClosingBalance.Should().Be(725.39m);
@@ -244,5 +248,76 @@ public class ImportReadersTests
     public void Rotulo_que_nao_e_parcela_nao_vira_nada(string? label)
     {
         InstallmentLabel.TryParse(label).Should().BeNull();
+    }
+
+    // ------------------------------------------------------------------ tipo do movimento
+
+    [Theory]
+    [InlineData("COMPRA CARTAO DEB MC 200652 LOJA FICTICIA", -18.00, "DEBIT_CARD_PURCHASE")]
+    [InlineData("SAQUE BANCO 24 HORAS", -200.00, "ATM_WITHDRAWAL")]
+    [InlineData("PIX ENVIADO PORTADOR FICTICIO", -50.00, "PIX_SENT")]
+    [InlineData("PIX RECEBIDO PORTADOR FICTICIO", 50.00, "PIX_RECEIVED")]
+    [InlineData("TED ENVIADA OUTRA TITULARIDADE", -500.00, "TED_SENT")]
+    [InlineData("TED RECEBIDA EMPRESA FICTICIA", 3000.00, "TED_RECEIVED")]
+    [InlineData("PAGAMENTO DE BOLETO OUTROS BANCOS", -1288.46, "BOLETO_PAYMENT")]
+    [InlineData("PAGAMENTO CARTAO DE CREDITO", -2000.00, "BILL_PAYMENT")]
+    [InlineData("DEBITO AUTOMATICO CONCESSIONARIA FICTICIA", -120.00, "DIRECT_DEBIT")]
+    [InlineData("TARIFA MENSALIDADE PACOTE SERVICOS", -96.35, "BANK_FEE")]
+    [InlineData("JUROS LIMITE CHEQUE ESPECIAL", -12.40, "INTEREST_CHARGE")]
+    [InlineData("IOF", -1.10, "TAX_PAYMENT")]
+    [InlineData("APLICAÇÃO CDB", -10000.00, "INVESTMENT")]
+    [InlineData("RESGATE APLICACAO CDB", 10000.00, "INVESTMENT_REDEMPTION")]
+    [InlineData("REMUNERACAO APLICACAO AUTOMATICA", 3.21, "INVESTMENT_INTEREST")]
+    [InlineData("TRANSFERENCIA ENTRE CONTAS", -100.00, "TRANSFER")]
+    [InlineData("LOJA QUALQUER", -10.00, "OTHER_EXPENSE")]
+    [InlineData("ESTORNO LOJA", 10.00, "OTHER_INCOME")]
+    public void Movimento_deve_ser_classificado_pela_descricao_e_pelo_sinal(string descricao, double valor, string tipo)
+    {
+        StatementItemClassifier.Classify(descricao, (decimal)valor).Should().Be(tipo);
+    }
+
+    [Theory]
+    [InlineData("CREDITED LOJA", -10.00, "OTHER_EXPENSE")]  // "TED" só como palavra inteira
+    [InlineData("PIXEL STUDIO", -10.00, "OTHER_EXPENSE")]   // "PIX" idem
+    [InlineData("PIX ENVIADO", 10.00, "PIX_RECEIVED")]     // o sinal decide entre os pares
+    public void Classificador_respeita_palavra_inteira_e_sinal(string descricao, double valor, string tipo)
+    {
+        StatementItemClassifier.Classify(descricao, (decimal)valor).Should().Be(tipo);
+    }
+
+    [Fact]
+    public void Tipo_informado_desconhecido_e_classificado()
+    {
+        StatementItemClassifier.Resolve("pix_sent", "x", -1m).Should().Be("PIX_SENT");
+        StatementItemClassifier.Resolve("QUALQUER", "SAQUE", -1m).Should().Be("ATM_WITHDRAWAL");
+        StatementItemClassifier.Resolve(null, "SAQUE", -1m).Should().Be("ATM_WITHDRAWAL");
+    }
+
+    [Fact]
+    public void Compra_no_debito_lancada_depois_guarda_a_data_da_compra()
+    {
+        var r = StatementTextReader.Read("""
+            05/01 COMPRA CARTAO DEB MC 200652 18,00-
+            03/01 LOJA FICTICIA A
+            """, new DateOnly(2023, 1, 1), new DateOnly(2023, 1, 31));
+
+        r.Errors.Should().BeEmpty();
+        var item = r.Items.Single();
+        item.Date.Should().Be(new DateOnly(2023, 1, 5));
+        item.EffectiveDate.Should().Be(new DateOnly(2023, 1, 3));
+        item.Description.Should().Be("COMPRA CARTAO DEB MC LOJA FICTICIA A");
+    }
+
+    [Fact]
+    public void Data_na_continuacao_de_outro_tipo_continua_na_descricao()
+    {
+        // Só a compra no débito traz a data da compra na linha seguinte.
+        var r = StatementTextReader.Read("""
+            05/01 PIX ENVIADO 50,00-
+            03/01 PORTADOR FICTICIO
+            """, new DateOnly(2023, 1, 1), new DateOnly(2023, 1, 31));
+
+        r.Items.Single().EffectiveDate.Should().BeNull();
+        r.Items.Single().Description.Should().Be("PIX ENVIADO 03/01 PORTADOR FICTICIO");
     }
 }

@@ -111,6 +111,7 @@
           <tr>
             <th pSortableColumn="itemDate">Data <p-sort-icon field="itemDate" /></th>
             <th pSortableColumn="itemDescription">Descrição do extrato <p-sort-icon field="itemDescription" /></th>
+            <th pSortableColumn="itemType">Tipo <p-sort-icon field="itemType" /></th>
             <th pSortableColumn="itemAmount" class="mf-col-end">Valor <p-sort-icon field="itemAmount" /></th>
             <th pSortableColumn="score">Score <p-sort-icon field="score" /></th>
             <th pSortableColumn="status">Status <p-sort-icon field="status" /></th>
@@ -119,8 +120,15 @@
         </ng-template>
         <ng-template #body let-item>
           <tr>
-            <td>{{ item.itemDate | date: 'dd/MM/yyyy' }}</td>
+            <td>
+              {{ item.itemDate | date: 'dd/MM/yyyy' }}
+              <!-- Compra no débito lançada depois: a conciliação usa a data da compra. -->
+              @if (item.itemEffectiveDate) {
+                <div class="mf-sub">compra em {{ item.itemEffectiveDate | date: 'dd/MM' }}</div>
+              }
+            </td>
             <td>{{ item.itemDescription }}</td>
+            <td>{{ typeLabel(item.itemType) }}</td>
             <td class="mf-col-end">{{ item.itemAmount | currency: 'BRL' }}</td>
             <td>{{ item.score }}</td>
             <td><span class="mf-badge" [ngClass]="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td>

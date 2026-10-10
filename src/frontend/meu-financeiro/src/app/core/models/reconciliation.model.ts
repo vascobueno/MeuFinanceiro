@@ -4,6 +4,8 @@ export interface BankStatementItemRequest {
   document?: string;
   itemType: string;
   amount: number;
+  /** Data da compra no débito, quando anterior à do lançamento no extrato. */
+  effectiveDate?: string;
 }
 
 export interface ImportBankStatementRequest {
@@ -75,6 +77,8 @@ export interface BankReconciliationItem {
   amountDifference: number;
   dateDifferenceDays: number;
   reason?: string;
+  itemType: string;
+  itemEffectiveDate?: string;
 }
 
 export interface CardInvoiceItemRequest {

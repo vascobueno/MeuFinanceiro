@@ -16,6 +16,7 @@ import { businessRuleOf } from '../../core/services/problem.util';
 import { Account } from '../../core/models/account.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
+import { statementItemTypeLabel } from '../../core/services/statement-item-type.util';
 
 /**
  * docs/09-conciliacao-conta-corrente.md: importa extrato normalizado (parser de
@@ -229,6 +230,8 @@ export class BankReconciliationComponent implements OnInit {
   undo(item: BankReconciliationItem): void {
     this.reconciliationService.undoBankReconciliation(item.id).subscribe({ next: () => this.load() });
   }
+
+  readonly typeLabel = statementItemTypeLabel;
 
   statusLabel(status: string): string {
     switch (status) {

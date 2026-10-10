@@ -82,7 +82,7 @@ public class BankReconciliationService : IBankReconciliationService
         var candidateTransactions = new List<FinancialTransaction>();
         if (request.Items.Count > 0)
         {
-            var windowStart = request.Items.Min(i => i.Date).AddDays(-SearchWindowDays[0]);
+            var windowStart = request.Items.Min(i => i.EffectiveDate is { } e && e < i.Date ? e : i.Date).AddDays(-SearchWindowDays[0]);
             var windowEnd = request.Items.Max(i => i.Date).AddDays(SearchWindowDays[0]);
 
             candidateTransactions = await _db.FinancialTransactions
@@ -99,7 +99,9 @@ public class BankReconciliationService : IBankReconciliationService
                 Date = itemRequest.Date,
                 Description = itemRequest.Description,
                 Document = itemRequest.Document,
-                ItemType = itemRequest.ItemType,
+                // Tipo vazio ou desconhecido (cliente antigo, colagem estruturada com erro) é classificado aqui.
+                ItemType = StatementItemClassifier.Resolve(itemRequest.ItemType, itemRequest.Description, itemRequest.Amount),
+                EffectiveDate = itemRequest.EffectiveDate,
                 Amount = itemRequest.Amount
             };
             _db.BankStatementItems.Add(item);
@@ -300,16 +302,19 @@ public class BankReconciliationService : IBankReconciliationService
     {
         (FinancialTransaction transaction, ReconciliationScorer.ScoreResult score)? best = null;
 
+        // A compra no débito é registrada na data da compra, não na do lançamento no extrato.
+        var itemDate = item.EffectiveDate ?? item.Date;
+
         foreach (var transaction in candidates)
         {
-            var dateDiff = Math.Abs(transaction.TransactionDate.DayNumber - item.Date.DayNumber);
+            var dateDiff = Math.Abs(transaction.TransactionDate.DayNumber - itemDate.DayNumber);
             if (dateDiff > SearchWindowDays[0]) continue;
 
             var signedTransactionAmount = transaction.Direction == TransactionDirection.Credit ? transaction.Amount : -transaction.Amount;
 
             var score = ReconciliationScorer.Score(
                 signedTransactionAmount, item.Amount,
-                transaction.TransactionDate, item.Date,
+                transaction.TransactionDate, itemDate,
                 transaction.Description, item.Description,
                 sameDocumentOrInstallment: false);
 
@@ -339,6 +344,8 @@ public class BankReconciliationService : IBankReconciliationService
         r.Score,
         r.AmountDifference,
         r.DateDifferenceDays,
-        r.Reason
+        r.Reason,
+        r.BankStatementItem?.ItemType ?? "OTHER_EXPENSE",
+        r.BankStatementItem?.EffectiveDate
     );
 }
