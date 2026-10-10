@@ -27,6 +27,23 @@ public class CardReconciliationController : ControllerBase
         Application.Reconciliation.Import.ParseCardInvoiceRequest request, CancellationToken ct)
         => Ok(await _service.ParseAsync(request, ct));
 
+    /// <summary>
+    /// Lê a fatura em PDF (Santander, Pan), sem gravar nada. A senha vem no formulário, abre o
+    /// arquivo e é descartada: não vai para log, auditoria nem resposta. Até 10 MB.
+    /// </summary>
+    [HttpPost("card-invoices/parse-pdf")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<Application.Reconciliation.Import.ParsedCardInvoiceResponse>> ParsePdf(
+        IFormFile file, [FromForm] string? password, [FromForm] DateOnly? closingDate, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "Envie o PDF da fatura." });
+
+        using var memory = new MemoryStream();
+        await file.CopyToAsync(memory, ct);
+        return Ok(await _service.ParsePdfAsync(memory.ToArray(), password, closingDate, ct));
+    }
+
     [HttpGet("reconciliations/card")]
     public async Task<ActionResult<IReadOnlyList<CardReconciliationResponse>>> GetAll(
         [FromQuery] Guid? creditCardId, [FromQuery] string? status, CancellationToken ct)

@@ -50,6 +50,17 @@
       </div>
     </div>
 
+    <!-- Fatura em PDF: a senha (as faturas vêm protegidas) só abre o arquivo e some depois. -->
+    <div class="mf-pdf-row">
+      <input #pdfInput type="file" accept=".pdf,application/pdf" hidden (change)="onPdfSelected(pdfInput)" />
+      <input pInputText pSize="small" type="password" class="mf-pdf-password" autocomplete="off" name="pdf-password"
+             placeholder="Senha do PDF, se tiver" [(ngModel)]="pdfPassword" />
+      <button pButton type="button" size="small" [outlined]="true" [disabled]="importing()" (click)="pdfInput.click()">
+        <i class="pi pi-file-pdf"></i>&nbsp;Fatura em PDF
+      </button>
+      <span class="mf-sub">Santander e Pan — fechamento, vencimento, total e saldo anterior vêm da própria fatura.</span>
+    </div>
+
     <div class="mf-form-full">
       <label class="mf-field-label">Itens</label>
       <textarea pTextarea class="mf-field-input" rows="6" placeholder="2026-05-12;Amazon;2/6;89.90" [(ngModel)]="itemsRaw"></textarea>

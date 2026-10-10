@@ -2,6 +2,38 @@
 
 Entrada inicial: PDF da fatura.
 
+## Fatura em PDF
+"Fatura em PDF" na importação envia o arquivo e, se houver, a senha
+(`POST /api/v1/card-invoices/parse-pdf`, multipart, até 10 MB). O texto sai do PDF com PdfPig
+(`PdfPigTextExtractor`) e segue o mesmo caminho do texto colado — o mesmo leitor, o mesmo resultado.
+Nada é gravado na leitura: nem o PDF, nem o texto. Validado contra 7 faturas Santander e 6 Pan
+reais (13 de 13 fecham saldo anterior + itens = total, com cartões, fechamento e vencimento certos).
+
+**Senha** — as faturas vêm protegidas (Santander: CPF; Pan: 4 primeiros dígitos do CPF). A senha
+vai num campo do formulário, só abre o arquivo e é descartada: não é guardada, não vai para log
+(o log da API registra só método e caminho), auditoria nem resposta; a tela limpa o campo antes de
+a requisição terminar. Sem senha: `pdf-protegido`; errada: `pdf-senha-incorreta` (a mensagem não a
+repete); arquivo que não é PDF: `pdf-invalido`; PDF sem item de fatura: `pdf-sem-itens`.
+
+**Espaços** — o PDF do Pan não tem caractere de espaço (as palavras são letras afastadas). A
+extração deduz espaço e quebra de linha pela posição das letras, como o `pdftotext`.
+
+**Resumo** (`InvoiceSummaryReader`) — lido no texto inteiro, porque rótulo e valor às vezes estão
+em linhas diferentes, e vale mais que a leitura linha a linha:
+- Santander: "Saldo Anterior", "(=) Saldo Desta Fatura" / "Total desta Fatura R$", "Vencimento"
+  com a data na linha seguinte, "Esta Fatura … a 03/08/26" (fechamento) e "Fatura Aberta … a
+  02/09/26" (próximo). "Total a Pagar R$ 13.170,50" é a simulação de parcelamento — não é lido.
+  O "VALOR TOTAL" é subtotal por cartão.
+- Pan: "Valor da fatura anterior (mês)", "Total da fatura (mês)", "Fatura de <mês> … Vencimento"
+  com a data na linha seguinte, "fechamento desta fatura (05/08/2026)". O "Fechamento"/"Vencimento"
+  do bloco "Próxima fatura" é da próxima.
+
+Total, saldo anterior, fechamento e vencimento lidos preenchem os campos em branco. Duas colunas
+na mesma linha separadas por um espaço só (Pan) viram dois itens; encargo sem data logo depois de
+uma operação (IOF, tarifa, juros, multa — o saque no crédito traz "TARIFA RETIRADA" e "JUROS
+SAQUE") herda a data e fica ligado a ela; linha com ";" só é "data;descrição;valor" se começar por
+data (o código do boleto tem ";").
+
 Normalizar em `CardInvoice` + `CardInvoiceItem`.
 
 Comparar valor, data, descrição/estabelecimento, parcela e cartão.

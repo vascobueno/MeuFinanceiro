@@ -16,11 +16,14 @@ public class CardReconciliationService : ICardReconciliationService
     private readonly ICurrentUserService _currentUser;
     private readonly IAuditService _auditService;
 
-    public CardReconciliationService(IApplicationDbContext db, ICurrentUserService currentUser, IAuditService auditService)
+    private readonly IPdfTextExtractor _pdf;
+
+    public CardReconciliationService(IApplicationDbContext db, ICurrentUserService currentUser, IAuditService auditService, IPdfTextExtractor pdf)
     {
         _db = db;
         _currentUser = currentUser;
         _auditService = auditService;
+        _pdf = pdf;
     }
 
     public async Task<CardInvoiceResponse> ImportAsync(ImportCardInvoiceRequest request, CancellationToken ct = default)
@@ -223,9 +226,29 @@ public class CardReconciliationService : ICardReconciliationService
     /// finais conhecidos são do mesmo grupo. Finais que não estão cadastrados voltam sem cartão —
     /// a tela oferece "adicionar ao grupo".
     /// </summary>
-    public async Task<ParsedCardInvoiceResponse> ParseAsync(ParseCardInvoiceRequest request, CancellationToken ct = default)
+    public async Task<ParsedCardInvoiceResponse> ParseAsync(ParseCardInvoiceRequest request, CancellationToken ct = default) =>
+        await DetectGroupAsync(InvoiceTextReader.Read(request.Text, request.ClosingDate), ct);
+
+    /// <summary>
+    /// A fatura em PDF: o texto sai do PDF (com a senha, que só abre o arquivo — não é guardada nem
+    /// registrada) e segue o mesmo caminho do texto colado. Nada é gravado: nem o PDF, nem o texto.
+    /// Sem o fechamento informado, ele vem do próprio resumo da fatura — lido uma vez com a data de
+    /// hoje como referência do ano e de novo com o fechamento encontrado.
+    /// </summary>
+    public async Task<ParsedCardInvoiceResponse> ParsePdfAsync(byte[] pdf, string? password, DateOnly? closingDate, CancellationToken ct = default)
     {
-        var parsed = InvoiceTextReader.Read(request.Text, request.ClosingDate);
+        var text = _pdf.ExtractText(pdf, password);
+        var reference = closingDate ?? InvoiceTextReader.Read(text, DateOnly.FromDateTime(DateTime.Today)).ClosingDateFromText
+                        ?? DateOnly.FromDateTime(DateTime.Today);
+        var parsed = InvoiceTextReader.Read(text, reference);
+        if (parsed.Items.Count == 0)
+            throw new BusinessRuleException("pdf-sem-itens",
+                "Não foi encontrado nenhum item de fatura neste PDF. Ele é a fatura do cartão (Santander ou Pan)?");
+        return await DetectGroupAsync(parsed, ct);
+    }
+
+    private async Task<ParsedCardInvoiceResponse> DetectGroupAsync(ParsedCardInvoiceResponse parsed, CancellationToken ct)
+    {
         var headers = parsed.Cards ?? [];
         if (headers.Count == 0) return parsed;
 

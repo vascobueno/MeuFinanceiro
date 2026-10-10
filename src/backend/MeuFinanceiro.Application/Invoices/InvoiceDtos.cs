@@ -31,5 +31,7 @@ public record CardInvoiceListItemResponse(
     DateOnly DueDate,
     decimal TotalAmount,
     CardInvoiceStatus Status,
-    bool BalanceValidated
+    bool BalanceValidated,
+    /// <summary>O arquivo de origem (o PDF da fatura), como em Extratos.</summary>
+    string? OriginalFileName = null
 );

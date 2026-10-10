@@ -27,6 +27,11 @@ public static partial class InvoiceTextReader
 {
     private const string DefaultForeignCurrency = "USD";
 
+    private static readonly HashSet<string> ChargeWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "IOF", "TARIFA", "JUROS", "ENCARGO", "ENCARGOS", "MULTA",
+    };
+
     // Moedas que aparecem na descrição de compras no exterior ("EUR 19,50").
     private static readonly HashSet<string> Currencies = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -46,6 +51,8 @@ public static partial class InvoiceTextReader
         /// <summary>Compras no exterior da seção ainda sem cotação: a linha COTAÇÃO vem depois delas.</summary>
         public List<int> AwaitingRate { get; } = new();
         public int? LastForeign { get; set; }
+        /// <summary>A última operação com data (compra, saque) — a que os encargos sem data seguem.</summary>
+        public int? LastDated { get; set; }
     }
 
     public static ParsedCardInvoiceResponse Read(string? text, DateOnly closingDate)
@@ -60,7 +67,10 @@ public static partial class InvoiceTextReader
             var raw = lines[i].Trim();
             if (raw.Length == 0) continue;
 
-            if (raw.Contains(';') || raw.Contains('\t'))
+            // Estruturado só se o primeiro campo for data: a fatura inteira colada (ou lida do PDF)
+            // traz ";" em lugares que não são item — o código de pagamento do boleto, por exemplo.
+            if ((raw.Contains(';') || raw.Contains('\t'))
+                && ImportValueParser.LooksLikeDate(raw.Split(raw.Contains('\t') ? '\t' : ';')[0].Trim()))
             {
                 var structured = ReadStructured(raw, closingDate, out var error);
                 if (structured is null) errors.Add(new ImportLineError(lineNumber, raw, error!));
@@ -100,11 +110,12 @@ public static partial class InvoiceTextReader
 
             foreach (var segment in TwoColumns().Split(raw))
             {
-                var item = ReadFreeForm(segment.Trim(), closingDate, state, out var error);
+                var item = ReadFreeForm(segment.Trim(), closingDate, state, out var error, out var undatedCharge);
                 if (error is not null) errors.Add(new ImportLineError(lineNumber, raw, error));
                 if (item is null) continue;
                 state.Items.Add(item);
                 state.LastDate = item.Date;
+                if (!undatedCharge) state.LastDated = state.Items.Count - 1;
                 if (item.ForeignAmount is not null)
                 {
                     state.LastForeign = state.Items.Count - 1;
@@ -114,12 +125,18 @@ public static partial class InvoiceTextReader
         }
         CloseSection(state);
 
-        // Um VALOR TOTAL só (ou todos iguais) é o total da fatura; vários diferentes seriam
-        // subtotais, e somar seria chute.
-        decimal? totalFromText = state.Totals.Distinct().Count() == 1 ? state.Totals[0] : null;
+        // O resumo (InvoiceSummaryReader) vale mais que a leitura linha a linha: ele sabe qual
+        // "Vencimento" é o desta fatura e qual é o da próxima, e que o VALOR TOTAL do Santander é
+        // subtotal por cartão. Sem resumo, um VALOR TOTAL só (ou todos iguais) é o total; vários
+        // diferentes seriam subtotais, e somar seria chute.
+        var summary = InvoiceSummaryReader.Read(text, closingDate);
+        decimal? totalFromText = summary.Total ?? (state.Totals.Distinct().Count() == 1 ? state.Totals[0] : null);
 
         return new ParsedCardInvoiceResponse(state.Items, errors, state.Items.Sum(x => x.Amount), state.Cards, totalFromText,
-            ClosingDateFromText: state.Closing, DueDateFromText: state.Due, NextClosingDateFromText: state.NextClosing);
+            ClosingDateFromText: summary.Closing ?? state.Closing,
+            DueDateFromText: summary.Due ?? state.Due,
+            NextClosingDateFromText: summary.NextClosing ?? state.NextClosing,
+            PreviousBalanceFromText: summary.PreviousBalance);
     }
 
     /// <summary>Fim de uma seção de cartão: compras no exterior que ficaram sem COTAÇÃO ganham a calculada.</summary>
@@ -135,9 +152,10 @@ public static partial class InvoiceTextReader
         state.LastForeign = null;
     }
 
-    private static CardInvoiceItemRequest? ReadFreeForm(string segment, DateOnly closingDate, State state, out string? error)
+    private static CardInvoiceItemRequest? ReadFreeForm(string segment, DateOnly closingDate, State state, out string? error, out bool undatedCharge)
     {
         error = null;
+        undatedCharge = false;
         if (segment.Length == 0) return null;
 
         var line = Spaces().Replace(RealSymbol().Replace(segment, "$1"), " ");
@@ -172,13 +190,16 @@ public static partial class InvoiceTextReader
         }
         if (trailing.Count == 0) return null;   // sem valor: cabeçalho, título de seção
 
-        var isIof = tokens.Count > 0 && tokens[0].Equals("IOF", StringComparison.OrdinalIgnoreCase);
-        if (date is null && !isIof) return null; // resumo, limite — não é item
+        // Encargo sem data logo depois da operação a que se refere: o IOF da compra no exterior, e a
+        // tarifa, o IOF e os juros do saque no crédito ("TARIFA RETIRADA…", "JUROS SAQUE…").
+        var isCharge = tokens.Count > 0 && ChargeWords.Contains(tokens[0]);
+        if (date is null && !isCharge) return null; // resumo, limite — não é item
+        undatedCharge = date is null;
 
         var effectiveDate = date ?? state.LastDate;
         if (effectiveDate is null)
         {
-            error = "IOF sem uma compra anterior de onde herdar a data.";
+            error = "Encargo sem uma compra anterior de onde herdar a data.";
             return null;
         }
 
@@ -207,8 +228,11 @@ public static partial class InvoiceTextReader
             ForeignCurrency: foreign is null ? null : DefaultForeignCurrency,
             OriginalAmount: originalAmount,
             OriginalCurrency: originalCurrency,
-            // O IOF de compra no exterior fica ligado à última compra no exterior da seção.
-            RelatedIndex: kind == CardInvoiceItemKind.Tax ? state.LastForeign : null,
+            // O IOF de compra no exterior fica ligado à última compra no exterior da seção; o encargo
+            // sem data, à operação logo antes dele (o saque, no caso da tarifa e dos juros de saque).
+            RelatedIndex: kind == CardInvoiceItemKind.Tax && state.LastForeign is not null ? state.LastForeign
+                : undatedCharge ? state.LastDated
+                : null,
             InstallmentNumber: parsedLabel?.Number,
             InstallmentTotal: parsedLabel?.Total);
     }
@@ -270,7 +294,11 @@ public static partial class InvoiceTextReader
 
     private static string? HolderName(string before)
     {
-        var name = Regex.Replace(before, @"(?i)\b(cart[aã]o|n[uú]mero|final)\b", " ");
+        // Pan: "Lançamentos do cartão adicional NOME | Cartão" — o nome é o que vem antes da barra,
+        // sem o "Lançamentos do cartão (adicional|titular)".
+        var cut = before.Contains('|') ? before[..before.IndexOf('|')] : before;
+        cut = Regex.Replace(cut, @"(?i)^\s*lan[çc]amentos\s+do\s+cart[aã]o(\s+(adicional|titular))?", " ");
+        var name = Regex.Replace(cut, @"(?i)\b(cart[aã]o|n[uú]mero|final|titular|adicional)\b", " ");
         name = Spaces().Replace(name.Trim(' ', '-', '–', ':'), " ").Trim(' ', '-', '–', ':');
         return name.Length == 0 ? null : name;
     }
@@ -419,8 +447,9 @@ public static partial class InvoiceTextReader
     [GeneratedRegex(@"(\d{2})-(\d{2})$")]
     private static partial Regex GluedInstallment();
 
-    // Um valor seguido de 2+ espaços e de uma nova data: a linha tem duas colunas.
-    [GeneratedRegex(@"(?<=\d,\d{2}-?)\s{2,}(?=(?:[1-3]\s+)?\d{2}/\d{2}\s)")]
+    // Um valor seguido de uma nova data e de texto: a linha tem duas colunas. O Pan as separa com um
+    // espaço só ("…-R$ 54,00 05/08 Anuidade…"); "05/05/26" (data com ano) não abre coluna.
+    [GeneratedRegex(@"(?<=\d,\d{2}-?)\s+(?=(?:[1-3]\s+)?\d{2}/\d{2}\s+\D)")]
     private static partial Regex TwoColumns();
 
     [GeneratedRegex(@"(?<first>\d{4})\s*[X*•.]{4}\s*[X*•.]{4}\s*(?<last>\d{4})\s*$", RegexOptions.IgnoreCase)]

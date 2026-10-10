@@ -103,3 +103,8 @@ O número completo do cartão e o CVV nunca são guardados nem trafegam para a A
 cartões do grupo tem só os primeiros dígitos (até 6) e os 4 últimos. Colar o número inteiro num
 dos campos o divide no navegador e descarta o meio antes de qualquer requisição; a API recusa
 mais do que isso (`numero-completo-nao-guardado`). Ver docs/04 (IssuedCard).
+
+## Senha do PDF da fatura
+A senha do PDF (normalmente o CPF) é digitada no envio, abre o arquivo na memória e é descartada:
+não é gravada, registrada em log ou auditoria, nem devolvida em resposta ou mensagem de erro. O PDF
+e o texto extraído também não são guardados. Ver docs/08 (Fatura em PDF).

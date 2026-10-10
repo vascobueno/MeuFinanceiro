@@ -128,3 +128,15 @@
 .mf-col-end {
   white-space: nowrap;
 }
+
+.mf-pdf-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+
+.mf-pdf-password {
+  width: 14rem;
+}

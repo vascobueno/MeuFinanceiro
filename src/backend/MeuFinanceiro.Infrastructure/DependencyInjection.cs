@@ -65,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<IAccountBalanceService, AccountBalanceService>();
         services.AddScoped<ICardService, CardService>();
         services.AddScoped<IIssuedCardService, IssuedCardService>();
+        services.AddSingleton<IPdfTextExtractor, MeuFinanceiro.Infrastructure.Pdf.PdfPigTextExtractor>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IMerchantService, MerchantService>();
         services.AddScoped<ITransactionService, TransactionService>();

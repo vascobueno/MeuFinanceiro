@@ -89,6 +89,9 @@ export class CardReconciliationComponent implements OnInit {
   readonly unknownError = signal<string | null>(null);
   readonly detectedNote = signal<string | null>(null);
   private pendingParsed: ParsedCardInvoice | null = null;
+  /** Senha do PDF: vive só até o envio. */
+  pdfPassword = '';
+  pdfFileName = '';
   /** Fechamentos que a fatura imprime e que diferem do calendário do cartão. */
   readonly closingOffers = signal<{ cardId: string; reference: string; date: string; current: string; label: string }[]>([]);
   /** Uma linha por item: data;descrição;parcela;valor */
@@ -165,34 +168,80 @@ export class CardReconciliationComponent implements OnInit {
           return;
         }
 
-        // Os finais dizem de que grupo é a fatura: se não for o escolhido, troca e avisa.
-        this.detectedNote.set(null);
-        if (parsed.detectedCreditCardId && parsed.detectedCreditCardId !== this.importCardId) {
-          this.importCardId = parsed.detectedCreditCardId;
-          this.detectedNote.set(`Fatura reconhecida como de ${parsed.detectedCreditCardName} pelos finais dos cartões.`);
-        }
-        if (this.totalAmount == null && parsed.totalFromText != null) this.totalAmount = parsed.totalFromText;
-        if (this.totalAmount == null) {
-          this.importing.set(false);
-          this.importResult.set('Informe o total da fatura — o texto não trouxe um VALOR TOTAL só.');
-          return;
-        }
-
-        const cards = parsed.cards ?? [];
-        this.parsedCards.set(cards);
-        this.pendingParsed = parsed;
-        const unknown = cards.filter((c) => !c.issuedCardId || c.creditCardId !== this.importCardId);
-        if (unknown.length > 0) {
-          // Pausa: finais que o grupo não tem. A tela oferece cadastrá-los antes de importar.
-          this.importing.set(false);
-          this.unknownCards.set(unknown.map((c) => ({ header: c, kind: c.isVirtual ? IssuedCardKind.Online : IssuedCardKind.Adicional })));
-          return;
-        }
-        this.continueImport();
+        this.handleParsed(parsed);
       },
       error: () => {
         this.importing.set(false);
         this.importResult.set('Não foi possível ler o texto colado.');
+      },
+    });
+  }
+
+  /**
+   * Depois da leitura (texto colado ou PDF): o grupo pelos finais, o total e o saldo anterior do
+   * resumo quando estiverem em branco, e a pausa para os finais que o grupo não tem.
+   */
+  private handleParsed(parsed: ParsedCardInvoice): void {
+    // Os finais dizem de que grupo é a fatura: se não for o escolhido, troca e avisa.
+    this.detectedNote.set(null);
+    if (parsed.detectedCreditCardId && parsed.detectedCreditCardId !== this.importCardId) {
+      this.importCardId = parsed.detectedCreditCardId;
+      this.detectedNote.set(`Fatura reconhecida como de ${parsed.detectedCreditCardName} pelos finais dos cartões.`);
+    }
+    if (this.totalAmount == null && parsed.totalFromText != null) this.totalAmount = parsed.totalFromText;
+    if (this.previousBalance == null && parsed.previousBalanceFromText != null) this.previousBalance = parsed.previousBalanceFromText;
+    if (this.totalAmount == null) {
+      this.importing.set(false);
+      this.importResult.set('Informe o total da fatura — o texto não trouxe um VALOR TOTAL só.');
+      return;
+    }
+
+    const cards = parsed.cards ?? [];
+    this.parsedCards.set(cards);
+    this.pendingParsed = parsed;
+    const unknown = cards.filter((c) => !c.issuedCardId || c.creditCardId !== this.importCardId);
+    if (unknown.length > 0) {
+      // Pausa: finais que o grupo não tem. A tela oferece cadastrá-los antes de importar.
+      this.importing.set(false);
+      this.unknownCards.set(unknown.map((c) => ({ header: c, kind: c.isVirtual ? IssuedCardKind.Online : IssuedCardKind.Adicional })));
+      return;
+    }
+    this.continueImport();
+  }
+
+  /** Fatura em PDF: o servidor lê; fechamento, vencimento, total e saldo anterior vêm do resumo. */
+  onPdfSelected(input: HTMLInputElement): void {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    // A senha sai do campo antes de a requisição terminar: não fica na tela nem no estado.
+    const password = this.pdfPassword || null;
+    this.pdfPassword = '';
+
+    this.importResult.set(null);
+    this.parseErrors.set([]);
+    this.unbalancedMessage.set(null);
+    this.unknownCards.set([]);
+    this.parsedCards.set([]);
+    this.importing.set(true);
+    this.reconciliationService.parseCardInvoicePdf(file, password, this.toIsoDate(this.closingDate)).subscribe({
+      next: (parsed) => {
+        if (!this.closingDate && parsed.closingDateFromText) this.closingDate = this.fromIsoDate(parsed.closingDateFromText);
+        if (!this.dueDate && parsed.dueDateFromText) this.dueDate = this.fromIsoDate(parsed.dueDateFromText);
+        if (this.previousBalance == null && parsed.previousBalanceFromText != null) this.previousBalance = parsed.previousBalanceFromText;
+        if (!this.importCardId && parsed.detectedCreditCardId) this.importCardId = parsed.detectedCreditCardId;
+        if (!this.importCardId || !this.closingDate || !this.dueDate) {
+          this.importing.set(false);
+          this.pendingParsed = parsed;
+          this.importResult.set('PDF lido. Informe o que faltou (cartão, fechamento ou vencimento) e envie de novo.');
+          return;
+        }
+        this.pdfFileName = file.name;
+        this.handleParsed(parsed);
+      },
+      error: (err) => {
+        this.importing.set(false);
+        this.importResult.set(businessRuleOf(err)?.message ?? 'Não foi possível ler o PDF.');
       },
     });
   }
@@ -213,8 +262,10 @@ export class CardReconciliationComponent implements OnInit {
       dueDate,
       totalAmount: this.totalAmount,
       previousBalance: this.previousBalance ?? 0,
+      originalFileName: this.pdfFileName || undefined,
       items: parsed.items,
     });
+    this.pdfFileName = '';
   }
 
   /**
@@ -422,6 +473,12 @@ export class CardReconciliationComponent implements OnInit {
       default:
         return 'mf-badge-neutral';
     }
+  }
+
+  /** "2026-08-03" como data local (new Date(iso) seria meia-noite UTC, dia anterior no Brasil). */
+  private fromIsoDate(value: string): Date {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, m - 1, d);
   }
 
   private toIsoDate(value: Date | null): string | null {

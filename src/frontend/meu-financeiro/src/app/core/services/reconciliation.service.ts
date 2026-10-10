@@ -76,6 +76,18 @@ export class ReconciliationService {
     });
   }
 
+  /**
+   * Fatura em PDF (Santander, Pan). A senha vai só nesta requisição, para abrir o arquivo — o
+   * servidor não a guarda nem a registra, e a tela a apaga logo depois de enviar.
+   */
+  parseCardInvoicePdf(file: File, password: string | null, closingDate: string | null): Observable<ParsedCardInvoice> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (password) form.append('password', password);
+    if (closingDate) form.append('closingDate', closingDate);
+    return this.http.post<ParsedCardInvoice>(`${this.baseUrl}/card-invoices/parse-pdf`, form);
+  }
+
   /** "Lançar": cria no cartão o lançamento de um item sem par e já o concilia. */
   createTransactionFromCardItem(reconciliationId: string, categoryId?: string | null): Observable<CardReconciliationItem> {
     return this.http.post<CardReconciliationItem>(

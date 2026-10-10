@@ -58,6 +58,7 @@
             <th pSortableColumn="vencimento">Vencimento <p-sort-icon field="vencimento" /></th>
             <th pSortableColumn="total" class="mf-col-end">Total <p-sort-icon field="total" /></th>
             <th>Status</th>
+            <th>Arquivo</th>
             <th class="mf-col-center">Confere</th>
             <th></th>
           </tr>
@@ -73,6 +74,13 @@
               <span class="mf-badge" [ngClass]="invoice.status === CardInvoiceStatus.Aberta ? 'mf-badge-neutral' : 'mf-badge-bad'">
                 {{ invoice.status === CardInvoiceStatus.Aberta ? 'Aberta' : 'Vencida' }}
               </span>
+            </td>
+            <td>
+              @if (invoice.originalFileName) {
+                {{ invoice.originalFileName }}
+              } @else {
+                <span class="mf-sub">—</span>
+              }
             </td>
             <td class="mf-col-center">
               <!-- Saldos x movimentos na importação: ✓ fechou, ✗ entrou com confirmação sem fechar. -->

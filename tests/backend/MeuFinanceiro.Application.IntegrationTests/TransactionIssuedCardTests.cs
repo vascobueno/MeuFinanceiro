@@ -73,10 +73,10 @@ public class TransactionIssuedCardTests : IClassFixture<CustomWebApplicationFact
     public async Task Lancamento_no_cartao_guarda_o_cartao_usado_e_as_parcelas_herdam()
     {
         var client = await NovoUsuarioAsync();
-        var (grupo, cartao) = await GrupoAsync(client, "9072");
+        var (grupo, cartao) = await GrupoAsync(client, "4021");
 
         var simples = (await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", NoCartao(grupo, cartao)))).EnumerateArray().Single();
-        simples.GetProperty("issuedCardLastFour").GetString().Should().Be("9072");
+        simples.GetProperty("issuedCardLastFour").GetString().Should().Be("4021");
         simples.GetProperty("issuedCardKind").GetInt32().Should().Be((int)IssuedCardKind.Titular);
 
         var parcelas = (await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", NoCartao(grupo, cartao,

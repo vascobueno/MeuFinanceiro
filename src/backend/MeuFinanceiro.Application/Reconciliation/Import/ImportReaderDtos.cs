@@ -47,7 +47,9 @@ public record ParsedCardInvoiceResponse(
     string? DetectedCreditCardName = null,
     DateOnly? ClosingDateFromText = null,
     DateOnly? DueDateFromText = null,
-    DateOnly? NextClosingDateFromText = null);
+    DateOnly? NextClosingDateFromText = null,
+    /// <summary>O saldo da fatura anterior, quando o resumo o traz ("Saldo Anterior", "Valor da fatura anterior").</summary>
+    decimal? PreviousBalanceFromText = null);
 
 /// <summary>
 /// OFX lido, pronto para a tela conferir e mandar para a importação comum.

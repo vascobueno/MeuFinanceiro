@@ -137,8 +137,11 @@ public class InvoiceSectionsTests : IClassFixture<CustomWebApplicationFactory>
     [Trait("Category", "Unit")]
     [InlineData("PORTADOR FICTICIO - 5480 XXXX XXXX 1111", "1111", "5480", "PORTADOR FICTICIO", false)]
     [InlineData("@ PORTADOR FICTICIO - 4532 XXXX XXXX 7310", "7310", "4532", "PORTADOR FICTICIO", true)]
-    [InlineData("Cartão final 9072", "9072", null, null, false)]
-    [InlineData("ADICIONAL FICTICIO **** 5144", "5144", null, "ADICIONAL FICTICIO", false)]
+    [InlineData("Cartão final 4021", "4021", null, null, false)]
+    [InlineData("PORTADORA FICTICIA **** 4022", "4022", null, "PORTADORA FICTICIA", false)]
+    // Pan: o rótulo "Lançamentos do cartão adicional" e o "| Cartão" não fazem parte do nome.
+    [InlineData("Lançamentos do cartão adicional Portadora Ficticia | Cartão final 4032", "4032", null, "Portadora Ficticia", false)]
+    [InlineData("Portador Ficticio | Cartão titular final 4031", "4031", null, "Portador Ficticio", false)]
     public void Reconhece_cabecalhos_de_cartao(string linha, string final, string? inicio, string? nome, bool virtual_)
     {
         InvoiceTextReader.TryCardHeader(linha).Should().Be(new InvoiceCardHeader(final, inicio, nome, virtual_));

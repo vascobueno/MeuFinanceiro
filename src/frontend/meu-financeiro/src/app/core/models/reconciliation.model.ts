@@ -93,6 +93,8 @@ export interface ParsedCardInvoice {
   closingDateFromText: string | null;
   dueDateFromText: string | null;
   nextClosingDateFromText: string | null;
+  /** Saldo da fatura anterior, quando o resumo o traz. */
+  previousBalanceFromText: number | null;
 }
 
 export interface BankStatement {

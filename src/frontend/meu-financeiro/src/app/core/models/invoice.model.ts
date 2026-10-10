@@ -19,6 +19,8 @@ export interface CardInvoice {
   status: CardInvoiceStatus;
   /** Saldo anterior + itens bateu com o total na importação. */
   balanceValidated: boolean;
+  /** O arquivo de origem (o PDF da fatura). */
+  originalFileName?: string | null;
 }
 
 export interface CardInvoiceFilter extends PagedRequest {
