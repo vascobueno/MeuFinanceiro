@@ -102,4 +102,26 @@ public class StatementClassificationEndpointTests : IClassFixture<CustomWebAppli
         tipos["PIX RECEBIDO PORTADOR"].Should().Be("PIX_RECEIVED");
         tipos["QUALQUER COISA"].Should().Be("BANK_FEE");
     }
+
+    [Fact]
+    public async Task Sugestao_da_importacao_so_vira_aceita_quando_o_usuario_aceita()
+    {
+        var client = await NovoUsuarioAsync();
+        var contaId = await CriarContaAsync(client);
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", new
+        {
+            transactionDate = "2023-01-10", description = "SAQUE BANCO 24 HORAS", accountId = contaId, type = 2, direction = 1, amount = 200m,
+        }));
+        await ImportarAsync(client, contaId, new object[]
+        {
+            new { date = "2023-01-10", description = "SAQUE BANCO 24 HORAS", document = (string?)null, itemType = (string?)null, amount = -200m },
+        });
+
+        var sugestao = (await ConciliacoesAsync(client, contaId)).Single();
+        sugestao.GetProperty("status").GetString().Should().Be("Matched");
+        sugestao.GetProperty("accepted").GetBoolean().Should().BeFalse();
+
+        await JsonAsync(await client.PostAsync($"/api/v1/reconciliations/bank/{sugestao.GetProperty("id").GetGuid()}/accept", null));
+        (await ConciliacoesAsync(client, contaId)).Single().GetProperty("accepted").GetBoolean().Should().BeTrue();
+    }
 }

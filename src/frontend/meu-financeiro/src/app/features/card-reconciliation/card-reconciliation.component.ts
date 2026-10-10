@@ -21,6 +21,7 @@ import { IssuedCardKind } from '../../core/models/issued-card.model';
 import { CardPaymentService } from '../../core/services/card-payment.service';
 import { Tooltip } from 'primeng/tooltip';
 import { Observable } from 'rxjs';
+import { isSuggestion, reconciliationBadge, reconciliationCounts, reconciliationLabel, reconciliationState } from '../../core/services/reconciliation-state.util';
 
 /** docs/08-conciliacao-cartoes.md — entrada inicial: PDF da fatura (normalizado aqui manualmente). */
 @Component({
@@ -54,20 +55,23 @@ export class CardReconciliationComponent implements OnInit {
 
   // KPIs calculados a partir dos itens já carregados na tela (sem endpoint de agregação novo).
   get matchedCount(): number {
-    return this.items().filter((i) => i.status === 'Matched' || i.status === 'ManuallyMatched').length;
+    return reconciliationCounts(this.items()).accepted;
   }
   get possibleCount(): number {
-    return this.items().filter((i) => i.status === 'PossibleMatch').length;
+    return reconciliationCounts(this.items()).toReview;
   }
   get unmatchedCount(): number {
-    return this.items().filter((i) => i.status === 'Unmatched').length;
+    return reconciliationCounts(this.items()).unmatched;
   }
 
+  // Pela situação mostrada na tela (reconciliation-state.util), e não pelo status gravado: a
+  // sugestão da importação é "Matched" e não pode aparecer em "Conciliado".
   readonly statusOptions = [
     { label: 'Todos', value: '' },
-    { label: 'Conciliado', value: 'Matched' },
-    { label: 'Possível match', value: 'PossibleMatch' },
-    { label: 'Sem correspondência', value: 'Unmatched' },
+    { label: 'A revisar', value: 'revisar' },
+    { label: 'Conciliado', value: 'aceito' },
+    { label: 'Sem correspondência', value: 'sem' },
+    { label: 'Ignorado', value: 'ignorado' },
   ];
 
   selectedCardId: string | null = null;
@@ -123,7 +127,7 @@ export class CardReconciliationComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    this.reconciliationService.getCardReconciliations(this.selectedCardId ?? undefined, this.selectedStatus || undefined).subscribe({
+    this.reconciliationService.getCardReconciliations(this.selectedCardId ?? undefined).subscribe({
       next: (items) => {
         this.items.set(items);
         this.loading.set(false);
@@ -368,9 +372,12 @@ export class CardReconciliationComponent implements OnInit {
     return `${d}/${m}/${y}`;
   }
 
-  /** "Lançar" vale para item sem conciliação aceita, que não seja pagamento nem de valor zero. */
+  /**
+   * "Lançar" vale para item sem correspondência (inclusive a sugestão rejeitada) que não seja
+   * pagamento nem de valor zero. Numa sugestão, lançar criaria um lançamento repetido.
+   */
   canCreateFromItem(item: CardReconciliationItem): boolean {
-    return !item.accepted && item.status !== 'Ignored' && item.itemKind !== 'Payment' && item.itemAmount !== 0;
+    return reconciliationState(item) === 'sem' && item.itemKind !== 'Payment' && item.itemAmount !== 0;
   }
 
   createFromItem(item: CardReconciliationItem): void {
@@ -497,34 +504,7 @@ export class CardReconciliationComponent implements OnInit {
     this.reconciliationService.undoCardReconciliation(item.id).subscribe({ next: () => this.load() });
   }
 
-  statusLabel(status: string): string {
-    switch (status) {
-      case 'Matched':
-        return 'Conciliado';
-      case 'PossibleMatch':
-        return 'Possível match';
-      case 'ManuallyMatched':
-        return 'Conciliado manualmente';
-      case 'Unmatched':
-        return 'Sem correspondência';
-      case 'Ignored':
-        return 'Ignorado';
-      default:
-        return status;
-    }
-  }
 
-  statusClass(status: string): string {
-    switch (status) {
-      case 'Matched':
-      case 'ManuallyMatched':
-        return 'mf-badge-ok';
-      case 'PossibleMatch':
-        return 'mf-badge-warn';
-      default:
-        return 'mf-badge-neutral';
-    }
-  }
 
   /** "2026-08-03" como data local (new Date(iso) seria meia-noite UTC, dia anterior no Brasil). */
   private fromIsoDate(value: string): Date {
@@ -539,4 +519,23 @@ export class CardReconciliationComponent implements OnInit {
     const day = String(value.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
+
+  // Situação do item: "Sugerido" até o usuário aceitar (core/services/reconciliation-state.util.ts).
+  readonly stateLabel = reconciliationLabel;
+  readonly stateBadge = reconciliationBadge;
+  readonly suggestion = isSuggestion;
+  isAccepted(item: { status: string; accepted?: boolean }): boolean {
+    return reconciliationState(item) === 'aceito';
+  }
+
+
+  /** Os itens que o filtro de situação deixa ver; o resumo do topo conta todos. */
+  visibleItems(): CardReconciliationItem[] {
+    const filtro = this.selectedStatus;
+    if (!filtro) return this.items();
+    return this.items().filter((i) =>
+      filtro === 'revisar' ? isSuggestion(i) : reconciliationState(i) === filtro,
+    );
+  }
+
 }

@@ -46,7 +46,9 @@ public record BankReconciliationResponse(
     int DateDifferenceDays,
     string? Reason,
     string ItemType = "OTHER_EXPENSE",
-    DateOnly? ItemEffectiveDate = null
+    DateOnly? ItemEffectiveDate = null,
+    /// <summary>Aceito pelo usuário — Matched sozinho pode ser só a sugestão da importação.</summary>
+    bool Accepted = false
 );
 
 public record ManualReconciliationRequest(Guid BankStatementItemId, Guid FinancialTransactionId);

@@ -10,7 +10,7 @@
 @if (!loading() && !error() && items().length > 0) {
   <div class="mf-stat-grid">
     <mf-stat-card label="Conciliados" [value]="matchedCount.toString()" hint="itens" hintTone="positive"></mf-stat-card>
-    <mf-stat-card label="Possíveis" [value]="possibleCount.toString()" hint="revisão necessária"></mf-stat-card>
+    <mf-stat-card label="A revisar" [value]="possibleCount.toString()" hint="sugestões para aceitar"></mf-stat-card>
     <mf-stat-card label="Sem correspondência" [value]="unmatchedCount.toString()" hint="requerem ação" hintTone="negative"></mf-stat-card>
     <mf-stat-card label="Conciliação" [value]="matchedPercent + '%'" hint="dos itens carregados" variant="hero"></mf-stat-card>
   </div>
@@ -108,7 +108,7 @@
     </div>
     <div>
       <label class="mf-field-label">Status</label>
-      <p-select size="small" class="mf-field-input" [options]="statusOptions" optionLabel="label" optionValue="value" [(ngModel)]="selectedStatus" (onChange)="load()" />
+      <p-select size="small" class="mf-field-input" [options]="statusOptions" optionLabel="label" optionValue="value" [(ngModel)]="selectedStatus" />
     </div>
   </div>
 </div>
@@ -124,7 +124,7 @@
     ></mf-list-state>
 
     @if (!loading() && !error() && items().length > 0) {
-      <p-table [value]="items()" styleClass="mf-reconciliation-table">
+      <p-table [value]="visibleItems()" styleClass="mf-reconciliation-table">
         <ng-template #header>
           <tr>
             <th pSortableColumn="itemDate">Data <p-sort-icon field="itemDate" /></th>
@@ -149,13 +149,15 @@
             <td>{{ typeLabel(item.itemType) }}</td>
             <td class="mf-col-end">{{ item.itemAmount | currency: 'BRL' }}</td>
             <td>{{ item.score }}</td>
-            <td><span class="mf-badge" [ngClass]="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td>
+            <td><span class="mf-badge" [ngClass]="stateBadge(item)">{{ stateLabel(item) }}</span></td>
             <td class="mf-col-end">
               @if (authService.canWrite()) {
-                @if (item.status === 'Matched' || item.status === 'PossibleMatch') {
+                <!-- Sugestão: aceitar ou rejeitar. Aceito: só desfazer. -->
+                @if (suggestion(item)) {
                   <button pButton [outlined]="true" type="button" (click)="accept(item)">Aceitar</button>
+                  <button pButton [outlined]="true" severity="secondary" type="button" (click)="undo(item)">Rejeitar</button>
                 }
-                @if (item.status === 'Matched' || item.status === 'ManuallyMatched') {
+                @if (isAccepted(item)) {
                   <button pButton [outlined]="true" type="button" (click)="undo(item)">Desfazer</button>
                 }
               }

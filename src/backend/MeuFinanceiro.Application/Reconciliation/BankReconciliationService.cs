@@ -430,6 +430,7 @@ public class BankReconciliationService : IBankReconciliationService
         r.DateDifferenceDays,
         r.Reason,
         r.BankStatementItem?.ItemType ?? "OTHER_EXPENSE",
-        r.BankStatementItem?.EffectiveDate
+        r.BankStatementItem?.EffectiveDate,
+        r.AcceptedAt is not null
     );
 }

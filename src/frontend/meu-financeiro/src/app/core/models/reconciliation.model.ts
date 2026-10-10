@@ -125,6 +125,8 @@ export interface BankReconciliationItem {
   reason?: string;
   itemType: string;
   itemEffectiveDate?: string;
+  /** Aceito pelo usuário — Matched sozinho pode ser só a sugestão da importação. */
+  accepted?: boolean;
 }
 
 export interface CardInvoiceItemRequest {

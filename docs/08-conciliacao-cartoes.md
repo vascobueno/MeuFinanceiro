@@ -135,6 +135,13 @@ Um lançamento ou pagamento serve a um item só na mesma importação. A coluna 
 da tela mostra com o que o item foi ligado ("Parcela 4/6 de …", "Pagamento de …") ou por que não
 foi.
 
+**Na tela** (fatura e extrato, `reconciliation-state.util`) — a sugestão da importação aparece
+como **Sugerido** (semelhança alta) ou **Possível**, com "Aceitar" e "Rejeitar"; só depois de
+aceita (ou vinculada à mão) vira **Conciliado**, com "Desfazer". Rejeitar desfaz a sugestão e o
+item fica sem correspondência — e só então "Lançar" aparece, para não criar um lançamento repetido
+de algo que já tem par sugerido. O resumo conta como conciliados só os aceitos ("A revisar" são as
+sugestões), e o filtro de situação segue a mesma regra, no navegador.
+
 **Aceite** — `Reconciliation.AcceptedAt` registra quando o usuário aceitou ou vinculou à mão;
 status Matched sozinho também é o que a importação grava como sugestão. Fatura com item aceito não
 pode ser excluída. Pagamento com conciliação aceita não pode ser excluído
