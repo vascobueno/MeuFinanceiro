@@ -1,4 +1,13 @@
-import { ApplicationConfig, inject, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
+import {
+  ApplicationConfig,
+  DEFAULT_CURRENCY_CODE,
+  LOCALE_ID,
+  inject,
+  provideAppInitializer,
+  provideZonelessChangeDetection,
+} from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localePt from '@angular/common/locales/pt';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -13,6 +22,10 @@ import { environment } from '../environments/environment';
 import { MfPreset } from './styles/primeng-preset';
 import { primeNgTranslationPtBr } from './shared/i18n/primeng-translation-pt-br';
 
+// Sem isto os pipes currency/number/date formatavam em en-US em todo o app ("R$1,234.56"); só o
+// Dashboard escapava, por usar toLocaleString('pt-BR') direto.
+registerLocaleData(localePt, 'pt-BR');
+
 /**
  * Zoneless (docs/14-angular.md): sem zone.js, o Angular só verifica um componente quando
  * algo o marca como "sujo" — leitura de signal usada no template mudando, evento de
@@ -24,6 +37,8 @@ import { primeNgTranslationPtBr } from './shared/i18n/primeng-translation-pt-br'
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
+    { provide: LOCALE_ID, useValue: 'pt-BR' },
+    { provide: DEFAULT_CURRENCY_CODE, useValue: 'BRL' },
     provideRouter(routes),
     provideHttpClient(
       withInterceptors([authInterceptor, errorInterceptor]),

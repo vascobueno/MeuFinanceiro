@@ -84,3 +84,9 @@ com um `sortField` vazio e cai no `defaultSortOrder`, emitindo `order = 1` a cad
 isso que a lista nunca invertia.
 
 Não colocar segredo no frontend.
+
+## Locale
+`app.config.ts` registra `pt-BR` (`registerLocaleData` + `LOCALE_ID`) e `BRL` como moeda padrão:
+os pipes `currency`, `number` e `date` formatam como no Brasil (`R$ 1.234,56`). Antes não havia
+locale e todo o app saía em en-US (`R$1,234.56`). O `MoneyInputComponent` formata por conta
+própria (vírgula fixa) e não depende disso.
