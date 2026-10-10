@@ -97,3 +97,9 @@
   baixar documento de outro grupo. Anexo de outro grupo devolve **404**, não 403: um 403
   confirmaria que aquele id existe. Coberto por teste de regressão
   (`AttachmentEndpointTests.Anexo_de_outro_grupo_nao_deve_ser_baixado`).
+
+## Número de cartão
+O número completo do cartão e o CVV nunca são guardados nem trafegam para a API: o cadastro de
+cartões do grupo tem só os primeiros dígitos (até 6) e os 4 últimos. Colar o número inteiro num
+dos campos o divide no navegador e descarta o meio antes de qualquer requisição; a API recusa
+mais do que isso (`numero-completo-nao-guardado`). Ver docs/04 (IssuedCard).

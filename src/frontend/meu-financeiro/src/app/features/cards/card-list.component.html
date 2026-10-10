@@ -21,11 +21,21 @@
     <div class="mf-inline-form-grid">
       <div>
         <label class="mf-field-label">Nome</label>
-        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newCard.name" />
+        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newCard.name" (blur)="suggestBrandFromName()" />
       </div>
       <div>
+        <!-- A bandeira é do grupo: a fatura é uma só. Sugerida pelo nome ("Santander Elo"). -->
         <label class="mf-field-label">Bandeira</label>
-        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newCard.brand" />
+        <p-select
+          size="small"
+          class="mf-field-input"
+          [options]="brandOptions"
+          optionLabel="label"
+          optionValue="value"
+          [showClear]="true"
+          placeholder="Não informada"
+          [(ngModel)]="newCard.brand"
+        />
       </div>
       <div>
         <label class="mf-field-label">Dia fechamento</label>
@@ -84,7 +94,7 @@
         <ng-template #body let-card>
           <tr>
             <td>{{ card.name }}</td>
-            <td>{{ card.brand || '—' }}</td>
+            <td>{{ brandLabel(card.brand) || '—' }}</td>
             <td>Dia {{ card.closingDay }}</td>
             <td>Dia {{ card.dueDay }}</td>
             <td class="mf-col-end">{{ card.limit != null ? (card.limit | currency: 'BRL') : '—' }}</td>
@@ -94,6 +104,17 @@
               </span>
             </td>
             <td class="mf-col-end">
+              <button
+                type="button"
+                class="mf-row-edit-icon"
+                [class.mf-row-icon-active]="selectedGroup()?.id === card.id"
+                pTooltip="Cartões do grupo (titular, adicionais, virtuais)"
+                tooltipPosition="top"
+                [attr.aria-label]="'Cartões de ' + card.name"
+                (click)="toggleGroup(card)"
+              >
+                <i class="pi pi-credit-card"></i>
+              </button>
               @if (authService.canWrite()) {
                 <button
                   type="button"
@@ -133,3 +154,7 @@
     }
   </div>
 </div>
+
+@if (selectedGroup(); as group) {
+  <mf-issued-cards-panel [group]="group"></mf-issued-cards-panel>
+}

@@ -51,7 +51,7 @@ public class CardService : ICardService
         {
             GrupoId = _currentUser.GrupoId,
             Name = request.Name,
-            Brand = request.Brand,
+            Brand = CardBrands.ParseForCreditGroup(request.Brand),
             ClosingDay = request.ClosingDay,
             DueDay = request.DueDay,
             Limit = request.Limit,
@@ -67,7 +67,7 @@ public class CardService : ICardService
     {
         var card = await FindOwnedAsync(id, ct);
         card.Name = request.Name;
-        card.Brand = request.Brand;
+        card.Brand = CardBrands.ParseForCreditGroup(request.Brand);
         card.ClosingDay = request.ClosingDay;
         card.DueDay = request.DueDay;
         card.Limit = request.Limit;
@@ -104,5 +104,5 @@ public class CardService : ICardService
         return card;
     }
 
-    private static CardResponse ToResponse(CreditCard c) => new(c.Id, c.Name, c.Brand, c.ClosingDay, c.DueDay, c.Limit, c.IsActive);
+    private static CardResponse ToResponse(CreditCard c) => new(c.Id, c.Name, c.Brand?.ToString(), c.ClosingDay, c.DueDay, c.Limit, c.IsActive);
 }

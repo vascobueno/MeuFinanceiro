@@ -15,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<Account> Accounts { get; }
     DbSet<AccountMonthlyBalance> AccountMonthlyBalances { get; }
     DbSet<CreditCard> CreditCards { get; }
+    DbSet<IssuedCard> IssuedCards { get; }
     DbSet<Category> Categories { get; }
     DbSet<Subcategory> Subcategories { get; }
     DbSet<Merchant> Merchants { get; }

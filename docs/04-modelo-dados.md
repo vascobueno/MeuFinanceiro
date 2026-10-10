@@ -8,6 +8,7 @@ Grupo
 GrupoMember
 Account
 CreditCard
+IssuedCard
 Merchant
 MerchantAlias
 Category
@@ -62,6 +63,37 @@ A lista de bancos do formulário (`core/data/bancos.ts`) vem da relação oficia
 (Participantes do STR, 460 instituições com código, baixada em 10/10/2026); os 31 mais comuns têm
 nome curto e aparecem primeiro. É só conveniência da tela: o backend aceita qualquer código de 3
 dígitos, e banco que surgir depois entra por "Outro".
+
+## CreditCard / IssuedCard
+`CreditCard` é o **grupo de cartões** que caem na mesma fatura: nome, fechamento, vencimento,
+limite e a **bandeira** (`CardBrand`, gravada pelo nome: Visa, Mastercard, Elo, AmericanExpress,
+Hipercard, DinersClub, Jcb, Discover, UnionPay, Cabal, Outra). A bandeira é do grupo porque a
+fatura é uma só. Maestro, VisaElectron e EloDebito existem no enum só para o cartão de débito;
+o grupo de crédito os recusa (`bandeira-de-debito`). A API aceita os apelidos antigos ("Master",
+"Amex"); a migração converteu o texto livre que havia (desconhecido → Outra).
+
+`IssuedCard` é cada cartão do grupo:
+
+- `Kind` — Titular, Adicional ou Online (virtual). **Não há regra de um titular só**: o mesmo grupo
+  pode ter dois cartões de titular ativos.
+- `FirstDigits` (4 a 6, opcional) e `LastFour` (obrigatório). **O número completo nunca é
+  guardado**, nem o CVV — não há campo para ele no contrato; mais de 6 primeiros ou 4 últimos é
+  recusado (`numero-completo-nao-guardado`), e a tela divide o número colado e descarta o meio
+  antes de enviar.
+- `ExpiryMonth`/`ExpiryYear` (os dois ou nenhum), `HolderName`.
+- `Status` — Ativo, Substituído (com `ReplacedById` apontando o novo) ou Cancelado. "Vencido" é
+  calculado pela validade (`IsExpired`), não é status.
+- Final único **entre os ativos do grupo de usuários** (`final-duplicado`, índice único filtrado
+  `GrupoId + LastFour` onde `Status = 1`): é o final que a fatura imprime em cada compra.
+  Substituídos e cancelados não contam, porque a renovação costuma manter o número.
+
+Substituir grava em dois passos (o antigo sai de Ativo antes de o novo entrar), para o índice
+único não ver dois ativos com o mesmo final; tudo o que pode ser recusado é validado antes.
+
+**Bandeira pelos primeiros dígitos** (`CardBrands.SuggestFromDigits`) — só quando não há dúvida:
+"4011" pode ser Visa ou Elo (401178), então não sugere; "401178" é Elo. Dígitos de outra bandeira
+que a do grupo viram aviso (`BrandMismatch`), não bloqueio. Na tela, o nome do grupo também sugere
+("Santander Elo" → Elo) quando a bandeira está em branco.
 
 ## FinancialTransaction
 Id, **GrupoId** (dono real do dado, compartilhado entre os membros do grupo — não é

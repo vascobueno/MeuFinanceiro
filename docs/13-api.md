@@ -104,6 +104,17 @@ PUT `/api/v1/categories/{id}`
 DELETE `/api/v1/categories/{id}`
 POST `/api/v1/categories/{id}/subcategories`
 
+## Issued cards (cartões de um grupo)
+GET `/api/v1/cards/{cardId}/issued-cards`
+POST `/api/v1/cards/{cardId}/issued-cards` (`kind`, `lastFour`, `firstDigits?`, `expiryMonth?`, `expiryYear?`, `holderName?`; 400 `final-duplicado` / `numero-completo-nao-guardado` / `validade-invalida`…)
+PUT `/api/v1/issued-cards/{id}`
+POST `/api/v1/issued-cards/{id}/replace` (mesmo corpo; devolve o novo; o antigo fica Substituído)
+POST `/api/v1/issued-cards/{id}/cancel`
+DELETE `/api/v1/issued-cards/{id}`
+
+`brand` de `/api/v1/cards` é o nome da bandeira (`Mastercard`, `AmericanExpress`…); na entrada
+valem também "Master" e "Amex". 400 `bandeira-invalida` / `bandeira-de-debito`.
+
 ## Card invoices (Faturas)
 GET `/api/v1/card-invoices` (paginação, filtros, ordenação; `balanceValidated` por fatura)
 DELETE `/api/v1/card-invoices/{id}` (204; 400 `fatura-com-conciliacao-aceita`)

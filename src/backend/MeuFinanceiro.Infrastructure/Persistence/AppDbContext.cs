@@ -30,6 +30,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<AccountMonthlyBalance> AccountMonthlyBalances => Set<AccountMonthlyBalance>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
+    public DbSet<IssuedCard> IssuedCards => Set<IssuedCard>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Subcategory> Subcategories => Set<Subcategory>();
     public DbSet<Merchant> Merchants => Set<Merchant>();
@@ -159,6 +160,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(i => i.GrupoId);
             e.HasIndex(i => new { i.GrupoId, i.ContentHash }).IsUnique().HasFilter("\"ContentHash\" IS NOT NULL");
         });
+        builder.Entity<CreditCard>(e =>
+        {
+            // Pelo nome ("Mastercard"), não pelo número: acrescentar bandeira no meio do enum não
+            // muda o que já está gravado.
+            e.Property(c => c.Brand).HasConversion<string>().HasMaxLength(20);
+        });
+
+        builder.Entity<IssuedCard>(e =>
+        {
+            e.Property(c => c.LastFour).HasMaxLength(4).IsRequired();
+            e.Property(c => c.FirstDigits).HasMaxLength(6);
+            e.Property(c => c.HolderName).HasMaxLength(60);
+            e.HasOne(c => c.CreditCard).WithMany(g => g.IssuedCards).HasForeignKey(c => c.CreditCardId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(c => c.ReplacedBy).WithMany().HasForeignKey(c => c.ReplacedById).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(c => c.GrupoId);
+            // Dois cartões ATIVOS do grupo não podem ter o mesmo final — é o que identifica a compra
+            // na fatura. Substituídos e cancelados ficam fora: a renovação mantém o número.
+            e.HasIndex(c => new { c.GrupoId, c.LastFour }).IsUnique().HasFilter("\"Status\" = 1");
+        });
+
         builder.Entity<Account>(e =>
         {
             e.Property(a => a.BankCode).HasMaxLength(3);

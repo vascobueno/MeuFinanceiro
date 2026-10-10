@@ -18,12 +18,18 @@ import { ListStateComponent } from '../../shared/components/list-state.component
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { nextSort } from '../../core/services/sort.util';
+import { businessRuleOf } from '../../core/services/problem.util';
+import { Select } from 'primeng/select';
+import { BANDEIRAS_CREDITO, bandeiraLabel, sugerirBandeiraPeloNome } from '../../core/data/bandeiras';
+import { IssuedCardsPanelComponent } from './issued-cards-panel.component';
 
 /** Tela de cartões (RF003), espelhando docs/screens/cartoes/mockup.html. */
 @Component({
   selector: 'mf-card-list',
   standalone: true,
   imports: [
+    Select,
+    IssuedCardsPanelComponent,
     CommonModule,
     FormsModule,
     MfIconComponent,
@@ -60,7 +66,11 @@ export class CardListComponent implements OnInit {
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
   readonly editingId = signal<string | null>(null);
-  readonly newCard: CreateCardRequest = { name: '', brand: '', closingDay: 1, dueDay: 10, limit: undefined };
+  readonly newCard: CreateCardRequest = { name: '', brand: undefined, closingDay: 1, dueDay: 10, limit: undefined };
+  readonly brandOptions = [...BANDEIRAS_CREDITO];
+  readonly brandLabel = bandeiraLabel;
+  /** Grupo cujos cartões (titular, adicionais, virtuais) estão abertos abaixo da lista. */
+  readonly selectedGroup = signal<CreditCard | null>(null);
   private editingIsActive = true;
 
   get availableLimit(): number {
@@ -123,7 +133,7 @@ export class CardListComponent implements OnInit {
   openForm(): void {
     this.editingId.set(null);
     this.newCard.name = '';
-    this.newCard.brand = '';
+    this.newCard.brand = undefined;
     this.newCard.closingDay = 1;
     this.newCard.dueDay = 10;
     this.newCard.limit = undefined;
@@ -135,7 +145,7 @@ export class CardListComponent implements OnInit {
     this.editingId.set(card.id);
     this.editingIsActive = card.isActive;
     this.newCard.name = card.name;
-    this.newCard.brand = card.brand ?? '';
+    this.newCard.brand = card.brand ?? undefined;
     this.newCard.closingDay = card.closingDay;
     this.newCard.dueDay = card.dueDay;
     this.newCard.limit = card.limit;
@@ -168,15 +178,28 @@ export class CardListComponent implements OnInit {
         this.showForm.set(false);
         this.editingId.set(null);
         this.newCard.name = '';
-        this.newCard.brand = '';
+        this.newCard.brand = undefined;
         this.load();
         this.loadSummary();
       },
-      error: () => {
+      error: (err) => {
         this.saving.set(false);
-        this.formError.set(editingId ? 'Não foi possível salvar as alterações.' : 'Não foi possível salvar o cartão.');
+        this.formError.set(
+          businessRuleOf(err)?.message ??
+            (editingId ? 'Não foi possível salvar as alterações.' : 'Não foi possível salvar o cartão.'),
+        );
       },
     });
+  }
+
+  /** Só preenche a bandeira se ela ainda estiver em branco — nunca troca a escolhida. */
+  suggestBrandFromName(): void {
+    if (this.newCard.brand) return;
+    this.newCard.brand = sugerirBandeiraPeloNome(this.newCard.name) ?? undefined;
+  }
+
+  toggleGroup(card: CreditCard): void {
+    this.selectedGroup.set(this.selectedGroup()?.id === card.id ? null : card);
   }
 
   confirmDelete(card: CreditCard): void {

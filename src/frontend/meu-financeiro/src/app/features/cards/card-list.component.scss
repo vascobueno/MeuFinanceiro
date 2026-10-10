@@ -93,3 +93,8 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+// O ícone do grupo aberto fica marcado, para dizer de quem são os cartões lá embaixo.
+.mf-row-icon-active {
+  color: var(--mf-red);
+}
