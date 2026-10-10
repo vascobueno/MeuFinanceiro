@@ -20,6 +20,7 @@ import { IssuedCardService } from '../../core/services/issued-card.service';
 import { IssuedCardKind } from '../../core/models/issued-card.model';
 import { CardPaymentService } from '../../core/services/card-payment.service';
 import { Tooltip } from 'primeng/tooltip';
+import { Observable } from 'rxjs';
 
 /** docs/08-conciliacao-cartoes.md — entrada inicial: PDF da fatura (normalizado aqui manualmente). */
 @Component({
@@ -148,7 +149,12 @@ export class CardReconciliationComponent implements OnInit {
       return;
     }
     if (!this.itemsRaw.trim()) {
-      this.importResult.set('Cole os itens da fatura.');
+      // Arquivo (PDF ou OFX) já lido e à espera do que faltava: segue com ele.
+      if (this.pendingParsed) {
+        this.handleParsed(this.pendingParsed);
+        return;
+      }
+      this.importResult.set('Cole os itens da fatura — ou envie o PDF ou o OFX.');
       return;
     }
 
@@ -224,26 +230,71 @@ export class CardReconciliationComponent implements OnInit {
     this.unknownCards.set([]);
     this.parsedCards.set([]);
     this.importing.set(true);
-    this.reconciliationService.parseCardInvoicePdf(file, password, this.toIsoDate(this.closingDate)).subscribe({
+    this.handleFile(this.reconciliationService.parseCardInvoicePdf(file, password, this.toIsoDate(this.closingDate)), file.name, 'PDF');
+  }
+
+  /** Fatura num OFX de cartão: o fechamento vem do período do arquivo; o resto segue como o PDF. */
+  onOfxSelected(input: HTMLInputElement): void {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.importResult.set(null);
+    this.parseErrors.set([]);
+    this.unbalancedMessage.set(null);
+    this.unknownCards.set([]);
+    this.parsedCards.set([]);
+    this.importing.set(true);
+    this.handleFile(this.reconciliationService.parseCardInvoiceOfx(file), file.name, 'OFX');
+  }
+
+  /** Depois de ler o arquivo (PDF ou OFX): preenche o que veio dele e segue o fluxo comum. */
+  private handleFile(parsed$: Observable<ParsedCardInvoice>, fileName: string, kind: string): void {
+    parsed$.subscribe({
       next: (parsed) => {
+        if (parsed.errors.length > 0) {
+          this.importing.set(false);
+          this.parseErrors.set(parsed.errors);
+          return;
+        }
         if (!this.closingDate && parsed.closingDateFromText) this.closingDate = this.fromIsoDate(parsed.closingDateFromText);
         if (!this.dueDate && parsed.dueDateFromText) this.dueDate = this.fromIsoDate(parsed.dueDateFromText);
         if (this.previousBalance == null && parsed.previousBalanceFromText != null) this.previousBalance = parsed.previousBalanceFromText;
-        if (!this.importCardId && parsed.detectedCreditCardId) this.importCardId = parsed.detectedCreditCardId;
-        if (!this.importCardId || !this.closingDate || !this.dueDate) {
-          this.importing.set(false);
-          this.pendingParsed = parsed;
-          this.importResult.set('PDF lido. Informe o que faltou (cartão, fechamento ou vencimento) e envie de novo.');
+        // O grupo dos finais vale antes de tudo: é ele que dá o calendário do vencimento abaixo.
+        if (parsed.detectedCreditCardId && parsed.detectedCreditCardId !== this.importCardId) {
+          this.importCardId = parsed.detectedCreditCardId;
+          this.detectedNote.set(`Fatura reconhecida como de ${parsed.detectedCreditCardName} pelos finais dos cartões.`);
+        }
+        this.pendingParsed = parsed;
+        this.pdfFileName = fileName;
+
+        // O OFX não traz vencimento: vem do calendário do cartão para aquele fechamento.
+        const closing = this.toIsoDate(this.closingDate);
+        if (!this.dueDate && this.importCardId && closing) {
+          this.cardPaymentService.getCycle(this.importCardId, closing.slice(0, 8) + '01').subscribe({
+            next: (cycle) => {
+              this.dueDate = this.fromIsoDate(cycle.dueDate);
+              this.proceedWithFile(parsed, kind);
+            },
+            error: () => this.proceedWithFile(parsed, kind),
+          });
           return;
         }
-        this.pdfFileName = file.name;
-        this.handleParsed(parsed);
+        this.proceedWithFile(parsed, kind);
       },
       error: (err) => {
         this.importing.set(false);
-        this.importResult.set(businessRuleOf(err)?.message ?? 'Não foi possível ler o PDF.');
+        this.importResult.set(businessRuleOf(err)?.message ?? `Não foi possível ler o ${kind}.`);
       },
     });
+  }
+
+  private proceedWithFile(parsed: ParsedCardInvoice, kind: string): void {
+    if (!this.importCardId || !this.closingDate || !this.dueDate) {
+      this.importing.set(false);
+      this.importResult.set(`${kind} lido. Informe o que faltou (cartão, fechamento ou vencimento) e clique em Importar.`);
+      return;
+    }
+    this.handleParsed(parsed);
   }
 
   /**

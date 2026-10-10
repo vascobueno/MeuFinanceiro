@@ -44,6 +44,19 @@ public class CardReconciliationController : ControllerBase
         return Ok(await _service.ParsePdfAsync(memory.ToArray(), password, closingDate, ct));
     }
 
+    /// <summary>Lê a fatura num OFX de cartão de crédito, sem gravar nada. Até 2 MB.</summary>
+    [HttpPost("card-invoices/parse-ofx")]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public async Task<ActionResult<Application.Reconciliation.Import.ParsedCardInvoiceResponse>> ParseOfx(IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "Envie o arquivo OFX." });
+
+        using var memory = new MemoryStream();
+        await file.CopyToAsync(memory, ct);
+        return Ok(await _service.ParseOfxAsync(memory.ToArray(), ct));
+    }
+
     [HttpGet("reconciliations/card")]
     public async Task<ActionResult<IReadOnlyList<CardReconciliationResponse>>> GetAll(
         [FromQuery] Guid? creditCardId, [FromQuery] string? status, CancellationToken ct)

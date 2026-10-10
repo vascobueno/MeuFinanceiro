@@ -2,6 +2,14 @@
 
 Entrada inicial: PDF da fatura.
 
+## Fatura em OFX
+"Arquivo OFX" na importação de fatura lê o OFX de cartão de crédito (Nubank e outros exportam
+assim; `POST /api/v1/card-invoices/parse-ofx`): cada movimento vira item com o **sinal invertido**
+(no OFX do cartão a compra é negativa), `DTEND` é o fechamento, o saldo devedor (`LEDGERBAL`,
+negativo) é o total, e o fim do número no `ACCTID` ("************4040") reconhece o grupo. O OFX
+não traz vencimento: ele vem do calendário do cartão para aquele fechamento. OFX de conta corrente
+mandado aqui é recusado com explicação.
+
 ## Fatura em PDF
 "Fatura em PDF" na importação envia o arquivo e, se houver, a senha
 (`POST /api/v1/card-invoices/parse-pdf`, multipart, até 10 MB). O texto sai do PDF com PdfPig

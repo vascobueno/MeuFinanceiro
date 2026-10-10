@@ -58,7 +58,11 @@
       <button pButton type="button" size="small" [outlined]="true" [disabled]="importing()" (click)="pdfInput.click()">
         <i class="pi pi-file-pdf"></i>&nbsp;Fatura em PDF
       </button>
-      <span class="mf-sub">Santander e Pan — fechamento, vencimento, total e saldo anterior vêm da própria fatura.</span>
+      <input #ofxInput type="file" accept=".ofx,.OFX,application/x-ofx" hidden (change)="onOfxSelected(ofxInput)" />
+      <button pButton type="button" size="small" [outlined]="true" [disabled]="importing()" (click)="ofxInput.click()">
+        <i class="pi pi-upload"></i>&nbsp;Arquivo OFX
+      </button>
+      <span class="mf-sub">PDF do Santander e do Pan, ou OFX de cartão — o que a fatura traz preenche os campos.</span>
     </div>
 
     <div class="mf-form-full">

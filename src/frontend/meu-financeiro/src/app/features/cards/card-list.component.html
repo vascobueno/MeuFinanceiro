@@ -108,6 +108,17 @@
 ></mf-list-state>
 
 @if (!loading() && !error() && cards().length > 0) {
+  <!-- Os títulos das colunas de antes, agora sobre os blocos: clicar ordena; de novo, inverte. -->
+  <div class="mf-group-sortbar" role="toolbar" aria-label="Ordenar cartões">
+    <span class="mf-sub">Ordenar por</span>
+    @for (s of sortFields; track s.field) {
+      <button type="button" class="mf-sort-button" [class.mf-sort-active]="sortBy === s.field"
+              [attr.aria-pressed]="sortBy === s.field" (click)="sortByField(s.field)">
+        {{ s.label }} <i class="pi" [ngClass]="sortIcon(s.field)"></i>
+      </button>
+    }
+  </div>
+
   @for (card of cards(); track card.id) {
     <div class="mf-group-block" [class.mf-group-inactive]="!card.isActive">
       <div class="mf-group-head">

@@ -90,3 +90,8 @@ Não colocar segredo no frontend.
 os pipes `currency`, `number` e `date` formatam como no Brasil (`R$ 1.234,56`). Antes não havia
 locale e todo o app saía em en-US (`R$1,234.56`). O `MoneyInputComponent` formata por conta
 própria (vírgula fixa) e não depende disso.
+
+## Textos do PrimeNG
+`shared/i18n/primeng-translation-pt-br.ts` traduz o que os componentes do PrimeNG mostram por
+conta própria: lista vazia e busca sem resultado ("Nenhum resultado encontrado" — antes
+"No results found" no autocompletar), nomes de mês e de dia do calendário, botões genéricos.

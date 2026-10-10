@@ -118,6 +118,7 @@ public class OfxImportTests : IClassFixture<CustomWebApplicationFactory>
     [InlineData("0033", null, "0001123456", true)]   // agência na frente
     [InlineData("0341", "0001", "12345-6", false)]   // outro banco
     [InlineData("0033", "0002", "12345-6", false)]   // outra agência
+    [InlineData("033", "0001-6", "12345-6", false)]  // agência com dígito: "0001-6" não é a agência 0001 sem dígito 6
     [InlineData("0033", "0001", "12346-6", false)]
     public void Reconhece_a_conta_pelas_formas_que_os_bancos_usam(string? bank, string? branch, string acct, bool esperado)
     {
@@ -246,5 +247,116 @@ public class OfxImportTests : IClassFixture<CustomWebApplicationFactory>
         // Mesmos FITIDs, outra conta: são outros movimentos.
         var lido = await LerAsync(client, Sgml(acctId: "77777-6", trns: Janeiro));
         lido.GetProperty("alreadyImported").GetInt32().Should().Be(0);
+    }
+
+    // ---------------- outros tipos de OFX (estrutura dos exemplos públicos, conteúdo sintético) ----------------
+
+    /// <summary>OFX de cartão de crédito: mesmo formato de movimento, outro agregado.</summary>
+    private const string OfxCartao = """
+        OFXHEADER:100
+        DATA:OFXSGML
+        VERSION:102
+
+        <OFX><CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS><CURDEF>BRL
+        <CCACCTFROM><ACCTID>************4040
+        </CCACCTFROM>
+        <BANKTRANLIST><DTSTART>20260803<DTEND>20260902
+        <STMTTRN><TRNTYPE>DEBIT
+        <DTPOSTED>20260805
+        <TRNAMT>-100
+        <NAME>Loja Ficticia
+        </STMTTRN>
+        <STMTTRN><TRNTYPE>DEBIT
+        <DTPOSTED>20260810
+        <TRNAMT>-89.90
+        <NAME>Loja Parcelada Ficticia 3/10
+        </STMTTRN>
+        <STMTTRN><TRNTYPE>CREDIT
+        <DTPOSTED>20260812
+        <TRNAMT>25
+        <NAME>Estorno Ficticio
+        </STMTTRN>
+        </BANKTRANLIST>
+        <LEDGERBAL><BALAMT>-164.90<DTASOF>20260902
+        </LEDGERBAL></CCSTMTRS></CCSTMTTRNRS></CREDITCARDMSGSRSV1></OFX>
+        """;
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public void OFX_de_cartao_nao_entra_como_extrato_de_conta()
+    {
+        var ofx = OfxStatementReader.Read(OfxCartao);
+        ofx.Items.Should().BeEmpty();
+        ofx.Errors.Single().Message.Should().Contain("cartão de crédito");
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public void Pedido_de_extrato_e_explicado()
+    {
+        const string pedido = "<OFX><BANKMSGSRQV1><STMTTRNRQ><STMTRQ><BANKACCTFROM><BANKID>999<ACCTID>123</BANKACCTFROM></STMTRQ></STMTTRNRQ></BANKMSGSRQV1></OFX>";
+        OfxStatementReader.Read(pedido).Errors.Single().Message.Should().Contain("pedido de extrato");
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public void OFX_2_com_tags_fechadas_e_agencia_com_digito()
+    {
+        const string xml = """
+            <OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>BRL</CURDEF>
+            <BANKACCTFROM><BANKID>999</BANKID><BRANCHID>0009-8</BRANCHID><ACCTID>83140000</ACCTID></BANKACCTFROM>
+            <BANKTRANLIST><DTSTART>20220601</DTSTART><DTEND>20221231</DTEND>
+            <STMTTRN><TRNTYPE>CREDIT</TRNTYPE><DTPOSTED>20220703</DTPOSTED><TRNAMT>5.00</TRNAMT><FITID>202207030001</FITID>
+            <CHECKNUM>077</CHECKNUM><MEMO>Portador Ficticio</MEMO></STMTTRN>
+            </BANKTRANLIST><LEDGERBAL><BALAMT>0</BALAMT></LEDGERBAL></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>
+            """;
+        var ofx = OfxStatementReader.Read(xml);
+        ofx.Errors.Should().BeEmpty();
+        ofx.Items.Single().ExternalId.Should().Be("202207030001");
+
+        var conta = new Account { BankCode = "999", Agency = "0009", AgencyDigit = "8", AccountNumber = "8314000", AccountDigit = "0" };
+        OfxAccountMatcher.Matches(conta, ofx.BankId, ofx.BranchId, ofx.AccountId).Should().BeTrue();
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public void OFX_de_cartao_vira_fatura_com_o_sinal_invertido()
+    {
+        var r = OfxStatementReader.ReadCardInvoice(OfxCartao);
+
+        r.Errors.Should().BeEmpty();
+        r.Items.Select(i => i.Amount).Should().Equal(100m, 89.90m, -25m);
+        r.Items[1].InstallmentLabel.Should().Be("3/10");
+        r.Items[2].Kind.Should().Be(MeuFinanceiro.Domain.Enums.CardInvoiceItemKind.Credit);
+        r.ClosingDateFromText.Should().Be(new DateOnly(2026, 9, 2));
+        r.TotalFromText.Should().Be(164.90m);
+        r.Cards!.Single().LastFour.Should().Be("4040");
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public void OFX_de_conta_mandado_para_o_cartao_e_explicado()
+    {
+        OfxStatementReader.ReadCardInvoice(Sgml(trns: Janeiro)).Errors.Single().Message.Should().Contain("conta corrente");
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task OFX_de_cartao_pelo_endpoint_reconhece_o_grupo_pelo_final()
+    {
+        var client = await NovoUsuarioAsync();
+        var grupo = (await JsonAsync(await client.PostAsJsonAsync("/api/v1/cards",
+            new { name = "Cartao Ficticio", brand = "Visa", closingDay = 2, dueDay = 10, titular = new { kind = 1, lastFour = "4040" } })))
+            .GetProperty("id").GetGuid();
+
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes(OfxCartao));
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/x-ofx");
+        form.Add(file, "file", "cartao.ofx");
+        var lido = await JsonAsync(await client.PostAsync("/api/v1/card-invoices/parse-ofx", form));
+
+        lido.GetProperty("items").GetArrayLength().Should().Be(3);
+        lido.GetProperty("detectedCreditCardId").GetGuid().Should().Be(grupo);
+        lido.GetProperty("closingDateFromText").GetString().Should().Be("2026-09-02");
     }
 }

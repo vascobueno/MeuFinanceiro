@@ -73,6 +73,12 @@ Extratos importados antes desta regra ficam com hash nulo e não são comparados
   importado **na mesma conta** ficam de fora (`skippedDuplicates`): dá para baixar períodos que
   se sobrepõem. Se nada for novo, `extrato-sem-movimentos-novos`.
 
+Recusados com explicação: OFX de **cartão de crédito** (`CREDITCARDMSGSRSV1`/`CCSTMTRS`) — lido
+como extrato, lançaria as compras na conta; vai em Cartões › Conciliação — e o **pedido** de
+extrato (`STMTRQ`, o que o programa manda ao banco, sem movimentos). Conferido contra exemplos
+públicos de OFX 1.x (SGML) e 2.x (XML), inclusive agência com dígito ("0009-8") e valor sem
+centavos ("-100").
+
 Depois de lido, o formulário fica preenchido e editável; "Importar" usa o mesmo
 `/bank-statements/import` do extrato colado. Arquivo até 2 MB, decodificado como UTF-8 ou, se
 não for, Latin-1 (que coincide com o Windows-1252 dos bancos nas letras do português).

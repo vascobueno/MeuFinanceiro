@@ -247,6 +247,10 @@ public class CardReconciliationService : ICardReconciliationService
         return await DetectGroupAsync(parsed, ct);
     }
 
+    /// <summary>OFX de cartão de crédito (Nubank e outros): lido como fatura; nada é gravado.</summary>
+    public async Task<ParsedCardInvoiceResponse> ParseOfxAsync(byte[] content, CancellationToken ct = default) =>
+        await DetectGroupAsync(OfxStatementReader.ReadCardInvoice(OfxStatementReader.Decode(content)), ct);
+
     private async Task<ParsedCardInvoiceResponse> DetectGroupAsync(ParsedCardInvoiceResponse parsed, CancellationToken ct)
     {
         var headers = parsed.Cards ?? [];

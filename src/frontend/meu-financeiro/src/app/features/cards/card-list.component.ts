@@ -18,6 +18,7 @@ import { ListStateComponent } from '../../shared/components/list-state.component
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { onlyDigits, parseExpiry, splitCardNumber } from '../../core/services/card-number.util';
+import { nextSort, SortDir } from '../../core/services/sort.util';
 import { businessRuleOf } from '../../core/services/problem.util';
 import { Select } from 'primeng/select';
 import { BANDEIRAS_CREDITO, bandeiraLabel, sugerirBandeiraPeloNome } from '../../core/data/bandeiras';
@@ -65,6 +66,33 @@ export class CardListComponent implements OnInit {
   readonly newCard: CreateCardRequest = { name: '', brand: undefined, closingDay: 1, dueDay: 10, limit: undefined };
   readonly brandOptions = [...BANDEIRAS_CREDITO];
   readonly brandLabel = bandeiraLabel;
+  /**
+   * Ordenação dos blocos, pelos mesmos campos das colunas de antes — no servidor, como nas outras
+   * listas. A direção vem de nextSort (clicar de novo inverte).
+   */
+  sortBy = 'name';
+  sortDir: SortDir = 'asc';
+  readonly sortFields = [
+    { field: 'name', label: 'Nome' },
+    { field: 'brand', label: 'Bandeira' },
+    { field: 'closingDay', label: 'Fechamento' },
+    { field: 'dueDay', label: 'Vencimento' },
+    { field: 'limit', label: 'Limite' },
+  ];
+
+  sortByField(field: string): void {
+    const next = nextSort({ sortBy: this.sortBy, sortDir: this.sortDir }, field, 'name');
+    this.sortBy = next.sortBy;
+    this.sortDir = next.sortDir;
+    this.page.set(1);
+    this.load();
+  }
+
+  sortIcon(field: string): string {
+    if (this.sortBy !== field) return 'pi-sort-alt';
+    return this.sortDir === 'asc' ? 'pi-sort-amount-up-alt' : 'pi-sort-amount-down';
+  }
+
   /** Cartão do titular criado junto com o grupo (opcional). Nunca guarda o número inteiro. */
   titular = { firstDigits: '', lastFour: '', expiry: '', holderName: '', accountId: null as string | null };
   readonly titularNote = signal<string | null>(null);
@@ -103,7 +131,7 @@ export class CardListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    this.cardService.getAll({ page: this.page(), pageSize: 10, sortBy: 'name', sortDir: 'asc' }).subscribe({
+    this.cardService.getAll({ page: this.page(), pageSize: 10, sortBy: this.sortBy, sortDir: this.sortDir }).subscribe({
       next: (result) => {
         this.cards.set(result.items);
         this.totalPages.set(result.totalPages);

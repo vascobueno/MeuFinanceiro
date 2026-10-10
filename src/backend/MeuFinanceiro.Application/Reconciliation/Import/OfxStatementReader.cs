@@ -63,6 +63,23 @@ public static partial class OfxStatementReader
             return new OfxStatement(null, null, null, null, null, null, [], errors);
         }
 
+        // OFX de cartão de crédito (CREDITCARDMSGSRSV1 / CCSTMTRS) tem o mesmo formato de movimento:
+        // lido como extrato, lançaria as compras do cartão na conta corrente.
+        if (Regex.IsMatch(text, "<(CREDITCARDMSGSRSV1|CCSTMTRS|CCSTMTTRNRS)>", RegexOptions.IgnoreCase))
+        {
+            errors.Add(new ImportLineError(1, "CREDITCARDMSGSRSV1",
+                "Este OFX é de cartão de crédito, não de conta corrente. Importe a fatura em Cartões › Conciliação."));
+            return new OfxStatement(null, null, null, null, null, null, [], errors);
+        }
+
+        // Pedido de extrato (o que o programa manda ao banco), não o extrato: não tem movimento.
+        if (Regex.IsMatch(text, "<(STMTRQ|STMTTRNRQ)>", RegexOptions.IgnoreCase) && !Regex.IsMatch(text, "<STMTRS>", RegexOptions.IgnoreCase))
+        {
+            errors.Add(new ImportLineError(1, "STMTRQ",
+                "Este OFX é um pedido de extrato, não o extrato. Baixe o extrato em OFX no internet banking do banco."));
+            return new OfxStatement(null, null, null, null, null, null, [], errors);
+        }
+
         var accountBlock = Block(text, "BANKACCTFROM") ?? text;
         var bankId = Tag(accountBlock, "BANKID");
         var branchId = Tag(accountBlock, "BRANCHID");
@@ -134,6 +151,67 @@ public static partial class OfxStatementReader
     }
 
     /// <summary>NAME e MEMO juntos quando os dois trazem algo diferente; senão o que houver.</summary>
+    /// <summary>
+    /// OFX de cartão de crédito (CREDITCARDMSGSRSV1 / CCSTMTRS), como Nubank e outros exportam, lido
+    /// como fatura: cada movimento vira item com o sinal invertido (no OFX do cartão a compra é
+    /// negativa; na fatura, positiva), DTEND é o fechamento e o saldo (LEDGERBAL, devedor e
+    /// negativo) é o total. Se o ACCTID trouxer o fim do número do cartão ("************1234"),
+    /// ele vira o cabeçalho do cartão — é por ele que o grupo é reconhecido.
+    /// </summary>
+    public static ParsedCardInvoiceResponse ReadCardInvoice(string? content)
+    {
+        var text = content ?? string.Empty;
+        var errors = new List<ImportLineError>();
+        if (!Regex.IsMatch(text, "<(CREDITCARDMSGSRSV1|CCSTMTRS|CCSTMTTRNRS)>", RegexOptions.IgnoreCase))
+        {
+            var message = text.Contains("<OFX>", StringComparison.OrdinalIgnoreCase)
+                ? "Este OFX é de conta corrente, não de cartão. Importe-o em Contas › Conciliação."
+                : "Não parece um arquivo OFX: falta a tag <OFX>.";
+            errors.Add(new ImportLineError(1, "OFX", message));
+            return new ParsedCardInvoiceResponse([], errors, 0);
+        }
+
+        var accountId = Tag(Block(text, "CCACCTFROM") ?? Block(text, "BANKACCTFROM") ?? text, "ACCTID");
+        var lastFour = accountId is not null && Regex.Match(accountId, @"(\d{4})\s*$") is { Success: true } m4 ? m4.Groups[1].Value : null;
+        var cards = lastFour is null ? new List<InvoiceCardHeader>() : [new InvoiceCardHeader(lastFour, null, null, false)];
+
+        var tranList = Block(text, "BANKTRANLIST") ?? text;
+        var end = ParseDate(Tag(tranList, "DTEND"));
+
+        var items = new List<CardInvoiceItemRequest>();
+        var index = 0;
+        foreach (Match m in Transaction().Matches(text))
+        {
+            index++;
+            var block = m.Groups[1].Value;
+            var posted = ParseDate(Tag(block, "DTPOSTED"));
+            var amountRaw = Tag(block, "TRNAMT");
+            var description = Description(Tag(block, "NAME"), Tag(block, "MEMO"));
+            if (posted is null || !TryAmount(amountRaw, out var amount) || description.Length == 0)
+            {
+                errors.Add(new ImportLineError(index, Shorten(block), "Movimento sem data, valor ou descrição."));
+                continue;
+            }
+            var itemAmount = -amount;
+            // "Parcela 3/10" na descrição, como alguns emissores escrevem a parcela no OFX.
+            var labelMatch = Regex.Match(description, @"\b\d{1,2}/\d{1,2}\b");
+            var parsedLabel = labelMatch.Success ? InstallmentLabel.TryParse(labelMatch.Value) : null;
+            var label = parsedLabel is null ? null : labelMatch.Value;
+            items.Add(new CardInvoiceItemRequest(posted.Value, description, label, itemAmount,
+                CardLastFour: lastFour,
+                Kind: InvoiceTextReader.Classify(description, itemAmount, label),
+                InstallmentNumber: parsedLabel?.Number, InstallmentTotal: parsedLabel?.Total));
+        }
+        if (items.Count == 0 && errors.Count == 0)
+            errors.Add(new ImportLineError(1, "", "O arquivo não tem movimentos (STMTTRN)."));
+
+        decimal? total = null;
+        var ledger = Block(text, "LEDGERBAL");
+        if (ledger is not null && TryAmount(Tag(ledger, "BALAMT"), out var balance) && balance != 0) total = -balance;
+
+        return new ParsedCardInvoiceResponse(items, errors, items.Sum(i => i.Amount), cards, total, ClosingDateFromText: end);
+    }
+
     private static string Description(string? name, string? memo)
     {
         var n = name?.Trim() ?? "";

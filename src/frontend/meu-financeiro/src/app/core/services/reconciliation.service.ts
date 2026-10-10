@@ -88,6 +88,13 @@ export class ReconciliationService {
     return this.http.post<ParsedCardInvoice>(`${this.baseUrl}/card-invoices/parse-pdf`, form);
   }
 
+  /** Fatura num OFX de cartão de crédito (Nubank e outros). */
+  parseCardInvoiceOfx(file: File): Observable<ParsedCardInvoice> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<ParsedCardInvoice>(`${this.baseUrl}/card-invoices/parse-ofx`, form);
+  }
+
   /** "Lançar": cria no cartão o lançamento de um item sem par e já o concilia. */
   createTransactionFromCardItem(reconciliationId: string, categoryId?: string | null): Observable<CardReconciliationItem> {
     return this.http.post<CardReconciliationItem>(

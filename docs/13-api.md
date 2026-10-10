@@ -142,6 +142,7 @@ POST `/api/v1/reconciliations/bank/{id}/undo`
 
 ## Card reconciliation (Conciliação de cartão)
 POST `/api/v1/card-invoices/parse`
+POST `/api/v1/card-invoices/parse-ofx` (multipart `file`; OFX de cartão de crédito)
 POST `/api/v1/card-invoices/parse-pdf` (multipart `file`, `password?`, `closingDate?`; 400 `pdf-protegido` / `pdf-senha-incorreta` / `pdf-invalido` / `pdf-sem-itens`)
 POST `/api/v1/card-invoices/import` (`previousBalance`, `confirmUnbalanced`; 400 `fatura-nao-fecha` / `fatura-duplicada`)
 GET `/api/v1/reconciliations/card`
