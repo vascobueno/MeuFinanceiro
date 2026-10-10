@@ -20,9 +20,11 @@
     <h6>Importar fatura de cartão</h6>
     <p class="mf-sub">
       Cole os itens como aparecem na fatura — <code>19/05 LOJA 04/06 788,52</code> ou
-      <code>20/02 Loja Parcela 02/02 R$ 285,00</code>. Totais, cotação e cabeçalhos são ignorados; o IOF de compra no
-      exterior herda a data da compra. O pagamento da fatura anterior entra negativo, e para a fatura fechar informe o
-      saldo anterior. Também vale <code>data;descrição;parcela;valor</code>.
+      <code>20/02 Loja Parcela 02/02 R$ 285,00</code>. Cole a fatura inteira: o cabeçalho de cada cartão
+      (<code>NOME - 5480 XXXX XXXX 1111</code>) liga as compras ao cartão e reconhece o grupo; a <code>COTAÇÃO</code> vale
+      para as compras no exterior, e o <code>VALOR TOTAL</code> preenche o total se ele estiver em branco. O IOF herda a
+      data da compra no exterior e fica ligado a ela. O pagamento da fatura anterior entra negativo, e para a fatura fechar
+      informe o saldo anterior. Também vale <code>data;descrição;parcela;valor</code>.
     </p>
 
     <div class="mf-import-grid">
@@ -61,6 +63,46 @@
             <li>Linha {{ e.line }}: {{ e.message }} <code>{{ e.content }}</code></li>
           }
         </ul>
+      </div>
+    }
+
+    @if (detectedNote()) {
+      <div class="mf-sub">{{ detectedNote() }}</div>
+    }
+
+    @if (parsedCards().length > 0) {
+      <div class="mf-invoice-cards">
+        <span class="mf-sub">Cartões nesta fatura:</span>
+        @for (c of parsedCards(); track c.lastFour) {
+          <span class="mf-invoice-card" [class.mf-invoice-card-unknown]="!c.issuedCardId || c.creditCardId !== importCardId">
+            {{ c.isVirtual ? 'Virtual' : '' }} {{ c.lastFour }}{{ c.holderName ? ' · ' + c.holderName : '' }}
+          </span>
+        }
+      </div>
+    }
+
+    @if (unknownCards().length > 0) {
+      <!-- Finais que o grupo não tem: cadastrar agora liga os itens deles ao cartão na importação. -->
+      <div class="mf-form-warning" role="alert">
+        <div>
+          <b>{{ unknownCards().length === 1 ? 'Um cartão desta fatura não está cadastrado' : unknownCards().length + ' cartões desta fatura não estão cadastrados' }}
+            em {{ groupName(importCardId) }}.</b>
+          {{ unknownCards().length === 1 ? 'Cadastre-o' : 'Cadastre-os' }} para que cada compra fique ligada ao seu cartão — ou
+          importe assim mesmo: o final fica guardado no item.
+        </div>
+        @for (u of unknownCards(); track u.header.lastFour) {
+          <div class="mf-unknown-card">
+            <span>Final <b>{{ u.header.lastFour }}</b>{{ u.header.holderName ? ' · ' + u.header.holderName : '' }}</span>
+            <p-select size="small" [options]="kindOptions" optionLabel="label" optionValue="value" [(ngModel)]="u.kind" />
+            <button pButton type="button" size="small" [outlined]="true" (click)="addUnknownCard(u)">Adicionar ao grupo</button>
+          </div>
+        }
+        @if (unknownError()) {
+          <div class="mf-form-error">{{ unknownError() }}</div>
+        }
+        <div class="mf-warning-actions">
+          <button pButton type="button" size="small" [disabled]="importing()" (click)="continueImport()">Continuar importação</button>
+        </div>
       </div>
     }
 
@@ -111,6 +153,7 @@
           <tr>
             <th pSortableColumn="itemDate">Data <p-sort-icon field="itemDate" /></th>
             <th pSortableColumn="itemDescription">Descrição da fatura <p-sort-icon field="itemDescription" /></th>
+            <th pSortableColumn="itemCardLastFour">Cartão <p-sort-icon field="itemCardLastFour" /></th>
             <th pSortableColumn="itemAmount" class="mf-col-end">Valor <p-sort-icon field="itemAmount" /></th>
             <th>Correspondência</th>
             <th pSortableColumn="score">Score <p-sort-icon field="score" /></th>
@@ -121,7 +164,16 @@
         <ng-template #body let-item>
           <tr>
             <td>{{ item.itemDate | date: 'dd/MM/yyyy' }}</td>
-            <td>{{ item.itemDescription }}</td>
+            <td>
+              {{ item.itemDescription }}
+              @if (itemKindLabel(item.itemKind); as tipo) {
+                <span class="mf-item-kind">{{ tipo }}</span>
+              }
+              @if (foreignLine(item); as cambio) {
+                <div class="mf-sub">{{ cambio }}</div>
+              }
+            </td>
+            <td class="mf-tabular">{{ item.itemCardLastFour || '—' }}</td>
             <td class="mf-col-end">{{ item.itemAmount | currency: 'BRL' }}</td>
             <td class="mf-sub">{{ item.reason }}</td>
             <td>{{ item.score }}</td>

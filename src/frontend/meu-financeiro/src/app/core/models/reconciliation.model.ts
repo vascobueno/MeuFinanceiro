@@ -67,10 +67,28 @@ export interface ParseCardInvoiceRequest {
   closingDate: string;
 }
 
+/** Cartão encontrado num cabeçalho da fatura; com issuedCardId quando o final está cadastrado. */
+export interface InvoiceCardHeader {
+  lastFour: string;
+  firstDigits: string | null;
+  holderName: string | null;
+  /** "@" no cabeçalho: cartão virtual. */
+  isVirtual: boolean;
+  issuedCardId: string | null;
+  creditCardId: string | null;
+  creditCardName: string | null;
+}
+
 export interface ParsedCardInvoice {
   items: CardInvoiceItemRequest[];
   errors: ImportLineError[];
   itemsSum: number;
+  cards: InvoiceCardHeader[] | null;
+  /** O VALOR TOTAL da fatura, quando ela traz um só. */
+  totalFromText: number | null;
+  /** O grupo de cartões dos finais conhecidos — só se todos forem do mesmo. */
+  detectedCreditCardId: string | null;
+  detectedCreditCardName: string | null;
 }
 
 export interface BankStatement {
@@ -108,6 +126,18 @@ export interface CardInvoiceItemRequest {
   description: string;
   installmentLabel?: string;
   amount: number;
+  // Preenchidos pela leitura do servidor; a tela só os repassa para a importação.
+  cardLastFour?: string | null;
+  kind?: string | number | null;
+  foreignAmount?: number | null;
+  foreignCurrency?: string | null;
+  exchangeRate?: number | null;
+  exchangeRateEstimated?: boolean;
+  originalAmount?: number | null;
+  originalCurrency?: string | null;
+  relatedIndex?: number | null;
+  installmentNumber?: number | null;
+  installmentTotal?: number | null;
 }
 
 export interface ImportCardInvoiceRequest {
@@ -150,4 +180,15 @@ export interface CardReconciliationItem {
   reason?: string;
   /** Aceito pelo usuário — Matched sozinho pode ser só a sugestão da importação. */
   accepted: boolean;
+  itemCardLastFour?: string | null;
+  /** Expense, Installment, Payment, Credit, Fee, Tax. */
+  itemKind?: string | null;
+  itemForeignAmount?: number | null;
+  itemForeignCurrency?: string | null;
+  itemExchangeRate?: number | null;
+  itemExchangeRateEstimated?: boolean;
+  itemOriginalAmount?: number | null;
+  itemOriginalCurrency?: string | null;
+  itemIssuedCardId?: string | null;
+  itemRelatedItemId?: string | null;
 }

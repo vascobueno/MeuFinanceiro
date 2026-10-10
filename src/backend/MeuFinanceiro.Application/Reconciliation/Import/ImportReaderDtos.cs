@@ -20,10 +20,31 @@ public record ParsedBankStatementResponse(
 /// <summary>Texto colado da fatura, e o fechamento que dá o ano às datas <c>dd/MM</c>.</summary>
 public record ParseCardInvoiceRequest(string Text, DateOnly ClosingDate);
 
+/// <summary>
+/// Um cartão encontrado na fatura (cabeçalho de seção). Na leitura pelo serviço, ganha o cartão
+/// cadastrado com esse final, quando há.
+/// </summary>
+public record InvoiceCardHeader(
+    string LastFour,
+    string? FirstDigits,
+    string? HolderName,
+    bool IsVirtual,
+    Guid? IssuedCardId = null,
+    Guid? CreditCardId = null,
+    string? CreditCardName = null);
+
+/// <param name="Cards">Os cartões da fatura, pela ordem dos cabeçalhos.</param>
+/// <param name="TotalFromText">O VALOR TOTAL da fatura, quando ela traz um só.</param>
+/// <param name="DetectedCreditCardId">O grupo de cartões ao qual os finais conhecidos pertencem —
+/// só quando todos os conhecidos são do mesmo grupo.</param>
 public record ParsedCardInvoiceResponse(
     IReadOnlyList<CardInvoiceItemRequest> Items,
     IReadOnlyList<ImportLineError> Errors,
-    decimal ItemsSum);
+    decimal ItemsSum,
+    IReadOnlyList<InvoiceCardHeader>? Cards = null,
+    decimal? TotalFromText = null,
+    Guid? DetectedCreditCardId = null,
+    string? DetectedCreditCardName = null);
 
 /// <summary>
 /// OFX lido, pronto para a tela conferir e mandar para a importação comum.

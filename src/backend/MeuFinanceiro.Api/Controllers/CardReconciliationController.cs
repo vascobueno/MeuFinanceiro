@@ -23,9 +23,9 @@ public class CardReconciliationController : ControllerBase
 
     /// <summary>Lê o texto colado da fatura e devolve os itens normalizados, sem gravar nada.</summary>
     [HttpPost("card-invoices/parse")]
-    public ActionResult<Application.Reconciliation.Import.ParsedCardInvoiceResponse> Parse(
-        Application.Reconciliation.Import.ParseCardInvoiceRequest request)
-        => Ok(_service.Parse(request));
+    public async Task<ActionResult<Application.Reconciliation.Import.ParsedCardInvoiceResponse>> Parse(
+        Application.Reconciliation.Import.ParseCardInvoiceRequest request, CancellationToken ct)
+        => Ok(await _service.ParseAsync(request, ct));
 
     [HttpGet("reconciliations/card")]
     public async Task<ActionResult<IReadOnlyList<CardReconciliationResponse>>> GetAll(

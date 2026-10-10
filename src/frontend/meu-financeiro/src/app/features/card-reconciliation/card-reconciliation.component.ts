@@ -11,11 +11,13 @@ import { Table, SortIcon, SortableColumn } from 'primeng/table';
 import { AuthService } from '../../core/services/auth.service';
 import { ReconciliationService } from '../../core/services/reconciliation.service';
 import { CardService } from '../../core/services/card.service';
-import { CardReconciliationItem, ImportCardInvoiceRequest, ImportLineError } from '../../core/models/reconciliation.model';
+import { CardReconciliationItem, ImportCardInvoiceRequest, ImportLineError, InvoiceCardHeader, ParsedCardInvoice } from '../../core/models/reconciliation.model';
 import { businessRuleOf } from '../../core/services/problem.util';
 import { CreditCard } from '../../core/models/card.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
+import { IssuedCardService } from '../../core/services/issued-card.service';
+import { IssuedCardKind } from '../../core/models/issued-card.model';
 
 /** docs/08-conciliacao-cartoes.md — entrada inicial: PDF da fatura (normalizado aqui manualmente). */
 @Component({
@@ -77,6 +79,13 @@ export class CardReconciliationComponent implements OnInit {
   totalAmount: number | null = null;
   /** Saldo da fatura anterior: a fatura fecha como saldo anterior + itens = total. */
   previousBalance: number | null = null;
+  /** Cartões dos cabeçalhos da última leitura. */
+  readonly parsedCards = signal<InvoiceCardHeader[]>([]);
+  /** Finais que o grupo não tem, com o tipo escolhido para cadastrar. */
+  readonly unknownCards = signal<{ header: InvoiceCardHeader; kind: IssuedCardKind }[]>([]);
+  readonly unknownError = signal<string | null>(null);
+  readonly detectedNote = signal<string | null>(null);
+  private pendingParsed: ParsedCardInvoice | null = null;
   /** Uma linha por item: data;descrição;parcela;valor */
   itemsRaw = '';
   readonly importing = signal(false);
@@ -86,6 +95,7 @@ export class CardReconciliationComponent implements OnInit {
   private pendingImport: ImportCardInvoiceRequest | null = null;
 
   constructor(
+    private readonly issuedCardService: IssuedCardService,
     private readonly reconciliationService: ReconciliationService,
     private readonly cardService: CardService,
     readonly authService: AuthService,
@@ -123,8 +133,9 @@ export class CardReconciliationComponent implements OnInit {
 
     const closingDate = this.toIsoDate(this.closingDate);
     const dueDate = this.toIsoDate(this.dueDate);
-    if (!this.importCardId || !closingDate || !dueDate || this.totalAmount == null) {
-      this.importResult.set('Preencha cartão, fechamento, vencimento e total — o fechamento dá o ano às datas dd/MM da fatura.');
+    // O total pode vir do VALOR TOTAL do texto; só é exigido depois da leitura.
+    if (!this.importCardId || !closingDate || !dueDate) {
+      this.importResult.set('Preencha cartão, fechamento e vencimento — o fechamento dá o ano às datas dd/MM da fatura.');
       return;
     }
     if (!this.itemsRaw.trim()) {
@@ -132,9 +143,9 @@ export class CardReconciliationComponent implements OnInit {
       return;
     }
 
-    const creditCardId = this.importCardId;
-    const totalAmount = this.totalAmount;
     this.importing.set(true);
+    this.unknownCards.set([]);
+    this.parsedCards.set([]);
     this.reconciliationService.parseCardInvoice({ text: this.itemsRaw, closingDate }).subscribe({
       next: (parsed) => {
         if (parsed.errors.length > 0) {
@@ -147,20 +158,127 @@ export class CardReconciliationComponent implements OnInit {
           this.importResult.set('Nenhum item encontrado no texto colado.');
           return;
         }
-        this.sendImport({
-          creditCardId,
-          closingDate,
-          dueDate,
-          totalAmount,
-          previousBalance: this.previousBalance ?? 0,
-          items: parsed.items,
-        });
+
+        // Os finais dizem de que grupo é a fatura: se não for o escolhido, troca e avisa.
+        this.detectedNote.set(null);
+        if (parsed.detectedCreditCardId && parsed.detectedCreditCardId !== this.importCardId) {
+          this.importCardId = parsed.detectedCreditCardId;
+          this.detectedNote.set(`Fatura reconhecida como de ${parsed.detectedCreditCardName} pelos finais dos cartões.`);
+        }
+        if (this.totalAmount == null && parsed.totalFromText != null) this.totalAmount = parsed.totalFromText;
+        if (this.totalAmount == null) {
+          this.importing.set(false);
+          this.importResult.set('Informe o total da fatura — o texto não trouxe um VALOR TOTAL só.');
+          return;
+        }
+
+        const cards = parsed.cards ?? [];
+        this.parsedCards.set(cards);
+        this.pendingParsed = parsed;
+        const unknown = cards.filter((c) => !c.issuedCardId || c.creditCardId !== this.importCardId);
+        if (unknown.length > 0) {
+          // Pausa: finais que o grupo não tem. A tela oferece cadastrá-los antes de importar.
+          this.importing.set(false);
+          this.unknownCards.set(unknown.map((c) => ({ header: c, kind: c.isVirtual ? IssuedCardKind.Online : IssuedCardKind.Adicional })));
+          return;
+        }
+        this.continueImport();
       },
       error: () => {
         this.importing.set(false);
         this.importResult.set('Não foi possível ler o texto colado.');
       },
     });
+  }
+
+  /**
+   * Importa o que foi lido. Itens de finais não cadastrados entram com o final guardado e sem
+   * cartão ligado; os cadastrados aqui antes de continuar são ligados na importação.
+   */
+  continueImport(): void {
+    const parsed = this.pendingParsed;
+    const closingDate = this.toIsoDate(this.closingDate);
+    const dueDate = this.toIsoDate(this.dueDate);
+    if (!parsed || !this.importCardId || !closingDate || !dueDate || this.totalAmount == null) return;
+    this.unknownCards.set([]);
+    this.sendImport({
+      creditCardId: this.importCardId,
+      closingDate,
+      dueDate,
+      totalAmount: this.totalAmount,
+      previousBalance: this.previousBalance ?? 0,
+      items: parsed.items,
+    });
+  }
+
+  /** Cadastra no grupo da importação o cartão de um final que a fatura trouxe e o grupo não tinha. */
+  addUnknownCard(entry: { header: InvoiceCardHeader; kind: IssuedCardKind }): void {
+    if (!this.importCardId) return;
+    this.unknownError.set(null);
+    this.issuedCardService
+      .create(this.importCardId, {
+        kind: entry.kind,
+        lastFour: entry.header.lastFour,
+        firstDigits: entry.header.firstDigits,
+        holderName: entry.header.holderName,
+      })
+      .subscribe({
+        next: () => {
+          const rest = this.unknownCards().filter((u) => u !== entry);
+          // O chip do cartão deixa de aparecer como desconhecido.
+          this.parsedCards.set(
+            this.parsedCards().map((c) =>
+              c.lastFour === entry.header.lastFour ? { ...c, issuedCardId: 'novo', creditCardId: this.importCardId } : c,
+            ),
+          );
+          this.unknownCards.set(rest);
+          // Cadastrado o último que faltava, a importação segue sozinha.
+          if (rest.length === 0) this.continueImport();
+        },
+        error: (err) => this.unknownError.set(businessRuleOf(err)?.message ?? 'Não foi possível cadastrar o cartão.'),
+      });
+  }
+
+  groupName(id: string | null): string {
+    return this.cards().find((c) => c.id === id)?.name ?? '';
+  }
+
+  readonly kindOptions = [
+    { label: 'Titular', value: IssuedCardKind.Titular },
+    { label: 'Adicional', value: IssuedCardKind.Adicional },
+    { label: 'Virtual', value: IssuedCardKind.Online },
+  ];
+
+  itemKindLabel(kind: string | null | undefined): string {
+    switch (kind) {
+      case 'Installment': return 'Parcela';
+      case 'Payment': return 'Pagamento';
+      case 'Credit': return 'Crédito';
+      case 'Fee': return 'Tarifa';
+      case 'Tax': return 'IOF';
+      case 'Expense': return 'Compra';
+      default: return '';
+    }
+  }
+
+  /** "US$ 21,22 × 5,4970" (+ "calculada") e, se houver, "EUR 19,50". */
+  foreignLine(item: CardReconciliationItem): string {
+    const parts: string[] = [];
+    if (item.itemForeignAmount != null) {
+      const symbol = item.itemForeignCurrency === 'USD' ? 'US$' : item.itemForeignCurrency ?? '';
+      const amount = item.itemForeignAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      let line = `${symbol} ${amount}`;
+      if (item.itemExchangeRate != null) {
+        const rate = item.itemExchangeRate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+        line += ` × ${rate}${item.itemExchangeRateEstimated ? ' (calculada)' : ''}`;
+      }
+      parts.push(line);
+    }
+    if (item.itemOriginalAmount != null && item.itemOriginalCurrency) {
+      const original = item.itemOriginalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      parts.push(`origem ${item.itemOriginalCurrency} ${original}`);
+    }
+    return parts.join(' · ');
   }
 
   confirmUnbalanced(): void {

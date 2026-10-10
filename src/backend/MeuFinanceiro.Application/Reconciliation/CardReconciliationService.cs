@@ -92,6 +92,17 @@ public class CardReconciliationService : ICardReconciliationService
         var usedTransactions = new HashSet<Guid>();
         var usedPayments = new HashSet<Guid>();
 
+        // Cartões do grupo por final, para ligar cada item ao cartão da seção em que veio. O
+        // substituído também conta: a fatura ainda traz compras dele. Com dois do mesmo final
+        // (renovação), vale o ativo.
+        var cardsByFinal = (await _db.IssuedCards.AsNoTracking()
+                .Where(c => c.GrupoId == _currentUser.GrupoId && c.CreditCardId == request.CreditCardId && c.Status != IssuedCardStatus.Cancelado)
+                .Select(c => new { c.Id, c.LastFour, c.Status })
+                .ToListAsync(ct))
+            .GroupBy(c => c.LastFour)
+            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Status).First().Id);
+        var created = new List<CardInvoiceItem>();
+
         foreach (var itemRequest in request.Items)
         {
             var item = new CardInvoiceItem
@@ -100,9 +111,21 @@ public class CardReconciliationService : ICardReconciliationService
                 Date = itemRequest.Date,
                 Description = itemRequest.Description,
                 InstallmentLabel = itemRequest.InstallmentLabel,
-                Amount = itemRequest.Amount
+                Amount = itemRequest.Amount,
+                Kind = itemRequest.Kind ?? InvoiceTextReader.Classify(itemRequest.Description, itemRequest.Amount, itemRequest.InstallmentLabel),
+                InstallmentNumber = itemRequest.InstallmentNumber ?? InstallmentLabel.TryParse(itemRequest.InstallmentLabel)?.Number,
+                InstallmentTotal = itemRequest.InstallmentTotal ?? InstallmentLabel.TryParse(itemRequest.InstallmentLabel)?.Total,
+                CardLastFour = itemRequest.CardLastFour,
+                IssuedCardId = itemRequest.CardLastFour is { } final && cardsByFinal.TryGetValue(final, out var issuedId) ? issuedId : null,
+                ForeignAmount = itemRequest.ForeignAmount,
+                ForeignCurrency = itemRequest.ForeignAmount is null ? null : itemRequest.ForeignCurrency?.ToUpperInvariant(),
+                ExchangeRate = itemRequest.ForeignAmount is null ? null : itemRequest.ExchangeRate,
+                ExchangeRateEstimated = itemRequest.ForeignAmount is not null && itemRequest.ExchangeRateEstimated,
+                OriginalAmount = itemRequest.OriginalAmount,
+                OriginalCurrency = itemRequest.OriginalAmount is null ? null : itemRequest.OriginalCurrency?.ToUpperInvariant(),
             };
             _db.CardInvoiceItems.Add(item);
+            created.Add(item);
 
             var reconciliation = new Domain.Entities.Reconciliation
             {
@@ -155,6 +178,13 @@ public class CardReconciliationService : ICardReconciliationService
             _db.Reconciliations.Add(reconciliation);
         }
 
+        // O IOF aponta a compra no exterior pela posição na lista enviada.
+        for (var i = 0; i < request.Items.Count; i++)
+        {
+            if (request.Items[i].RelatedIndex is { } related && related >= 0 && related < created.Count && related != i)
+                created[i].RelatedItemId = created[related].Id;
+        }
+
         await _db.SaveChangesAsync(ct);
 
         return new CardInvoiceResponse(invoice.Id, card.Id, card.Name, invoice.ClosingDate, invoice.DueDate,
@@ -179,8 +209,38 @@ public class CardReconciliationService : ICardReconciliationService
         return reconciliations.Select(ToResponse).ToList();
     }
 
-    public ParsedCardInvoiceResponse Parse(ParseCardInvoiceRequest request) =>
-        InvoiceTextReader.Read(request.Text, request.ClosingDate);
+    /// <summary>
+    /// Lê o texto e reconhece o grupo de cartões pelos finais dos cabeçalhos: só quando todos os
+    /// finais conhecidos são do mesmo grupo. Finais que não estão cadastrados voltam sem cartão —
+    /// a tela oferece "adicionar ao grupo".
+    /// </summary>
+    public async Task<ParsedCardInvoiceResponse> ParseAsync(ParseCardInvoiceRequest request, CancellationToken ct = default)
+    {
+        var parsed = InvoiceTextReader.Read(request.Text, request.ClosingDate);
+        var headers = parsed.Cards ?? [];
+        if (headers.Count == 0) return parsed;
+
+        var finals = headers.Select(h => h.LastFour).ToList();
+        var known = await _db.IssuedCards.AsNoTracking()
+            .Where(c => c.GrupoId == _currentUser.GrupoId && c.CreditCardId != null && c.Status != IssuedCardStatus.Cancelado
+                        && finals.Contains(c.LastFour))
+            .Select(c => new { c.Id, c.LastFour, c.Status, c.CreditCardId, GroupName = c.CreditCard!.Name })
+            .ToListAsync(ct);
+
+        var cards = headers.Select(h =>
+        {
+            var match = known.Where(k => k.LastFour == h.LastFour).OrderBy(k => k.Status).FirstOrDefault();
+            return match is null ? h : h with { IssuedCardId = match.Id, CreditCardId = match.CreditCardId, CreditCardName = match.GroupName };
+        }).ToList();
+
+        var groups = cards.Where(c => c.CreditCardId is not null).Select(c => (c.CreditCardId, c.CreditCardName)).Distinct().ToList();
+        return parsed with
+        {
+            Cards = cards,
+            DetectedCreditCardId = groups.Count == 1 ? groups[0].CreditCardId : null,
+            DetectedCreditCardName = groups.Count == 1 ? groups[0].CreditCardName : null,
+        };
+    }
 
     /// <summary>
     /// Exclui uma fatura importada por engano, com itens e sugestões. Bloqueado se algum item já
@@ -391,12 +451,12 @@ public class CardReconciliationService : ICardReconciliationService
     }
 
     /// <summary>A linha da fatura que registra o pagamento da fatura anterior.</summary>
-    private static bool IsInvoicePayment(CardInvoiceItem item)
-    {
-        if (item.Amount >= 0) return false;
-        var description = item.Description.ToUpperInvariant();
-        return description.Contains("PAGAMENTO") || description.Contains("PAGTO");
-    }
+    /// <summary>
+    /// A linha da fatura que registra o pagamento da fatura anterior: negativa e com "PAGAMENTO" ou
+    /// "PAGTO" — decidido na importação, no tipo do item (InvoiceTextReader.Classify).
+    /// </summary>
+    private static bool IsInvoicePayment(CardInvoiceItem item) => item.Kind == CardInvoiceItemKind.Payment;
+
 
     private static (CardPayment payment, ReconciliationScorer.ScoreResult score)? FindBestPayment(
         CardInvoiceItem item, DateOnly closingDate, List<CardPayment> candidates, HashSet<Guid> used)
@@ -520,6 +580,16 @@ public class CardReconciliationService : ICardReconciliationService
         r.DateDifferenceDays,
         r.Reason,
         r.CardPaymentId,
-        r.AcceptedAt is not null
+        r.AcceptedAt is not null,
+        r.CardInvoiceItem?.CardLastFour,
+        r.CardInvoiceItem?.Kind.ToString(),
+        r.CardInvoiceItem?.ForeignAmount,
+        r.CardInvoiceItem?.ForeignCurrency,
+        r.CardInvoiceItem?.ExchangeRate,
+        r.CardInvoiceItem?.ExchangeRateEstimated ?? false,
+        r.CardInvoiceItem?.OriginalAmount,
+        r.CardInvoiceItem?.OriginalCurrency,
+        r.CardInvoiceItem?.IssuedCardId,
+        r.CardInvoiceItem?.RelatedItemId
     );
 }

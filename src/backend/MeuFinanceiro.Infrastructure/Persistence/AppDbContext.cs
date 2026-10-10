@@ -160,6 +160,19 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(i => i.GrupoId);
             e.HasIndex(i => new { i.GrupoId, i.ContentHash }).IsUnique().HasFilter("\"ContentHash\" IS NOT NULL");
         });
+        builder.Entity<CardInvoiceItem>(e =>
+        {
+            e.Property(i => i.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(i => i.CardLastFour).HasMaxLength(4);
+            e.Property(i => i.ForeignCurrency).HasMaxLength(3);
+            e.Property(i => i.OriginalCurrency).HasMaxLength(3);
+            // Cotação com 4 casas e mais (5,4970); o padrão do projeto é decimal(18,2).
+            e.Property(i => i.ExchangeRate).HasColumnType("decimal(18,6)");
+            // Cartão excluído não leva o histórico da fatura: o item só perde a ligação.
+            e.HasOne(i => i.IssuedCard).WithMany().HasForeignKey(i => i.IssuedCardId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(i => i.RelatedItem).WithMany().HasForeignKey(i => i.RelatedItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<CreditCard>(e =>
         {
             // Pelo nome ("Mastercard"), não pelo número: acrescentar bandeira no meio do enum não

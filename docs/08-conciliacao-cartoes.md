@@ -26,6 +26,33 @@ O texto colado é lido no backend (`POST /api/v1/card-invoices/parse`, `InvoiceT
 - Linha sem data é ignorada, exceto IOF, que herda a data da anterior.
 - Pagamento aparece negativo (`-1.000,00`).
 
+**Seções de cartão** — a fatura vem com um cabeçalho por cartão (`NOME - 5480 XXXX XXXX 1111`,
+"@" no virtual, ou "final 1234" / "**** 1234"). Cada item guarda o final da seção em que veio
+(`CardLastFour`) e, na importação, é ligado ao cartão cadastrado com esse final no grupo
+(`IssuedCardId`; substituído também vale, porque a fatura ainda traz compras dele).
+
+**Grupo pelos finais** — a leitura (`/card-invoices/parse`) devolve os cartões dos cabeçalhos e,
+se todos os finais conhecidos forem do mesmo grupo, o reconhece (`detectedCreditCardId`): a tela
+troca o grupo escolhido e avisa. Final que o grupo não tem pausa a importação e oferece
+"Adicionar ao grupo" (o "@" sugere Virtual); ou se importa assim mesmo, com o final guardado.
+
+**Tipo do item** (`Kind`) — Pagamento (negativo com PAGAMENTO/PAGTO), Crédito (outro negativo),
+IOF (imposto), Tarifa (anuidade, tarifa, seguro, juros, multa — mesmo parcelada), Parcela (rótulo
+NN/NN, com número e total guardados) ou Compra. O casamento do pagamento usa o tipo.
+
+**Compra no exterior** — a segunda coluna de valor é a moeda estrangeira (`ForeignAmount`, USD).
+A linha `COTAÇÃO DOLAR R$ 5,4970` dá a cotação das compras da seção (`ExchangeRate`, 6 casas);
+sem ela, a cotação é calculada (reais ÷ estrangeiro) e marcada (`ExchangeRateEstimated`). Moeda e
+valor de origem que a descrição mostre ("EUR 19,50") ficam em `OriginalCurrency`/`OriginalAmount`
+— informação, porque o banco converte para dólar antes de cobrar em reais; o valor depois do
+código da moeda nunca é lido como coluna. O IOF fica ligado à compra no exterior
+(`RelatedItemId`). A tela mostra "US$ 21,22 × 5,4970 (calculada) · origem EUR 19,50".
+
+**VALOR TOTAL** — quando a fatura traz um só, preenche o total se ele estiver em branco.
+
+Faturas importadas antes destas regras foram classificadas pela migração com as mesmas regras de
+tipo; final do cartão e câmbio ficam vazios nelas.
+
 **Total** — o total da fatura é `Saldo anterior + soma dos itens`. A fatura traz o pagamento da
 fatura passada como item negativo, então sem o saldo anterior a conta não fecha nunca. A tela tem
 o campo "Saldo anterior" (`PreviousBalance`).

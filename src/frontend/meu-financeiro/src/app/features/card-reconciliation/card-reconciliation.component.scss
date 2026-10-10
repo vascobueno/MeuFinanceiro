@@ -81,3 +81,50 @@
     grid-template-columns: 1fr;
   }
 }
+
+// Cartões encontrados nos cabeçalhos da fatura; os que o grupo não tem ficam marcados.
+.mf-invoice-cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+
+.mf-invoice-card {
+  border: 1px solid var(--mf-line);
+  border-radius: 999px;
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-invoice-card-unknown {
+  border-style: dashed;
+  color: var(--mf-red);
+}
+
+.mf-unknown-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.4rem 0;
+}
+
+.mf-item-kind {
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--mf-muted);
+  border: 1px solid var(--mf-line);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+}
+
+.mf-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+// "-R$ 1.000,00" numa linha só.
+.mf-col-end {
+  white-space: nowrap;
+}

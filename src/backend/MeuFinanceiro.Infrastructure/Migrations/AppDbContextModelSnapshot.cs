@@ -512,6 +512,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<Guid>("CardInvoiceId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CardLastFour")
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -525,8 +529,45 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<decimal?>("ExchangeRate")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<bool>("ExchangeRateEstimated")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("ForeignAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ForeignCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<string>("InstallmentLabel")
                         .HasColumnType("text");
+
+                    b.Property<int?>("InstallmentNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("InstallmentTotal")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("IssuedCardId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal?>("OriginalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OriginalCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid?>("RelatedItemId")
+                        .HasColumnType("uuid");
 
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("bytea");
@@ -542,6 +583,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.HasIndex("CardInvoiceId");
 
                     b.HasIndex("Date");
+
+                    b.HasIndex("IssuedCardId");
+
+                    b.HasIndex("RelatedItemId");
 
                     b.ToTable("CardInvoiceItems");
                 });
@@ -1898,7 +1943,21 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MeuFinanceiro.Domain.Entities.IssuedCard", "IssuedCard")
+                        .WithMany()
+                        .HasForeignKey("IssuedCardId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MeuFinanceiro.Domain.Entities.CardInvoiceItem", "RelatedItem")
+                        .WithMany()
+                        .HasForeignKey("RelatedItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("CardInvoice");
+
+                    b.Navigation("IssuedCard");
+
+                    b.Navigation("RelatedItem");
                 });
 
             modelBuilder.Entity("MeuFinanceiro.Domain.Entities.CardPayment", b =>
