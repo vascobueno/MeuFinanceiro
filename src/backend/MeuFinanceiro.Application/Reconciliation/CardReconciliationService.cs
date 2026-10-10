@@ -79,11 +79,18 @@ public class CardReconciliationService : ICardReconciliationService
             var windowEnd = request.Items.Max(i => i.Date).AddDays(SearchWindowDays);
 
             candidateTransactions = await _db.FinancialTransactions
-                .Include(t => t.Installment)
+                .Include(t => t.Installment).ThenInclude(i => i!.InstallmentPlan)
                 .Where(t => t.GrupoId == _currentUser.GrupoId && t.CreditCardId == request.CreditCardId && t.Status != TransactionStatus.Reconciled)
                 .Where(t => t.TransactionDate >= windowStart && t.TransactionDate <= windowEnd)
                 .ToListAsync(ct);
         }
+
+        var installmentCandidates = await LoadInstallmentCandidatesAsync(request, ct);
+        var paymentCandidates = await LoadPaymentCandidatesAsync(request, ct);
+        // Um lançamento ou pagamento serve a um item só. Sem isso, duas parcelas iguais de planos
+        // diferentes (ou duas compras de mesmo valor) apontavam para o mesmo lançamento.
+        var usedTransactions = new HashSet<Guid>();
+        var usedPayments = new HashSet<Guid>();
 
         foreach (var itemRequest in request.Items)
         {
@@ -97,8 +104,6 @@ public class CardReconciliationService : ICardReconciliationService
             };
             _db.CardInvoiceItems.Add(item);
 
-            var best = FindBestCandidate(item, candidateTransactions);
-
             var reconciliation = new Domain.Entities.Reconciliation
             {
                 GrupoId = _currentUser.GrupoId,
@@ -107,25 +112,44 @@ public class CardReconciliationService : ICardReconciliationService
                 CreatedBy = _currentUser.UserId
             };
 
-            if (best is not null)
+            var payment = IsInvoicePayment(item)
+                ? FindBestPayment(item, invoice.ClosingDate, paymentCandidates, usedPayments)
+                : null;
+            var installment = payment is null
+                ? FindBestInstallment(item, installmentCandidates, usedTransactions)
+                : null;
+            var best = payment is null && installment is null
+                ? FindBestCandidate(item, candidateTransactions, usedTransactions)
+                : null;
+
+            if (payment is not null)
+            {
+                reconciliation.CardPaymentId = payment.Value.payment.Id;
+                usedPayments.Add(payment.Value.payment.Id);
+                ApplyScore(reconciliation, payment.Value.score,
+                    $"Pagamento de {payment.Value.payment.PaymentDate:dd/MM/yyyy} da fatura {payment.Value.payment.CycleReference:MM/yyyy}");
+            }
+            else if (installment is not null)
+            {
+                reconciliation.FinancialTransactionId = installment.Value.transaction.Id;
+                usedTransactions.Add(installment.Value.transaction.Id);
+                var plan = installment.Value.transaction.Installment!.InstallmentPlan!;
+                ApplyScore(reconciliation, installment.Value.score,
+                    $"Parcela {installment.Value.transaction.Installment.Number}/{plan.InstallmentCount} de \"{plan.Description}\" (1ª parcela em {installment.Value.firstDate:dd/MM/yyyy})");
+            }
+            else if (best is not null)
             {
                 reconciliation.FinancialTransactionId = best.Value.transaction.Id;
-                reconciliation.Score = best.Value.score.Total;
-                reconciliation.AmountDifference = best.Value.score.AmountDifference;
-                reconciliation.DateDifferenceDays = best.Value.score.DateDifferenceDays;
-                reconciliation.DescriptionScore = best.Value.score.DescriptionScore;
-                reconciliation.Status = ReconciliationScorer.StatusFor(best.Value.score.Total) switch
-                {
-                    "MATCHED" => ReconciliationStatus.Matched,
-                    "POSSIBLE_MATCH" => ReconciliationStatus.PossibleMatch,
-                    _ => ReconciliationStatus.Unmatched
-                };
-                reconciliation.Reason = $"Score {best.Value.score.Total} (valor/data/descrição/parcela)";
+                usedTransactions.Add(best.Value.transaction.Id);
+                ApplyScore(reconciliation, best.Value.score,
+                    $"\"{best.Value.transaction.Description}\" de {best.Value.transaction.TransactionDate:dd/MM/yyyy}");
             }
             else
             {
                 reconciliation.Status = ReconciliationStatus.Unmatched;
-                reconciliation.Reason = "Nenhum lançamento candidato encontrado no período.";
+                reconciliation.Reason = IsInvoicePayment(item)
+                    ? "Nenhum pagamento de fatura registrado com este valor e data."
+                    : "Nenhum lançamento candidato encontrado no período.";
             }
 
             _db.Reconciliations.Add(reconciliation);
@@ -173,7 +197,7 @@ public class CardReconciliationService : ICardReconciliationService
             .Where(r => r.GrupoId == _currentUser.GrupoId && r.CardInvoiceItem!.CardInvoiceId == invoiceId)
             .ToListAsync(ct);
 
-        if (reconciliations.Any(r => r.FinancialTransaction?.Status == TransactionStatus.Reconciled))
+        if (reconciliations.Any(r => r.AcceptedAt is not null || r.FinancialTransaction?.Status == TransactionStatus.Reconciled))
         {
             throw new BusinessRuleException("fatura-com-conciliacao-aceita",
                 "Esta fatura tem conciliações aceitas. Desfaça-as na tela de conciliação antes de excluir.");
@@ -193,15 +217,21 @@ public class CardReconciliationService : ICardReconciliationService
     {
         var reconciliation = await FindOwnedAsync(reconciliationId, ct);
 
-        if (reconciliation.FinancialTransactionId is null)
+        if (reconciliation.FinancialTransactionId is null && reconciliation.CardPaymentId is null)
             throw new BusinessRuleException("conciliacao-sem-candidato", "Esta conciliação não possui um lançamento candidato para aceitar.");
 
         reconciliation.Status = ReconciliationStatus.Matched;
+        reconciliation.AcceptedAt = DateTime.UtcNow;
 
-        var transaction = await _db.FinancialTransactions.FirstAsync(t => t.Id == reconciliation.FinancialTransactionId, ct);
-        transaction.Status = TransactionStatus.Reconciled;
-        transaction.UpdatedAt = DateTime.UtcNow;
-        transaction.UpdatedBy = _currentUser.UserId;
+        // O pagamento não muda de status: o lançamento dele está na conta e é conciliado lá,
+        // com o extrato. Aqui o aceite fica só no AcceptedAt.
+        if (reconciliation.FinancialTransactionId is not null)
+        {
+            var transaction = await _db.FinancialTransactions.FirstAsync(t => t.Id == reconciliation.FinancialTransactionId, ct);
+            transaction.Status = TransactionStatus.Reconciled;
+            transaction.UpdatedAt = DateTime.UtcNow;
+            transaction.UpdatedBy = _currentUser.UserId;
+        }
 
         await _db.SaveChangesAsync(ct);
         await _auditService.LogAsync("Accept", nameof(Domain.Entities.Reconciliation), reconciliation.Id.ToString(), null, new { reconciliation.Status }, ct);
@@ -216,9 +246,25 @@ public class CardReconciliationService : ICardReconciliationService
             ?? throw new NotFoundException(nameof(CardInvoiceItem), request.CardInvoiceItemId);
         if (item.CardInvoice!.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
 
-        var transaction = await _db.FinancialTransactions.FirstOrDefaultAsync(t => t.Id == request.FinancialTransactionId, ct)
-            ?? throw new NotFoundException(nameof(FinancialTransaction), request.FinancialTransactionId);
-        if (transaction.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+        if ((request.FinancialTransactionId is null) == (request.CardPaymentId is null))
+            throw new BusinessRuleException("conciliacao-alvo-invalido", "Informe um lançamento ou um pagamento de fatura — um dos dois.");
+
+        FinancialTransaction? transaction = null;
+        CardPayment? payment = null;
+        if (request.FinancialTransactionId is not null)
+        {
+            transaction = await _db.FinancialTransactions.FirstOrDefaultAsync(t => t.Id == request.FinancialTransactionId, ct)
+                ?? throw new NotFoundException(nameof(FinancialTransaction), request.FinancialTransactionId);
+            if (transaction.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+        }
+        else
+        {
+            payment = await _db.CardPayments.FirstOrDefaultAsync(p => p.Id == request.CardPaymentId, ct)
+                ?? throw new NotFoundException(nameof(CardPayment), request.CardPaymentId!);
+            if (payment.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+            if (payment.CreditCardId != item.CardInvoice.CreditCardId)
+                throw new BusinessRuleException("pagamento-de-outro-cartao", "Este pagamento é de outro cartão.");
+        }
 
         var reconciliation = await _db.Reconciliations.FirstOrDefaultAsync(
             r => r.CardInvoiceItemId == request.CardInvoiceItemId && r.SourceType == ReconciliationSourceType.CardInvoice, ct);
@@ -235,15 +281,20 @@ public class CardReconciliationService : ICardReconciliationService
             _db.Reconciliations.Add(reconciliation);
         }
 
-        reconciliation.FinancialTransactionId = transaction.Id;
+        reconciliation.FinancialTransactionId = transaction?.Id;
+        reconciliation.CardPaymentId = payment?.Id;
         reconciliation.Status = ReconciliationStatus.ManuallyMatched;
+        reconciliation.AcceptedAt = DateTime.UtcNow;
         reconciliation.Reason = "Vinculado manualmente pelo usuário.";
         reconciliation.UpdatedAt = DateTime.UtcNow;
         reconciliation.UpdatedBy = _currentUser.UserId;
 
-        transaction.Status = TransactionStatus.Reconciled;
-        transaction.UpdatedAt = DateTime.UtcNow;
-        transaction.UpdatedBy = _currentUser.UserId;
+        if (transaction is not null)
+        {
+            transaction.Status = TransactionStatus.Reconciled;
+            transaction.UpdatedAt = DateTime.UtcNow;
+            transaction.UpdatedBy = _currentUser.UserId;
+        }
 
         await _db.SaveChangesAsync(ct);
         await _auditService.LogAsync("ManualLink", nameof(Domain.Entities.Reconciliation), reconciliation.Id.ToString(), null, request, ct);
@@ -270,6 +321,8 @@ public class CardReconciliationService : ICardReconciliationService
         var oldStatus = reconciliation.Status;
         reconciliation.Status = ReconciliationStatus.Unmatched;
         reconciliation.FinancialTransactionId = null;
+        reconciliation.CardPaymentId = null;
+        reconciliation.AcceptedAt = null;
         reconciliation.Reason = "Conciliação desfeita pelo usuário.";
         reconciliation.UpdatedAt = DateTime.UtcNow;
         reconciliation.UpdatedBy = _currentUser.UserId;
@@ -280,18 +333,158 @@ public class CardReconciliationService : ICardReconciliationService
 
     // ----------------- helpers -----------------
 
+    /// <summary>
+    /// Parcelas com o mesmo número e total das que a fatura traz, sem olhar a data do lançamento:
+    /// a fatura lista a parcela com a data da COMPRA ("19/05 LOJA 04/06" numa fatura de setembro),
+    /// enquanto o lançamento da 4ª parcela está datado em agosto. A janela de 15 dias em torno da
+    /// data do item descartava todas elas.
+    /// </summary>
+    private async Task<List<InstallmentCandidate>> LoadInstallmentCandidatesAsync(ImportCardInvoiceRequest request, CancellationToken ct)
+    {
+        var labels = request.Items.Select(i => InstallmentLabel.TryParse(i.InstallmentLabel))
+            .Where(l => l is not null).Select(l => l!.Value).ToList();
+        if (labels.Count == 0) return [];
+
+        var numbers = labels.Select(l => l.Number).Distinct().ToList();
+        var totals = labels.Select(l => l.Total).Distinct().ToList();
+
+        var transactions = await _db.FinancialTransactions
+            .Include(t => t.Installment).ThenInclude(i => i!.InstallmentPlan)
+            .Where(t => t.GrupoId == _currentUser.GrupoId && t.CreditCardId == request.CreditCardId && t.Status != TransactionStatus.Reconciled)
+            .Where(t => t.InstallmentId != null
+                        && numbers.Contains(t.Installment!.Number)
+                        && totals.Contains(t.Installment.InstallmentPlan!.InstallmentCount))
+            .ToListAsync(ct);
+        if (transactions.Count == 0) return [];
+
+        // A data da 1ª parcela é a que corresponde à data da compra impressa na fatura. Lida do
+        // banco, e não recalculada com AddMonths(-(n-1)), que erra quando o dia é 29–31.
+        var planIds = transactions.Select(t => t.Installment!.InstallmentPlanId).Distinct().ToList();
+        var firstDates = await _db.Installments.AsNoTracking()
+            .Where(i => planIds.Contains(i.InstallmentPlanId) && i.Number == 1)
+            .ToDictionaryAsync(i => i.InstallmentPlanId, i => i.DueDate, ct);
+
+        return transactions
+            .Where(t => firstDates.ContainsKey(t.Installment!.InstallmentPlanId))
+            .Select(t => new InstallmentCandidate(t, firstDates[t.Installment!.InstallmentPlanId]))
+            .ToList();
+    }
+
+    private sealed record InstallmentCandidate(FinancialTransaction Transaction, DateOnly FirstDate);
+
+    /// <summary>
+    /// Pagamentos do cartão que ainda não estão aceitos em outra conciliação, numa janela em torno
+    /// das datas da fatura.
+    /// </summary>
+    private async Task<List<CardPayment>> LoadPaymentCandidatesAsync(ImportCardInvoiceRequest request, CancellationToken ct)
+    {
+        if (!request.Items.Any(i => i.Amount < 0)) return [];
+
+        var start = request.Items.Min(i => i.Date).AddDays(-SearchWindowDays);
+        var end = request.ClosingDate.AddDays(SearchWindowDays);
+
+        return await _db.CardPayments.AsNoTracking()
+            .Where(p => p.GrupoId == _currentUser.GrupoId && p.CreditCardId == request.CreditCardId)
+            .Where(p => p.PaymentDate >= start && p.PaymentDate <= end)
+            .Where(p => !_db.Reconciliations.Any(r => r.CardPaymentId == p.Id && r.AcceptedAt != null))
+            .ToListAsync(ct);
+    }
+
+    /// <summary>A linha da fatura que registra o pagamento da fatura anterior.</summary>
+    private static bool IsInvoicePayment(CardInvoiceItem item)
+    {
+        if (item.Amount >= 0) return false;
+        var description = item.Description.ToUpperInvariant();
+        return description.Contains("PAGAMENTO") || description.Contains("PAGTO");
+    }
+
+    private static (CardPayment payment, ReconciliationScorer.ScoreResult score)? FindBestPayment(
+        CardInvoiceItem item, DateOnly closingDate, List<CardPayment> candidates, HashSet<Guid> used)
+    {
+        // A fatura que fecha no mês M mostra o pagamento da fatura de M-1.
+        var previousCycle = new DateOnly(closingDate.Year, closingDate.Month, 1).AddMonths(-1);
+
+        (CardPayment payment, ReconciliationScorer.ScoreResult score)? best = null;
+        foreach (var payment in candidates)
+        {
+            if (used.Contains(payment.Id)) continue;
+            if (Math.Abs(payment.PaymentDate.DayNumber - item.Date.DayNumber) > SearchWindowDays) continue;
+
+            // A descrição não é comparada: a linha é "PAGAMENTO DE FATURA" e o registro não tem
+            // descrição própria. Que a linha é um pagamento já foi decidido por IsInvoicePayment.
+            var score = ReconciliationScorer.Score(
+                payment.Amount, -item.Amount,
+                payment.PaymentDate, item.Date,
+                "PAGAMENTO", "PAGAMENTO",
+                sameDocumentOrInstallment: payment.CycleReference == previousCycle);
+
+            if (best is null || score.Total > best.Value.score.Total)
+                best = (payment, score);
+        }
+        return best is { score.Total: >= ReconciliationScorer.PossibleMatchThreshold } ? best : null;
+    }
+
+    private static (FinancialTransaction transaction, DateOnly firstDate, ReconciliationScorer.ScoreResult score)? FindBestInstallment(
+        CardInvoiceItem item, List<InstallmentCandidate> candidates, HashSet<Guid> used)
+    {
+        var label = InstallmentLabel.TryParse(item.InstallmentLabel);
+        if (label is null) return null;
+
+        (FinancialTransaction transaction, DateOnly firstDate, ReconciliationScorer.ScoreResult score)? best = null;
+        foreach (var candidate in candidates)
+        {
+            var installment = candidate.Transaction.Installment!;
+            if (used.Contains(candidate.Transaction.Id)) continue;
+            if (installment.Number != label.Value.Number || installment.InstallmentPlan!.InstallmentCount != label.Value.Total) continue;
+            if (Math.Abs(candidate.FirstDate.DayNumber - item.Date.DayNumber) > SearchWindowDays) continue;
+
+            // A data comparada é a da 1ª parcela com a da compra; a descrição, a do plano (sem
+            // o "(4/6)" que o lançamento leva).
+            var score = ReconciliationScorer.Score(
+                candidate.Transaction.Amount, item.Amount,
+                candidate.FirstDate, item.Date,
+                installment.InstallmentPlan.Description, item.Description,
+                sameDocumentOrInstallment: true);
+
+            if (best is null || score.Total > best.Value.score.Total)
+                best = (candidate.Transaction, candidate.FirstDate, score);
+        }
+        return best is { score.Total: >= ReconciliationScorer.PossibleMatchThreshold } ? best : null;
+    }
+
+    private static void ApplyScore(Domain.Entities.Reconciliation reconciliation, ReconciliationScorer.ScoreResult score, string match)
+    {
+        reconciliation.Score = score.Total;
+        reconciliation.AmountDifference = score.AmountDifference;
+        reconciliation.DateDifferenceDays = score.DateDifferenceDays;
+        reconciliation.DescriptionScore = score.DescriptionScore;
+        reconciliation.Status = ReconciliationScorer.StatusFor(score.Total) switch
+        {
+            "MATCHED" => ReconciliationStatus.Matched,
+            "POSSIBLE_MATCH" => ReconciliationStatus.PossibleMatch,
+            _ => ReconciliationStatus.Unmatched
+        };
+        reconciliation.Reason = match;
+    }
+
     private (FinancialTransaction transaction, ReconciliationScorer.ScoreResult score)? FindBestCandidate(
-        CardInvoiceItem item, List<FinancialTransaction> candidates)
+        CardInvoiceItem item, List<FinancialTransaction> candidates, HashSet<Guid> used)
     {
         (FinancialTransaction transaction, ReconciliationScorer.ScoreResult score)? best = null;
+        var label = InstallmentLabel.TryParse(item.InstallmentLabel);
 
         foreach (var transaction in candidates)
         {
+            if (used.Contains(transaction.Id)) continue;
             var dateDiff = Math.Abs(transaction.TransactionDate.DayNumber - item.Date.DayNumber);
             if (dateDiff > SearchWindowDays) continue;
 
-            var sameInstallment = item.InstallmentLabel is not null && transaction.Installment is not null &&
-                item.InstallmentLabel.Contains(transaction.Installment.Number.ToString());
+            var sameInstallment = label is not null && transaction.Installment?.InstallmentPlan is not null &&
+                transaction.Installment.Number == label.Value.Number &&
+                transaction.Installment.InstallmentPlan.InstallmentCount == label.Value.Total;
+            // "04/06" na fatura nunca é outra parcela: a 1ª de um plano de 10 comprada no mesmo dia
+            // tem data e valor iguais e passaria aqui.
+            if (label is not null && transaction.Installment is not null && !sameInstallment) continue;
 
             var score = ReconciliationScorer.Score(
                 transaction.Amount, item.Amount,
@@ -325,6 +518,8 @@ public class CardReconciliationService : ICardReconciliationService
         r.Score,
         r.AmountDifference,
         r.DateDifferenceDays,
-        r.Reason
+        r.Reason,
+        r.CardPaymentId,
+        r.AcceptedAt is not null
     );
 }

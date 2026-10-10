@@ -209,6 +209,7 @@ public class BankReconciliationService : IBankReconciliationService
             throw new BusinessRuleException("conciliacao-sem-candidato", "Esta conciliação não possui um lançamento candidato para aceitar.");
 
         reconciliation.Status = ReconciliationStatus.Matched;
+        reconciliation.AcceptedAt = DateTime.UtcNow;
 
         var transaction = await _db.FinancialTransactions.FirstAsync(t => t.Id == reconciliation.FinancialTransactionId, ct);
         transaction.Status = TransactionStatus.Reconciled;
@@ -249,6 +250,7 @@ public class BankReconciliationService : IBankReconciliationService
 
         reconciliation.FinancialTransactionId = transaction.Id;
         reconciliation.Status = ReconciliationStatus.ManuallyMatched;
+        reconciliation.AcceptedAt = DateTime.UtcNow;
         reconciliation.Reason = "Vinculado manualmente pelo usuário.";
         reconciliation.UpdatedAt = DateTime.UtcNow;
         reconciliation.UpdatedBy = _currentUser.UserId;
@@ -281,6 +283,7 @@ public class BankReconciliationService : IBankReconciliationService
 
         var oldStatus = reconciliation.Status;
         reconciliation.Status = ReconciliationStatus.Unmatched;
+        reconciliation.AcceptedAt = null;
         reconciliation.FinancialTransactionId = null;
         reconciliation.Reason = "Conciliação desfeita pelo usuário.";
         reconciliation.UpdatedAt = DateTime.UtcNow;

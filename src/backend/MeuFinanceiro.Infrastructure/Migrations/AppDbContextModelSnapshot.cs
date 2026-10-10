@@ -1224,6 +1224,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<decimal>("AmountDifference")
                         .HasColumnType("decimal(18,2)");
 
@@ -1231,6 +1234,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("CardInvoiceItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CardPaymentId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1277,6 +1283,8 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.HasIndex("BankStatementItemId");
 
                     b.HasIndex("CardInvoiceItemId");
+
+                    b.HasIndex("CardPaymentId");
 
                     b.HasIndex("FinancialTransactionId");
 
@@ -1997,6 +2005,11 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("CardInvoiceItemId");
 
+                    b.HasOne("MeuFinanceiro.Domain.Entities.CardPayment", "CardPayment")
+                        .WithMany()
+                        .HasForeignKey("CardPaymentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MeuFinanceiro.Domain.Entities.FinancialTransaction", "FinancialTransaction")
                         .WithMany()
                         .HasForeignKey("FinancialTransactionId");
@@ -2010,6 +2023,8 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Navigation("BankStatementItem");
 
                     b.Navigation("CardInvoiceItem");
+
+                    b.Navigation("CardPayment");
 
                     b.Navigation("FinancialTransaction");
                 });

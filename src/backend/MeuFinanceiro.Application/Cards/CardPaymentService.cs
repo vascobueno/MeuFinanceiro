@@ -126,6 +126,23 @@ public class CardPaymentService : ICardPaymentService
             if (transaction is not null) _db.FinancialTransactions.Remove(transaction);
         }
 
+        // A linha "PAGAMENTO" de uma fatura importada pode apontar para este pagamento. Aceita, ela
+        // segura a exclusão como o lançamento conciliado segura; só sugerida, volta a "sem par".
+        var reconciliations = await _db.Reconciliations.Where(r => r.CardPaymentId == payment.Id).ToListAsync(ct);
+        if (reconciliations.Any(r => r.AcceptedAt is not null))
+            throw new BusinessRuleException(
+                "pagamento-conciliado",
+                "Este pagamento já foi conciliado com a fatura importada. Desfaça a conciliação primeiro.");
+        foreach (var reconciliation in reconciliations)
+        {
+            reconciliation.CardPaymentId = null;
+            reconciliation.Status = ReconciliationStatus.Unmatched;
+            reconciliation.Score = 0;
+            reconciliation.Reason = "O pagamento sugerido foi excluído.";
+            reconciliation.UpdatedAt = DateTime.UtcNow;
+            reconciliation.UpdatedBy = _currentUser.UserId;
+        }
+
         _db.CardPayments.Remove(payment);
         await _db.SaveChangesAsync(ct);
     }

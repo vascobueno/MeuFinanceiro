@@ -20,10 +20,26 @@ public class Reconciliation : GrupoOwnedEntity
     public Guid? CardInvoiceItemId { get; set; }
     public CardInvoiceItem? CardInvoiceItem { get; set; }
 
+    /// <summary>
+    /// Pagamento de fatura que corresponde à linha "PAGAMENTO" de uma fatura importada. Alternativa
+    /// a <see cref="FinancialTransactionId"/>: o pagamento não é um gasto do cartão, e o lançamento
+    /// que ele gera fica na conta, onde é conciliado com o extrato — não pode ser marcado daqui.
+    /// </summary>
+    public Guid? CardPaymentId { get; set; }
+    public CardPayment? CardPayment { get; set; }
+
     public ReconciliationStatus Status { get; set; } = ReconciliationStatus.Unmatched;
     public int Score { get; set; }
     public decimal AmountDifference { get; set; }
     public int DateDifferenceDays { get; set; }
     public int DescriptionScore { get; set; }
     public string? Reason { get; set; }
+
+    /// <summary>
+    /// Quando o usuário aceitou (ou vinculou à mão). Status Matched sozinho não diz isso: a
+    /// importação já grava Matched quando o score passa de 90, e isso é só sugestão. Para o
+    /// lançamento o aceite também fica no Status Reconciled dele; para o pagamento de fatura,
+    /// que não tem esse status, este campo é o único registro.
+    /// </summary>
+    public DateTime? AcceptedAt { get; set; }
 }

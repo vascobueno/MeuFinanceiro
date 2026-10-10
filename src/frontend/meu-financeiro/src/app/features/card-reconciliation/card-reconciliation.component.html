@@ -112,6 +112,7 @@
             <th pSortableColumn="itemDate">Data <p-sort-icon field="itemDate" /></th>
             <th pSortableColumn="itemDescription">Descrição da fatura <p-sort-icon field="itemDescription" /></th>
             <th pSortableColumn="itemAmount" class="mf-col-end">Valor <p-sort-icon field="itemAmount" /></th>
+            <th>Correspondência</th>
             <th pSortableColumn="score">Score <p-sort-icon field="score" /></th>
             <th pSortableColumn="status">Status <p-sort-icon field="status" /></th>
             <th></th>
@@ -122,11 +123,12 @@
             <td>{{ item.itemDate | date: 'dd/MM/yyyy' }}</td>
             <td>{{ item.itemDescription }}</td>
             <td class="mf-col-end">{{ item.itemAmount | currency: 'BRL' }}</td>
+            <td class="mf-sub">{{ item.reason }}</td>
             <td>{{ item.score }}</td>
             <td><span class="mf-badge" [ngClass]="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td>
             <td class="mf-col-end">
               @if (authService.canWrite()) {
-                @if (item.status === 'Matched' || item.status === 'PossibleMatch') {
+                @if (!item.accepted && (item.status === 'Matched' || item.status === 'PossibleMatch')) {
                   <button pButton [outlined]="true" type="button" (click)="accept(item)">Aceitar</button>
                 }
                 @if (item.status === 'Matched' || item.status === 'ManuallyMatched') {

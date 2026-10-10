@@ -154,7 +154,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(i => i.GrupoId);
             e.HasIndex(i => new { i.GrupoId, i.ContentHash }).IsUnique().HasFilter("\"ContentHash\" IS NOT NULL");
         });
-        builder.Entity<Reconciliation>(e => e.HasIndex(r => r.Status));
+        builder.Entity<Reconciliation>(e =>
+        {
+            e.HasIndex(r => r.Status);
+            // Restrict: excluir um pagamento com conciliação aceita é recusado no serviço; a
+            // sugestão não aceita é desfeita lá antes de excluir.
+            e.HasOne(r => r.CardPayment).WithMany().HasForeignKey(r => r.CardPaymentId).OnDelete(DeleteBehavior.Restrict);
+        });
         builder.Entity<Merchant>(e => e.HasIndex(m => new { m.GrupoId, m.Name }));
 
         builder.Entity<GrupoMember>(e =>

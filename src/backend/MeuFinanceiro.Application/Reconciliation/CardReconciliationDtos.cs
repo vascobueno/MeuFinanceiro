@@ -37,7 +37,10 @@ public record CardReconciliationResponse(
     int Score,
     decimal AmountDifference,
     int DateDifferenceDays,
-    string? Reason
+    string? Reason,
+    Guid? CardPaymentId = null,
+    bool Accepted = false
 );
 
-public record ManualCardReconciliationRequest(Guid CardInvoiceItemId, Guid FinancialTransactionId);
+/// <summary>Vincula o item a um lançamento OU a um pagamento de fatura — exatamente um dos dois.</summary>
+public record ManualCardReconciliationRequest(Guid CardInvoiceItemId, Guid? FinancialTransactionId, Guid? CardPaymentId = null);

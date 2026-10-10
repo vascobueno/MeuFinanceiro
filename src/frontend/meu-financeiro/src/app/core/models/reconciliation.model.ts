@@ -114,9 +114,14 @@ export interface CardReconciliationItem {
   itemDescription: string;
   itemAmount: number;
   financialTransactionId?: string;
+  /** Pagamento de fatura ligado à linha "PAGAMENTO" — alternativa a financialTransactionId. */
+  cardPaymentId?: string;
   status: string;
   score: number;
   amountDifference: number;
   dateDifferenceDays: number;
+  /** Com o quê o item foi ligado ("Parcela 4/6 de …", "Pagamento de …") ou por que não foi. */
   reason?: string;
+  /** Aceito pelo usuário — Matched sozinho pode ser só a sugestão da importação. */
+  accepted: boolean;
 }

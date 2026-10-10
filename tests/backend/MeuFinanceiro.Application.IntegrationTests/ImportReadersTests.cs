@@ -223,4 +223,26 @@ public class ImportReadersTests
         r.Items[1].Description.Should().Be("Estacionamento Ficticio");
         r.Items[1].Amount.Should().Be(2.90m);
     }
+
+    [Theory]
+    [InlineData("04/06", 4, 6)]
+    [InlineData("Parcela 10/12", 10, 12)]
+    [InlineData("04-06", 4, 6)]
+    [InlineData(" 1 / 3 ", 1, 3)]
+    public void Rotulo_de_parcela_vira_numero_e_total(string label, int number, int total)
+    {
+        InstallmentLabel.TryParse(label).Should().Be((number, total));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("07/06")]
+    [InlineData("00/06")]
+    [InlineData("LOJA 04/06")]
+    [InlineData("02/01/2026")]
+    public void Rotulo_que_nao_e_parcela_nao_vira_nada(string? label)
+    {
+        InstallmentLabel.TryParse(label).Should().BeNull();
+    }
 }

@@ -126,7 +126,7 @@ POST `/api/v1/card-invoices/parse`
 POST `/api/v1/card-invoices/import` (`previousBalance`, `confirmUnbalanced`; 400 `fatura-nao-fecha` / `fatura-duplicada`)
 GET `/api/v1/reconciliations/card`
 POST `/api/v1/reconciliations/card/{id}/accept`
-POST `/api/v1/reconciliations/card/manual`
+POST `/api/v1/reconciliations/card/manual` (`financialTransactionId` **ou** `cardPaymentId`)
 POST `/api/v1/reconciliations/card/{id}/undo`
 
 ## Projection
