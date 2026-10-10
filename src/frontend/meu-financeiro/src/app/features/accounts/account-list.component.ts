@@ -18,6 +18,8 @@ import { ListStateComponent } from '../../shared/components/list-state.component
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { nextSort } from '../../core/services/sort.util';
+import { businessRuleOf } from '../../core/services/problem.util';
+import { BANCOS, OUTRO_BANCO, bancoPorCodigo } from '../../core/data/bancos';
 
 /** Tela de contas (RF002), espelhando docs/screens/contas/mockup.html. */
 @Component({
@@ -68,8 +70,23 @@ export class AccountListComponent implements OnInit {
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
   readonly editingId = signal<string | null>(null);
-  readonly newAccount: CreateAccountRequest = { name: '', bank: '', type: AccountType.Checking, initialBalance: 0 };
+  readonly newAccount: CreateAccountRequest = AccountListComponent.emptyForm();
   private editingIsActive = true;
+
+  readonly OUTRO_BANCO = OUTRO_BANCO;
+  readonly bankOptions = [
+    ...BANCOS.map((b) => ({ label: b.code + ' – ' + b.name, value: b.code })),
+    { label: 'Outro', value: OUTRO_BANCO },
+  ];
+  /** Código escolhido no seletor, "outro" ou null (sem dados bancários). */
+  bankChoice: string | null = null;
+
+  private static emptyForm(): CreateAccountRequest {
+    return {
+      name: '', bank: '', type: AccountType.Checking, initialBalance: 0, overdraftLimit: 0,
+      bankCode: null, agency: '', agencyDigit: '', accountNumber: '', accountDigit: '',
+    };
+  }
 
   constructor(
     private readonly accountService: AccountService,
@@ -125,10 +142,8 @@ export class AccountListComponent implements OnInit {
 
   openForm(): void {
     this.editingId.set(null);
-    this.newAccount.name = '';
-    this.newAccount.bank = '';
-    this.newAccount.type = AccountType.Checking;
-    this.newAccount.initialBalance = 0;
+    Object.assign(this.newAccount, AccountListComponent.emptyForm());
+    this.bankChoice = null;
     this.showForm.set(true);
     this.formError.set(null);
   }
@@ -136,12 +151,47 @@ export class AccountListComponent implements OnInit {
   edit(account: Account): void {
     this.editingId.set(account.id);
     this.editingIsActive = account.isActive;
-    this.newAccount.name = account.name;
-    this.newAccount.bank = account.bank ?? '';
-    this.newAccount.type = account.type;
-    this.newAccount.initialBalance = account.initialBalance;
+    Object.assign(this.newAccount, {
+      name: account.name,
+      bank: account.bank ?? '',
+      type: account.type,
+      initialBalance: account.initialBalance,
+      overdraftLimit: account.overdraftLimit ?? 0,
+      bankCode: account.bankCode ?? null,
+      agency: account.agency ?? '',
+      agencyDigit: account.agencyDigit ?? '',
+      accountNumber: account.accountNumber ?? '',
+      accountDigit: account.accountDigit ?? '',
+    });
+    // Banco da lista pelo código; banco digitado antes desta tela (só o nome) aparece como "Outro"
+    // para o nome não sumir na edição.
+    if (bancoPorCodigo(account.bankCode)) this.bankChoice = account.bankCode!;
+    else this.bankChoice = account.bankCode || account.bank ? OUTRO_BANCO : null;
     this.showForm.set(true);
     this.formError.set(null);
+  }
+
+  /** Banco da lista preenche código e nome; "Outro" abre os dois para digitar; limpar tira tudo. */
+  onBankChoice(): void {
+    const banco = bancoPorCodigo(this.bankChoice);
+    if (banco) {
+      this.newAccount.bankCode = banco.code;
+      this.newAccount.bank = banco.name;
+    } else if (this.bankChoice === OUTRO_BANCO) {
+      if (bancoPorCodigo(this.newAccount.bankCode)) {
+        this.newAccount.bankCode = '';
+        this.newAccount.bank = '';
+      }
+    } else {
+      Object.assign(this.newAccount, { bankCode: null, agency: '', agencyDigit: '', accountNumber: '', accountDigit: '' });
+    }
+  }
+
+  /** "033 · 0001-X / 12345-6", ou "—". */
+  agencyAndAccount(a: Account): string {
+    if (!a.accountNumber) return '—';
+    const agencia = a.agencyDigit ? a.agency + '-' + a.agencyDigit : a.agency;
+    return a.bankCode + ' · ' + agencia + ' / ' + a.accountNumber + '-' + a.accountDigit;
   }
 
   closeForm(): void {
@@ -159,30 +209,42 @@ export class AccountListComponent implements OnInit {
     this.formError.set(null);
 
     const editingId = this.editingId();
+    // Campo vazio vai como null: o backend trata "em branco" e "ausente" igual, e o seletor
+    // limpo precisa apagar os dados bancários que a conta tinha.
+    const blank = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
+    const payload = {
+      name: this.newAccount.name,
+      bank: this.newAccount.bank,
+      type: this.newAccount.type,
+      initialBalance: this.newAccount.initialBalance,
+      overdraftLimit: this.newAccount.overdraftLimit ?? 0,
+      bankCode: blank(this.newAccount.bankCode),
+      agency: blank(this.newAccount.agency),
+      agencyDigit: blank(this.newAccount.agencyDigit),
+      accountNumber: blank(this.newAccount.accountNumber),
+      accountDigit: blank(this.newAccount.accountDigit),
+    };
     const request$ = editingId
-      ? this.accountService.update(editingId, {
-          name: this.newAccount.name,
-          bank: this.newAccount.bank,
-          type: this.newAccount.type,
-          initialBalance: this.newAccount.initialBalance,
-          isActive: this.editingIsActive,
-        })
-      : this.accountService.create(this.newAccount);
+      ? this.accountService.update(editingId, { ...payload, isActive: this.editingIsActive })
+      : this.accountService.create(payload);
 
     request$.subscribe({
       next: () => {
         this.saving.set(false);
         this.showForm.set(false);
         this.editingId.set(null);
-        this.newAccount.name = '';
-        this.newAccount.bank = '';
-        this.newAccount.initialBalance = 0;
+        Object.assign(this.newAccount, AccountListComponent.emptyForm());
+        this.bankChoice = null;
         this.load();
         this.loadSummary();
       },
-      error: () => {
+      error: (err) => {
         this.saving.set(false);
-        this.formError.set(editingId ? 'Não foi possível salvar as alterações.' : 'Não foi possível salvar a conta.');
+        // Regras do backend (dados pela metade, conta duplicada, dígito inválido) já vêm explicadas.
+        this.formError.set(
+          businessRuleOf(err)?.message ??
+            (editingId ? 'Não foi possível salvar as alterações.' : 'Não foi possível salvar a conta.'),
+        );
       },
     });
   }

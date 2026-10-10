@@ -154,6 +154,21 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(i => i.GrupoId);
             e.HasIndex(i => new { i.GrupoId, i.ContentHash }).IsUnique().HasFilter("\"ContentHash\" IS NOT NULL");
         });
+        builder.Entity<Account>(e =>
+        {
+            e.Property(a => a.BankCode).HasMaxLength(3);
+            e.Property(a => a.Agency).HasMaxLength(4);
+            e.Property(a => a.AgencyDigit).HasMaxLength(1);
+            e.Property(a => a.AccountNumber).HasMaxLength(13);
+            e.Property(a => a.AccountDigit).HasMaxLength(1);
+            // Declarado à parte: sem ele o EF tiraria o índice de GrupoId achando que o composto
+            // filtrado abaixo o cobre — e o filtro faz com que não cubra.
+            e.HasIndex(a => a.GrupoId);
+            e.HasIndex(a => new { a.GrupoId, a.BankCode, a.Agency, a.AccountNumber, a.AccountDigit })
+                .IsUnique()
+                .HasFilter("\"AccountNumber\" IS NOT NULL");
+        });
+
         builder.Entity<Reconciliation>(e =>
         {
             e.HasIndex(r => r.Status);

@@ -44,6 +44,23 @@ Owner/Member), AccessProfile (`GrupoAccessProfile`: Completo/Editor/Visualizador
 sempre Completo). Todo `ApplicationUser` pertence a exatamente um grupo (índice único em
 `GrupoMember.UserId`).
 
+## Account
+Name, Bank (nome), Type, InitialBalance, IsActive, mais:
+
+- **Dados bancários** — `BankCode` (COMPE, 3 dígitos), `Agency` (4), `AgencyDigit?`,
+  `AccountNumber` (até 13 dígitos), `AccountDigit` (dígito ou X). Opcionais, mas todos juntos
+  (só o dígito da agência pode faltar): `dados-bancarios-incompletos`. Gravados só com dígitos —
+  "12.345-6" vira número "12345" e dígito "6"; código e agência ganham zeros à esquerda. A mesma
+  agência e conta não se repetem no grupo (`conta-duplicada`, e índice único filtrado
+  `GrupoId + BankCode + Agency + AccountNumber + AccountDigit` onde há número). Contas
+  cadastradas antes ficam só com o nome do banco; na edição ele aparece como "Outro".
+- **`OverdraftLimit`** — limite do cheque especial (≥ 0, `limite-invalido`). Não entra no saldo
+  nem no "Saldo total"; a resposta traz `AvailableBalance` = saldo + limite, que a tela de
+  lançamentos da conta mostra como "Disponível" quando há limite.
+
+A lista de bancos do formulário (`core/data/bancos.ts`) é só conveniência da tela; o backend
+aceita qualquer código de 3 dígitos.
+
 ## FinancialTransaction
 Id, **GrupoId** (dono real do dado, compartilhado entre os membros do grupo — não é
 mais `UserId` direto), TransactionDate, Description, MerchantId, CategoryId, AccountId?,
@@ -120,7 +137,7 @@ tela e no cálculo de atraso. A única regra é não vencer antes de fechar (ver
 índice é a barreira contra isso mesmo em corrida entre requisições.
 
 ## Reconciliation
-FinancialTransactionId?, BankStatementItemId?, CardInvoiceItemId?, Status, Score, AmountDifference, DateDifferenceDays, DescriptionScore, Reason, auditoria.
+FinancialTransactionId?, BankStatementItemId?, CardInvoiceItemId?, CardPaymentId?, Status, Score, AmountDifference, DateDifferenceDays, DescriptionScore, Reason, AcceptedAt?, auditoria.
 
 ## AuditLog
 UserId, GrupoId (do dado alterado, ou de quem logou; null quando não se aplica),

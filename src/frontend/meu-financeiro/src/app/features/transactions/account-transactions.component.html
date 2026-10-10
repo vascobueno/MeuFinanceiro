@@ -54,6 +54,13 @@
         <span class="mf-metric-label">Saldo</span>
         <b>{{ balance | currency: 'BRL' }}</b>
       </span>
+      <!-- Só com limite: saldo + cheque especial. Não entra no "Saldo total" acima. -->
+      @if (activeAccount.overdraftLimit > 0) {
+        <span class="mf-panel-metric" [pTooltip]="'Saldo + limite de ' + (activeAccount.overdraftLimit | currency: 'BRL')" tooltipPosition="top">
+          <span class="mf-metric-label">Disponível</span>
+          <b>{{ activeAccount.availableBalance | currency: 'BRL' }}</b>
+        </span>
+      }
     }
     <span class="mf-panel-header-spacer"></span>
     @if (authService.canWrite() && selectedAccountId) {

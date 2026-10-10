@@ -28,8 +28,28 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AccountDigit")
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)");
+
+                    b.Property<string>("AccountNumber")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
+
+                    b.Property<string>("Agency")
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)");
+
+                    b.Property<string>("AgencyDigit")
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)");
+
                     b.Property<string>("Bank")
                         .HasColumnType("text");
+
+                    b.Property<string>("BankCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -50,6 +70,9 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<decimal>("OverdraftLimit")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("bytea");
 
@@ -65,6 +88,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GrupoId");
+
+                    b.HasIndex("GrupoId", "BankCode", "Agency", "AccountNumber", "AccountDigit")
+                        .IsUnique()
+                        .HasFilter("\"AccountNumber\" IS NOT NULL");
 
                     b.ToTable("Accounts");
                 });

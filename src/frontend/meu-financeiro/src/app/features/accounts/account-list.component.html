@@ -27,10 +27,6 @@
         <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newAccount.name" />
       </div>
       <div>
-        <label class="mf-field-label">Banco</label>
-        <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newAccount.bank" />
-      </div>
-      <div>
         <label class="mf-field-label">Tipo</label>
         <p-select size="small" class="mf-field-input" [options]="typeOptions" optionLabel="label" optionValue="value" [(ngModel)]="newAccount.type" />
       </div>
@@ -38,10 +34,66 @@
         <label class="mf-field-label">Saldo inicial</label>
         <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="newAccount.initialBalance" />
       </div>
-      <div class="mf-inline-form-actions">
-        <button pButton type="button" [disabled]="saving()" (click)="submit()">Salvar</button>
-        <button pButton [outlined]="true" type="button" (click)="closeForm()">Cancelar</button>
+      <div>
+        <label class="mf-field-label">Limite do cheque especial</label>
+        <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" min="0" [(ngModel)]="newAccount.overdraftLimit" />
       </div>
+
+      <!-- Dados bancários: opcionais, mas todos juntos — o backend recusa pela metade. -->
+      <div>
+        <label class="mf-field-label">Banco</label>
+        <p-select
+          size="small"
+          class="mf-field-input"
+          [options]="bankOptions"
+          optionLabel="label"
+          optionValue="value"
+          [filter]="true"
+          filterBy="label"
+          [showClear]="true"
+          placeholder="Sem dados bancários"
+          [(ngModel)]="bankChoice"
+          (onChange)="onBankChoice()"
+        />
+      </div>
+      @if (bankChoice === OUTRO_BANCO) {
+        <div class="mf-pair">
+          <div>
+            <label class="mf-field-label">Código</label>
+            <input pInputText pSize="small" class="mf-field-input" inputmode="numeric" maxlength="3" [(ngModel)]="newAccount.bankCode" />
+          </div>
+          <div>
+            <label class="mf-field-label">Nome do banco</label>
+            <input pInputText pSize="small" class="mf-field-input" [(ngModel)]="newAccount.bank" />
+          </div>
+        </div>
+      }
+      @if (bankChoice) {
+        <div class="mf-pair mf-pair-digit">
+          <div>
+            <label class="mf-field-label">Agência</label>
+            <input pInputText pSize="small" class="mf-field-input" inputmode="numeric" maxlength="4" [(ngModel)]="newAccount.agency" />
+          </div>
+          <div>
+            <label class="mf-field-label">Dígito</label>
+            <input pInputText pSize="small" class="mf-field-input" maxlength="1" [(ngModel)]="newAccount.agencyDigit" />
+          </div>
+        </div>
+        <div class="mf-pair mf-pair-digit">
+          <div>
+            <label class="mf-field-label">Conta</label>
+            <input pInputText pSize="small" class="mf-field-input" inputmode="numeric" maxlength="16" [(ngModel)]="newAccount.accountNumber" />
+          </div>
+          <div>
+            <label class="mf-field-label">Dígito</label>
+            <input pInputText pSize="small" class="mf-field-input" maxlength="1" [(ngModel)]="newAccount.accountDigit" />
+          </div>
+        </div>
+      }
+    </div>
+    <div class="mf-inline-form-actions">
+      <button pButton type="button" [disabled]="saving()" (click)="submit()">Salvar</button>
+      <button pButton [outlined]="true" type="button" (click)="closeForm()">Cancelar</button>
     </div>
     @if (formError()) {
       <div class="mf-form-error">{{ formError() }}</div>
@@ -74,6 +126,7 @@
           <tr>
             <th pSortableColumn="name">Nome <p-sort-icon field="name" /></th>
             <th pSortableColumn="bank">Banco <p-sort-icon field="bank" /></th>
+            <th>Agência / Conta</th>
             <th pSortableColumn="type">Tipo <p-sort-icon field="type" /></th>
             <th class="mf-col-end">Saldo</th>
             <th>Status</th>
@@ -84,6 +137,7 @@
           <tr>
             <td>{{ account.name }}</td>
             <td>{{ account.bank || '—' }}</td>
+            <td class="mf-tabular">{{ agencyAndAccount(account) }}</td>
             <td>{{ account.type === AccountType.Checking ? 'Corrente' : 'Poupança' }}</td>
             <td class="mf-col-end">{{ account.currentBalance | currency: 'BRL' }}</td>
             <td>

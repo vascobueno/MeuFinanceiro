@@ -27,14 +27,29 @@
 
 .mf-inline-form-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr) auto;
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   align-items: end;
+}
+
+// Dois campos numa célula: código + nome do banco, ou número + dígito.
+.mf-pair {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.5rem;
+}
+.mf-pair-digit {
+  grid-template-columns: 1fr 3.5rem;
 }
 
 .mf-inline-form-actions {
   display: flex;
   gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.mf-tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 .mf-form-error {

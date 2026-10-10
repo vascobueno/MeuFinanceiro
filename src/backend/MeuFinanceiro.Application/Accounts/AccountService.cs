@@ -56,6 +56,10 @@ public class AccountService : IAccountService
 
     public async Task<AccountResponse> CreateAsync(CreateAccountRequest request, CancellationToken ct = default)
     {
+        var details = BankDetails.Parse(request.BankCode, request.Agency, request.AgencyDigit, request.AccountNumber, request.AccountDigit);
+        EnsureValidLimit(request.OverdraftLimit);
+        await EnsureNotDuplicateAsync(details, null, ct);
+
         var account = new Account
         {
             GrupoId = _currentUser.GrupoId,
@@ -63,8 +67,10 @@ public class AccountService : IAccountService
             Bank = request.Bank,
             Type = request.Type,
             InitialBalance = request.InitialBalance,
+            OverdraftLimit = request.OverdraftLimit,
             CreatedBy = _currentUser.UserId
         };
+        Apply(account, details);
 
         _db.Accounts.Add(account);
         await _db.SaveChangesAsync(ct);
@@ -74,6 +80,12 @@ public class AccountService : IAccountService
     public async Task<AccountResponse> UpdateAsync(Guid id, UpdateAccountRequest request, CancellationToken ct = default)
     {
         var account = await FindOwnedAsync(id, ct);
+        var details = BankDetails.Parse(request.BankCode, request.Agency, request.AgencyDigit, request.AccountNumber, request.AccountDigit);
+        EnsureValidLimit(request.OverdraftLimit);
+        await EnsureNotDuplicateAsync(details, id, ct);
+
+        Apply(account, details);
+        account.OverdraftLimit = request.OverdraftLimit;
         account.Name = request.Name;
         account.Bank = request.Bank;
         account.Type = request.Type;
@@ -100,6 +112,42 @@ public class AccountService : IAccountService
         await _db.SaveChangesAsync(ct);
     }
 
+    private static void Apply(Account account, BankDetails details)
+    {
+        account.BankCode = details.BankCode;
+        account.Agency = details.Agency;
+        account.AgencyDigit = details.AgencyDigit;
+        account.AccountNumber = details.AccountNumber;
+        account.AccountDigit = details.AccountDigit;
+    }
+
+    private static void EnsureValidLimit(decimal limit)
+    {
+        if (limit < 0)
+            throw new BusinessRuleException("limite-invalido", "O limite do cheque especial não pode ser negativo.");
+    }
+
+    /// <summary>
+    /// A mesma agência e conta não podem ser cadastradas duas vezes no grupo — senão o extrato
+    /// (e o OFX) não saberia em qual delas entrar. Também há índice único; a checagem aqui dá a
+    /// mensagem e cobre o banco em memória dos testes, que ignora índices únicos.
+    /// </summary>
+    private async Task EnsureNotDuplicateAsync(BankDetails details, Guid? exceptId, CancellationToken ct)
+    {
+        if (details.IsEmpty) return;
+
+        var existing = await _db.Accounts.AsNoTracking()
+            .Where(a => a.GrupoId == _currentUser.GrupoId && a.Id != exceptId
+                        && a.BankCode == details.BankCode && a.Agency == details.Agency
+                        && a.AccountNumber == details.AccountNumber && a.AccountDigit == details.AccountDigit)
+            .Select(a => a.Name)
+            .FirstOrDefaultAsync(ct);
+
+        if (existing is not null)
+            throw new BusinessRuleException("conta-duplicada",
+                $"A agência e conta {details.Display} já estão cadastradas em \"{existing}\".");
+    }
+
     private async Task<Account> FindOwnedAsync(Guid id, CancellationToken ct)
     {
         var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id, ct)
@@ -118,5 +166,7 @@ public class AccountService : IAccountService
     }
 
     private static AccountResponse ToResponse(Account a, decimal movements) =>
-        new(a.Id, a.Name, a.Bank, a.Type, a.InitialBalance, a.InitialBalance + movements, a.IsActive);
+        new(a.Id, a.Name, a.Bank, a.Type, a.InitialBalance, a.InitialBalance + movements, a.IsActive,
+            a.BankCode, a.Agency, a.AgencyDigit, a.AccountNumber, a.AccountDigit, a.OverdraftLimit,
+            a.InitialBalance + movements + a.OverdraftLimit);
 }
