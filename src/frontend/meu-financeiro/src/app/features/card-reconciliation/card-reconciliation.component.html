@@ -116,6 +116,19 @@
       </div>
     }
 
+    @for (o of closingOffers(); track o.reference) {
+      <div class="mf-form-warning" role="status">
+        <span>
+          A fatura diz que o fechamento {{ o.label }} é {{ formatIso(o.date) }}; o cadastro do cartão calcula
+          {{ formatIso(o.current) }}.
+        </span>
+        <div class="mf-warning-actions">
+          <button pButton type="button" size="small" (click)="applyClosingOffer(o)">Ajustar esse ciclo</button>
+          <button pButton type="button" size="small" [outlined]="true" (click)="dismissClosingOffer(o)">Manter</button>
+        </div>
+      </div>
+    }
+
     @if (importResult()) {
       <div class="mf-form-info">{{ importResult() }}</div>
     }
@@ -185,6 +198,11 @@
                 }
                 @if (item.status === 'Matched' || item.status === 'ManuallyMatched') {
                   <button pButton [outlined]="true" type="button" (click)="undo(item)">Desfazer</button>
+                }
+                @if (canCreateFromItem(item)) {
+                  <!-- Item sem par (anuidade, seguro, IOF, compra esquecida): cria o lançamento no cartão. -->
+                  <button pButton [outlined]="true" type="button" pTooltip="Cria o lançamento no cartão e já o concilia"
+                          tooltipPosition="left" (click)="createFromItem(item)">Lançar</button>
                 }
               }
             </td>

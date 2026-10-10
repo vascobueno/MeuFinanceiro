@@ -18,12 +18,15 @@ import { ListStateComponent } from '../../shared/components/list-state.component
 import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { IssuedCardService } from '../../core/services/issued-card.service';
 import { IssuedCardKind } from '../../core/models/issued-card.model';
+import { CardPaymentService } from '../../core/services/card-payment.service';
+import { Tooltip } from 'primeng/tooltip';
 
 /** docs/08-conciliacao-cartoes.md — entrada inicial: PDF da fatura (normalizado aqui manualmente). */
 @Component({
   selector: 'mf-card-reconciliation',
   standalone: true,
   imports: [
+    Tooltip,
     CommonModule,
     FormsModule,
     MfIconComponent,
@@ -86,6 +89,8 @@ export class CardReconciliationComponent implements OnInit {
   readonly unknownError = signal<string | null>(null);
   readonly detectedNote = signal<string | null>(null);
   private pendingParsed: ParsedCardInvoice | null = null;
+  /** Fechamentos que a fatura imprime e que diferem do calendário do cartão. */
+  readonly closingOffers = signal<{ cardId: string; reference: string; date: string; current: string; label: string }[]>([]);
   /** Uma linha por item: data;descrição;parcela;valor */
   itemsRaw = '';
   readonly importing = signal(false);
@@ -95,6 +100,7 @@ export class CardReconciliationComponent implements OnInit {
   private pendingImport: ImportCardInvoiceRequest | null = null;
 
   constructor(
+    private readonly cardPaymentService: CardPaymentService,
     private readonly issuedCardService: IssuedCardService,
     private readonly reconciliationService: ReconciliationService,
     private readonly cardService: CardService,
@@ -211,6 +217,67 @@ export class CardReconciliationComponent implements OnInit {
     });
   }
 
+  /**
+   * A fatura diz quando fechou (e às vezes quando fecha a próxima). Se o calendário do cartão
+   * calcula outra data para aquele mês, oferece ajustar só aquele ciclo — a operadora antecipa ou
+   * adia o fechamento em feriados e fins de semana.
+   */
+  private offerClosingAdjustments(cardId: string): void {
+    this.closingOffers.set([]);
+    const parsed = this.pendingParsed;
+    if (!parsed) return;
+    const wanted = [
+      { date: parsed.closingDateFromText, label: 'desta fatura' },
+      { date: parsed.nextClosingDateFromText, label: 'da próxima fatura' },
+    ].filter((w): w is { date: string; label: string } => !!w.date);
+
+    for (const w of wanted) {
+      // Pelo mês: o ciclo de setembro é o que fecha em setembro, mesmo que a fatura diga dia 3 e o
+      // cadastro diga dia 2 (pela data em si, o dia 3 cairia no ciclo de outubro).
+      const reference = w.date.slice(0, 8) + '01';
+      this.cardPaymentService.getCycle(cardId, reference).subscribe({
+        next: (cycle) => {
+          if (cycle.closingDate === w.date) return;
+          this.closingOffers.set([
+            ...this.closingOffers(),
+            { cardId, reference: cycle.reference, date: w.date, current: cycle.closingDate, label: w.label },
+          ]);
+        },
+      });
+    }
+  }
+
+  applyClosingOffer(offer: { cardId: string; reference: string; date: string }): void {
+    this.cardPaymentService.setClosing(offer.cardId, offer.reference, offer.date).subscribe({
+      next: () => {
+        this.closingOffers.set(this.closingOffers().filter((o) => o !== offer));
+        this.importResult.set(`${this.importResult() ?? ''} Fechamento ajustado para ${this.formatIso(offer.date)}.`.trim());
+      },
+      error: (err) => this.unknownError.set(businessRuleOf(err)?.message ?? 'Não foi possível ajustar o fechamento.'),
+    });
+  }
+
+  dismissClosingOffer(offer: object): void {
+    this.closingOffers.set(this.closingOffers().filter((o) => o !== offer));
+  }
+
+  formatIso(iso: string): string {
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  /** "Lançar" vale para item sem conciliação aceita, que não seja pagamento nem de valor zero. */
+  canCreateFromItem(item: CardReconciliationItem): boolean {
+    return !item.accepted && item.status !== 'Ignored' && item.itemKind !== 'Payment' && item.itemAmount !== 0;
+  }
+
+  createFromItem(item: CardReconciliationItem): void {
+    this.reconciliationService.createTransactionFromCardItem(item.id).subscribe({
+      next: () => this.load(),
+      error: (err) => this.error.set(businessRuleOf(err)?.message ?? 'Não foi possível lançar o item.'),
+    });
+  }
+
   /** Cadastra no grupo da importação o cartão de um final que a fatura trouxe e o grupo não tinha. */
   addUnknownCard(entry: { header: InvoiceCardHeader; kind: IssuedCardKind }): void {
     if (!this.importCardId) return;
@@ -305,6 +372,7 @@ export class CardReconciliationComponent implements OnInit {
         );
         this.itemsRaw = '';
         this.load();
+        this.offerClosingAdjustments(request.creditCardId);
       },
       error: (err) => {
         this.importing.set(false);
@@ -337,6 +405,8 @@ export class CardReconciliationComponent implements OnInit {
         return 'Conciliado manualmente';
       case 'Unmatched':
         return 'Sem correspondência';
+      case 'Ignored':
+        return 'Ignorado';
       default:
         return status;
     }

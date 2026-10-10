@@ -31,6 +31,8 @@ import { MerchantSuggestion } from '../../core/models/merchant.model';
 import { AutocompleteComponent } from '../../shared/components/autocomplete.component';
 import { MoneyInputComponent } from '../../shared/components/money-input.component';
 import { AttachmentsComponent } from '../../shared/components/attachments.component';
+import { ForeignPurchase, brlFromForeign } from '../../core/services/foreign.util';
+import { businessRuleOf } from '../../core/services/problem.util';
 
 type EntryMode = 'simple' | 'installment' | 'recurring';
 type OriginKind = 'account' | 'card';
@@ -205,6 +207,13 @@ export class TransactionFormComponent implements OnInit {
   destinationAccountId: string | null = null;
   amount: number | null = null;
   notes = '';
+  /** Compra no exterior (só no lançamento simples): valor e moeda da cobrança, cotação, origem. */
+  foreignOn = false;
+  foreignCurrency = 'USD';
+  foreignAmount: number | null = null;
+  exchangeRate: number | null = null;
+  originalCurrency = '';
+  originalAmount: number | null = null;
   status: TransactionStatus = TransactionStatus.Pending;
 
   installmentMode: InstallmentMode = InstallmentMode.TotalAmount;
@@ -314,6 +323,13 @@ export class TransactionFormComponent implements OnInit {
     this.originKind = transaction.creditCardId ? 'card' : 'account';
     this.amount = transaction.amount;
     this.notes = transaction.notes ?? '';
+    const f = transaction.foreign;
+    this.foreignOn = !!f;
+    this.foreignCurrency = f?.currency ?? 'USD';
+    this.foreignAmount = f?.amount ?? null;
+    this.exchangeRate = f?.exchangeRate ?? null;
+    this.originalCurrency = f?.originalCurrency ?? '';
+    this.originalAmount = f?.originalAmount ?? null;
     this.status = transaction.status;
     this.editingPlanId.set(transaction.installmentPlanId ?? null);
   }
@@ -358,7 +374,25 @@ export class TransactionFormComponent implements OnInit {
     if (suggestion.defaultCategoryId) this.categoryId = suggestion.defaultCategoryId;
   }
 
+  private foreignPayload(): ForeignPurchase | null {
+    if (!this.foreignOn || !this.foreignAmount) return null;
+    return {
+      amount: this.foreignAmount,
+      currency: this.foreignCurrency.trim().toUpperCase(),
+      exchangeRate: this.exchangeRate || null,
+      originalAmount: this.originalCurrency.trim() && this.originalAmount ? this.originalAmount : null,
+      originalCurrency: this.originalCurrency.trim() && this.originalAmount ? this.originalCurrency.trim().toUpperCase() : null,
+    };
+  }
+
+  /** Valor em reais vazio: preenche com estrangeiro × cotação. Nunca troca o que foi digitado. */
+  fillAmountFromForeign(): void {
+    if (this.amount) return;
+    this.amount = brlFromForeign(this.foreignAmount, this.exchangeRate);
+  }
+
   submit(): void {
+    if (this.foreignOn) this.fillAmountFromForeign();
     if (!this.description.trim() || !this.amount) {
       this.error.set('Preencha descrição e valor.');
       return;
@@ -380,12 +414,15 @@ export class TransactionFormComponent implements OnInit {
           direction: this.type === TransactionType.Income ? TransactionDirection.Credit : TransactionDirection.Debit,
           status: this.status,
           notes: this.notes,
+          foreign: this.foreignPayload(),
         })
         .subscribe({
           next: () => this.router.navigate([this.backLink], { queryParams: this.backQuery }),
-          error: () => {
+          error: (err) => {
             this.saving.set(false);
-            this.error.set('Não foi possível salvar. Lançamentos conciliados não podem ser alterados (regra 12).');
+            this.error.set(
+              businessRuleOf(err)?.message ?? 'Não foi possível salvar. Lançamentos conciliados não podem ser alterados (regra 12).',
+            );
           },
         });
       return;
@@ -402,6 +439,8 @@ export class TransactionFormComponent implements OnInit {
       direction: this.type === TransactionType.Income ? TransactionDirection.Credit : TransactionDirection.Debit,
       amount: this.amount,
       notes: this.notes,
+      // O valor estrangeiro é da compra, não de cada parcela: só no lançamento simples.
+      foreign: this.mode === 'simple' && this.type !== TransactionType.Transfer ? this.foreignPayload() : null,
       installment:
         this.mode === 'installment'
           ? {
@@ -419,9 +458,9 @@ export class TransactionFormComponent implements OnInit {
 
     this.transactionService.create(request).subscribe({
       next: (created) => this.uploadAttachmentsThenLeave(created),
-      error: () => {
+      error: (err) => {
         this.saving.set(false);
-        this.error.set('Não foi possível salvar o lançamento. Verifique os dados informados.');
+        this.error.set(businessRuleOf(err)?.message ?? 'Não foi possível salvar o lançamento. Verifique os dados informados.');
       },
     });
   }

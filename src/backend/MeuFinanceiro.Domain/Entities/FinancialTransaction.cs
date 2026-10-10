@@ -44,4 +44,13 @@ public class FinancialTransaction : GrupoOwnedEntity
     public Guid? RelatedTransactionId { get; set; }
 
     public string? Notes { get; set; }
+
+    // Compra no exterior (docs/06): o valor na moeda da cobrança, a moeda e a cotação usada.
+    // Amount continua sendo o valor em reais — é ele que entra em saldo, fatura e relatórios.
+    public decimal? ForeignAmount { get; set; }
+    public string? ForeignCurrency { get; set; }
+    public decimal? ExchangeRate { get; set; }
+    /// <summary>Moeda e valor de origem, quando diferentes da moeda da cobrança ("EUR 19,50" cobrado em dólar).</summary>
+    public decimal? OriginalAmount { get; set; }
+    public string? OriginalCurrency { get; set; }
 }

@@ -38,6 +38,9 @@ public static partial class InvoiceTextReader
         public List<CardInvoiceItemRequest> Items { get; } = new();
         public List<InvoiceCardHeader> Cards { get; } = new();
         public List<decimal> Totals { get; } = new();
+        public DateOnly? Closing { get; set; }
+        public DateOnly? Due { get; set; }
+        public DateOnly? NextClosing { get; set; }
         public InvoiceCardHeader? Card { get; set; }
         public DateOnly? LastDate { get; set; }
         /// <summary>Compras no exterior da seção ainda sem cotação: a linha COTAÇÃO vem depois delas.</summary>
@@ -68,6 +71,9 @@ public static partial class InvoiceTextReader
                 }
                 continue;
             }
+
+            // Datas da fatura: fechamento, vencimento e o próximo fechamento, quando ela os traz.
+            if (TryInvoiceDates(raw, closingDate, state)) continue;
 
             if (TryCardHeader(raw) is { } header)
             {
@@ -112,7 +118,8 @@ public static partial class InvoiceTextReader
         // subtotais, e somar seria chute.
         decimal? totalFromText = state.Totals.Distinct().Count() == 1 ? state.Totals[0] : null;
 
-        return new ParsedCardInvoiceResponse(state.Items, errors, state.Items.Sum(x => x.Amount), state.Cards, totalFromText);
+        return new ParsedCardInvoiceResponse(state.Items, errors, state.Items.Sum(x => x.Amount), state.Cards, totalFromText,
+            ClosingDateFromText: state.Closing, DueDateFromText: state.Due, NextClosingDateFromText: state.NextClosing);
     }
 
     /// <summary>Fim de uma seção de cartão: compras no exterior que ficaram sem COTAÇÃO ganham a calculada.</summary>
@@ -268,6 +275,55 @@ public static partial class InvoiceTextReader
         return name.Length == 0 ? null : name;
     }
 
+    /// <summary>
+    /// "Data de fechamento: 02/09/2026", "Vencimento 10/09", "Próximo fechamento 02/10" — linha sem
+    /// valor. Devolve true quando a linha era uma dessas (e não deve ser lida como item).
+    /// </summary>
+    private static bool TryInvoiceDates(string line, DateOnly reference, State state)
+    {
+        if (line.Split(' ').Any(ImportValueParser.IsMoneyToken)) return false;
+
+        var next = NextClosingLine().Match(line);
+        if (next.Success && ParseLooseDate(next.Groups["d"].Value, reference, forward: true) is { } n)
+        {
+            state.NextClosing ??= n;
+            return true;
+        }
+        var closing = ClosingLine().Match(line);
+        if (closing.Success && !line.Contains("próxim", StringComparison.OrdinalIgnoreCase) && !line.Contains("proxim", StringComparison.OrdinalIgnoreCase)
+            && ParseLooseDate(closing.Groups["d"].Value, reference, forward: false) is { } c)
+        {
+            state.Closing ??= c;
+            return true;
+        }
+        var due = DueLine().Match(line);
+        if (due.Success && !line.Contains("próxim", StringComparison.OrdinalIgnoreCase) && !line.Contains("proxim", StringComparison.OrdinalIgnoreCase)
+            && ParseLooseDate(due.Groups["d"].Value, reference, forward: true) is { } v)
+        {
+            state.Due ??= v;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// dd/MM sem ano: o vencimento e o próximo fechamento são DEPOIS do fechamento informado (podem
+    /// virar o ano); o fechamento, perto dele.
+    /// </summary>
+    private static DateOnly? ParseLooseDate(string raw, DateOnly reference, bool forward)
+    {
+        if (raw.Length > 5) return ImportValueParser.TryParseDate(raw, reference, out var full) ? full : null;
+        var parts = raw.Split('/');
+        if (!int.TryParse(parts[0], out var day) || !int.TryParse(parts[1], out var month) || month is < 1 or > 12) return null;
+        foreach (var year in forward ? new[] { reference.Year, reference.Year + 1 } : new[] { reference.Year, reference.Year - 1, reference.Year + 1 })
+        {
+            if (day > DateTime.DaysInMonth(year, month)) continue;
+            var candidate = new DateOnly(year, month, day);
+            if (forward ? candidate >= reference.AddDays(-3) : Math.Abs(candidate.DayNumber - reference.DayNumber) <= 45) return candidate;
+        }
+        return null;
+    }
+
     private static decimal? TryRate(string line)
     {
         var m = RateLine().Match(line);
@@ -344,6 +400,15 @@ public static partial class InvoiceTextReader
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Spaces();
+
+    [GeneratedRegex(@"pr[oó]xim[oa]\s+(?:fatura\s+)?(?:fechamento|fecha|corte)\D{0,25}?(?<d>\d{2}/\d{2}(?:/\d{2,4})?)", RegexOptions.IgnoreCase)]
+    private static partial Regex NextClosingLine();
+
+    [GeneratedRegex(@"(?:fechamento|data\s+de\s+corte)\D{0,25}?(?<d>\d{2}/\d{2}(?:/\d{2,4})?)", RegexOptions.IgnoreCase)]
+    private static partial Regex ClosingLine();
+
+    [GeneratedRegex(@"vencimento\D{0,25}?(?<d>\d{2}/\d{2}(?:/\d{2,4})?)", RegexOptions.IgnoreCase)]
+    private static partial Regex DueLine();
 
     [GeneratedRegex(@"(-?R\$)\s+")]
     private static partial Regex RealSymbol();

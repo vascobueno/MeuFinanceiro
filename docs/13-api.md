@@ -146,6 +146,7 @@ POST `/api/v1/card-invoices/import` (`previousBalance`, `confirmUnbalanced`; 400
 GET `/api/v1/reconciliations/card`
 POST `/api/v1/reconciliations/card/{id}/accept`
 POST `/api/v1/reconciliations/card/manual` (`financialTransactionId` **ou** `cardPaymentId`)
+POST `/api/v1/reconciliations/card/{id}/create-transaction` (`categoryId?`; 400 `item-de-pagamento` / `item-sem-valor` / `conciliacao-ja-aceita`)
 POST `/api/v1/reconciliations/card/{id}/undo`
 
 ## Projection

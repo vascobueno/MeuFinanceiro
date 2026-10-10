@@ -191,6 +191,38 @@
       </div>
     }
 
+    @if (mode === 'simple' && type !== TransactionType.Transfer) {
+      <!-- Compra no exterior: o valor em reais continua acima; aqui fica o que a fatura mostra em
+           moeda estrangeira. Valor em reais vazio é preenchido com estrangeiro × cotação. -->
+      <label class="mf-foreign-toggle">
+        <input type="checkbox" [(ngModel)]="foreignOn" name="foreignOn" /> Compra no exterior
+      </label>
+      @if (foreignOn) {
+        <div class="mf-form-grid mf-foreign-grid">
+          <div>
+            <label class="mf-field-label">Moeda</label>
+            <input pInputText pSize="small" class="mf-field-input mf-upper" maxlength="3" placeholder="USD" [(ngModel)]="foreignCurrency" />
+          </div>
+          <div>
+            <label class="mf-field-label">Valor na moeda</label>
+            <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" min="0" [(ngModel)]="foreignAmount" (blur)="fillAmountFromForeign()" />
+          </div>
+          <div>
+            <label class="mf-field-label">Cotação</label>
+            <input pInputText pSize="small" class="mf-field-input" type="number" step="0.0001" min="0" placeholder="5,4970" [(ngModel)]="exchangeRate" (blur)="fillAmountFromForeign()" />
+          </div>
+          <div>
+            <label class="mf-field-label">Moeda de origem</label>
+            <input pInputText pSize="small" class="mf-field-input mf-upper" maxlength="3" placeholder="opcional (EUR)" [(ngModel)]="originalCurrency" />
+          </div>
+          <div>
+            <label class="mf-field-label">Valor de origem</label>
+            <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" min="0" [(ngModel)]="originalAmount" />
+          </div>
+        </div>
+      }
+    }
+
     <div class="mf-form-full">
       <label class="mf-field-label">Observação</label>
       <textarea pTextarea class="mf-field-input" rows="2" [(ngModel)]="notes"></textarea>

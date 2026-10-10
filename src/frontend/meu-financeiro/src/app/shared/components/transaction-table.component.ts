@@ -8,6 +8,7 @@ import { ConfirmationService } from 'primeng/api';
 import { Transaction } from '../../core/models/transaction.model';
 import { ListStateComponent } from './list-state.component';
 import { StatusBadgeComponent } from './status-badge.component';
+import { formatForeign } from '../../core/services/foreign.util';
 
 /**
  * Tabela de lançamentos, compartilhada pelas telas de conta e de cartão.
@@ -69,6 +70,9 @@ import { StatusBadgeComponent } from './status-badge.component';
               <!-- O "(n/total)" da parcela já vem gravado na descrição pelo backend; não
                    concatenar aqui, senão duplica. -->
               {{ transaction.description }}
+              @if (transaction.foreign) {
+                <div class="mf-sub">{{ foreignLine(transaction) }}</div>
+              }
               @if (transaction.notes) {
                 <span
                   class="mf-sub"
@@ -176,6 +180,11 @@ export class TransactionTableComponent {
   @Output() sort = new EventEmitter<{ field?: string; order?: number }>();
   /** Emitido só depois da confirmação. */
   @Output() remove = new EventEmitter<Transaction>();
+
+  /** "US$ 21,22 × 5,4970" sob a descrição da compra no exterior. */
+  foreignLine(transaction: Transaction): string {
+    return formatForeign(transaction.foreign);
+  }
 
   confirmDelete(transaction: Transaction): void {
     this.confirmationService.confirm({

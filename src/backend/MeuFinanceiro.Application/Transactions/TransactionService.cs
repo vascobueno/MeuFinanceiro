@@ -122,6 +122,7 @@ public class TransactionService : ITransactionService
         transaction.Direction = request.Direction;
         transaction.Status = request.Status;
         transaction.Notes = request.Notes;
+        ForeignPurchase.Apply(transaction, request.Foreign);
         transaction.UpdatedAt = DateTime.UtcNow;
         transaction.UpdatedBy = _currentUser.UserId;
 
@@ -282,7 +283,7 @@ public class TransactionService : ITransactionService
         return new[] { ToResponse(firstOccurrence) };
     }
 
-    private FinancialTransaction BuildTransaction(CreateTransactionRequest request, Guid? merchantId) => new()
+    private FinancialTransaction BuildTransaction(CreateTransactionRequest request, Guid? merchantId) => new FinancialTransaction
     {
         GrupoId = _currentUser.GrupoId,
         TransactionDate = request.TransactionDate,
@@ -298,7 +299,7 @@ public class TransactionService : ITransactionService
         Status = TransactionStatus.Pending,
         Notes = request.Notes,
         CreatedBy = _currentUser.UserId
-    };
+    }.WithForeign(request.Installment is null && request.Recurring is null ? request.Foreign : null);
 
     private async Task<FinancialTransaction> FindOwnedAsync(Guid id, CancellationToken ct)
     {
@@ -392,6 +393,7 @@ public class TransactionService : ITransactionService
         installmentPlanId ?? t.Installment?.InstallmentPlanId,
         t.RecurringTransactionId,
         t.Notes,
-        attachmentCount
+        attachmentCount,
+        ForeignPurchase.ToResponse(t)
     );
 }

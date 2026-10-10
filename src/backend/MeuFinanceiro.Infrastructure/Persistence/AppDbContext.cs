@@ -160,6 +160,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(i => i.GrupoId);
             e.HasIndex(i => new { i.GrupoId, i.ContentHash }).IsUnique().HasFilter("\"ContentHash\" IS NOT NULL");
         });
+        builder.Entity<FinancialTransaction>(e =>
+        {
+            e.Property(t => t.ForeignCurrency).HasMaxLength(3);
+            e.Property(t => t.OriginalCurrency).HasMaxLength(3);
+            e.Property(t => t.ExchangeRate).HasColumnType("decimal(18,6)");
+        });
+
         builder.Entity<CardInvoiceItem>(e =>
         {
             e.Property(i => i.Kind).HasConversion<string>().HasMaxLength(20);

@@ -135,6 +135,15 @@ public class CardReconciliationService : ICardReconciliationService
                 CreatedBy = _currentUser.UserId
             };
 
+            // Valor zero (anuidade isenta, "R$ 0,00 parcela 08/12"): nada a conciliar nem a lançar.
+            if (item.Amount == 0)
+            {
+                reconciliation.Status = ReconciliationStatus.Ignored;
+                reconciliation.Reason = "Valor zero — nada a conciliar.";
+                _db.Reconciliations.Add(reconciliation);
+                continue;
+            }
+
             var payment = IsInvoicePayment(item)
                 ? FindBestPayment(item, invoice.ClosingDate, paymentCandidates, usedPayments)
                 : null;
@@ -288,6 +297,7 @@ public class CardReconciliationService : ICardReconciliationService
         if (reconciliation.FinancialTransactionId is not null)
         {
             var transaction = await _db.FinancialTransactions.FirstAsync(t => t.Id == reconciliation.FinancialTransactionId, ct);
+            if (reconciliation.CardInvoiceItem is { } invoiceItem) Transactions.ForeignPurchase.CopyFromInvoiceItem(transaction, invoiceItem);
             transaction.Status = TransactionStatus.Reconciled;
             transaction.UpdatedAt = DateTime.UtcNow;
             transaction.UpdatedBy = _currentUser.UserId;
@@ -351,6 +361,7 @@ public class CardReconciliationService : ICardReconciliationService
 
         if (transaction is not null)
         {
+            Transactions.ForeignPurchase.CopyFromInvoiceItem(transaction, item);
             transaction.Status = TransactionStatus.Reconciled;
             transaction.UpdatedAt = DateTime.UtcNow;
             transaction.UpdatedBy = _currentUser.UserId;
@@ -358,6 +369,68 @@ public class CardReconciliationService : ICardReconciliationService
 
         await _db.SaveChangesAsync(ct);
         await _auditService.LogAsync("ManualLink", nameof(Domain.Entities.Reconciliation), reconciliation.Id.ToString(), null, request, ct);
+
+        reconciliation.CardInvoiceItem = item;
+        return ToResponse(reconciliation);
+    }
+
+    /// <summary>
+    /// "Lançar": cria no cartão o lançamento de um item da fatura que não tinha par — anuidade,
+    /// seguro, IOF, a compra esquecida — e já o deixa conciliado com o item. Pagamento não entra:
+    /// ele se registra em "Pagar fatura", porque mexe na conta.
+    /// </summary>
+    public async Task<CardReconciliationResponse> CreateTransactionFromItemAsync(Guid reconciliationId, CreateFromInvoiceItemRequest request, CancellationToken ct = default)
+    {
+        var reconciliation = await FindOwnedAsync(reconciliationId, ct);
+        var item = await _db.CardInvoiceItems.Include(i => i.CardInvoice)
+            .FirstAsync(i => i.Id == reconciliation.CardInvoiceItemId, ct);
+
+        if (reconciliation.AcceptedAt is not null)
+            throw new BusinessRuleException("conciliacao-ja-aceita", "Este item já está conciliado. Desfaça a conciliação para lançá-lo de novo.");
+        if (item.Kind == CardInvoiceItemKind.Payment)
+            throw new BusinessRuleException("item-de-pagamento",
+                "Pagamento de fatura não é lançamento do cartão: registre-o em \"Pagar fatura\", nos lançamentos do cartão.");
+        if (item.Amount == 0)
+            throw new BusinessRuleException("item-sem-valor", "Item de valor zero não tem o que lançar.");
+
+        if (request.CategoryId is { } categoryId)
+        {
+            var category = await _db.Categories.FirstOrDefaultAsync(c => c.Id == categoryId, ct)
+                ?? throw new NotFoundException(nameof(Category), categoryId);
+            if (category.GrupoId != _currentUser.GrupoId) throw new ForbiddenException();
+        }
+
+        // Estorno e crédito reduzem a fatura: despesa com direção crédito, como o lançamento
+        // manual de um estorno no cartão.
+        var transaction = new FinancialTransaction
+        {
+            GrupoId = _currentUser.GrupoId,
+            TransactionDate = item.Date,
+            Description = item.InstallmentLabel is null ? item.Description : $"{item.Description} ({item.InstallmentLabel})",
+            CreditCardId = item.CardInvoice!.CreditCardId,
+            CategoryId = request.CategoryId,
+            Type = TransactionType.Expense,
+            Direction = item.Amount < 0 ? TransactionDirection.Credit : TransactionDirection.Debit,
+            Amount = Math.Abs(item.Amount),
+            Status = TransactionStatus.Reconciled,
+            Notes = "Lançado a partir da fatura importada.",
+            CreatedBy = _currentUser.UserId,
+        };
+        Transactions.ForeignPurchase.CopyFromInvoiceItem(transaction, item);
+        _db.FinancialTransactions.Add(transaction);
+
+        // Se havia sugestão de outro lançamento, ela é trocada pelo novo.
+        reconciliation.FinancialTransactionId = transaction.Id;
+        reconciliation.CardPaymentId = null;
+        reconciliation.Status = ReconciliationStatus.ManuallyMatched;
+        reconciliation.AcceptedAt = DateTime.UtcNow;
+        reconciliation.Reason = "Lançado a partir do item da fatura.";
+        reconciliation.UpdatedAt = DateTime.UtcNow;
+        reconciliation.UpdatedBy = _currentUser.UserId;
+
+        await _db.SaveChangesAsync(ct);
+        await _auditService.LogAsync("CreateFromInvoiceItem", nameof(Domain.Entities.Reconciliation), reconciliation.Id.ToString(), null,
+            new { transaction.Id, transaction.Amount }, ct);
 
         reconciliation.CardInvoiceItem = item;
         return ToResponse(reconciliation);

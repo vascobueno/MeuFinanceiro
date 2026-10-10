@@ -1,3 +1,5 @@
+import { ForeignPurchase } from '../services/foreign.util';
+
 export enum TransactionType {
   Income = 1,
   Expense = 2,
@@ -59,6 +61,8 @@ export interface CreateTransactionRequest {
   notes?: string | null;
   installment?: InstallmentRequest | null;
   recurring?: RecurringRequest | null;
+  /** Compra no exterior; nulo na edição tira os dados. */
+  foreign?: ForeignPurchase | null;
 }
 
 export interface UpdateTransactionRequest {
@@ -72,6 +76,8 @@ export interface UpdateTransactionRequest {
   direction: TransactionDirection;
   status: TransactionStatus;
   notes?: string | null;
+  /** Compra no exterior; nulo na edição tira os dados. */
+  foreign?: ForeignPurchase | null;
 }
 
 export interface Transaction {
@@ -99,6 +105,8 @@ export interface Transaction {
   /** Quantos anexos; numa parcela, inclui os do plano. Só para o clipe na lista. */
   attachmentCount?: number;
   notes?: string;
+  /** Compra no exterior; nulo na edição tira os dados. */
+  foreign?: ForeignPurchase | null;
 }
 
 /** De onde o lançamento saiu — as duas telas de Lançamentos (docs/06). */

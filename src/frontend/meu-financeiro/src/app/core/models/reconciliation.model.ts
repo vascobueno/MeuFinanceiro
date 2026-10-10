@@ -89,6 +89,10 @@ export interface ParsedCardInvoice {
   /** O grupo de cartões dos finais conhecidos — só se todos forem do mesmo. */
   detectedCreditCardId: string | null;
   detectedCreditCardName: string | null;
+  /** Datas que a fatura imprime — usadas para oferecer o ajuste do fechamento do ciclo. */
+  closingDateFromText: string | null;
+  dueDateFromText: string | null;
+  nextClosingDateFromText: string | null;
 }
 
 export interface BankStatement {

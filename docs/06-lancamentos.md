@@ -138,3 +138,15 @@ e ali não existe aba de origem de onde herdar.
 > Datas ISO vindas da API são lidas com `parseIsoDate` (`core/services/date.util.ts`), nunca com
 > `new Date(string)` — este último é UTC e desloca o dia em fuso negativo. Foi o que travou a
 > navegação entre ciclos em cartão que fecha no dia 1.
+
+## Compra no exterior
+O lançamento simples pode ter dados de compra no exterior: valor e moeda da cobrança
+(`ForeignAmount`/`ForeignCurrency`, ex. US$ 21,22), a cotação (`ExchangeRate`, 6 casas) e, se houver,
+a moeda e o valor de origem (`OriginalCurrency`/`OriginalAmount`, ex. EUR 19,50, cobrado em dólar).
+O valor em reais continua em `Amount` — é ele que entra em saldo, fatura e relatórios. No
+formulário, "Compra no exterior" abre os campos; valor em reais vazio é preenchido com
+estrangeiro × cotação. A grade mostra "US$ 21,22 × 5,4970 · origem EUR 19,50" sob a descrição.
+
+Parcelamento e recorrência não levam (o valor estrangeiro é da compra, não de cada parcela). Na
+edição, mandar sem `foreign` tira os dados. Ao conciliar com o item da fatura (aceitar, vincular
+ou "Lançar"), o lançamento que não tinha câmbio fica com o da fatura — o que o banco usou.

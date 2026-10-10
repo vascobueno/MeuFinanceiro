@@ -50,6 +50,20 @@ código da moeda nunca é lido como coluna. O IOF fica ligado à compra no exter
 
 **VALOR TOTAL** — quando a fatura traz um só, preenche o total se ele estiver em branco.
 
+**Datas da fatura** — "Data de fechamento", "Vencimento" e "Próximo fechamento" são lidos
+(`closingDateFromText`, `dueDateFromText`, `nextClosingDateFromText`). Depois da importação, se o
+fechamento lido de um mês difere do que o calendário do cartão calcula, a tela oferece "Ajustar
+esse ciclo" (um `CardCycleOverride` daquele mês) — para esta fatura e para a próxima. O ciclo é
+procurado pelo mês do fechamento lido, não pela data: "fecha dia 3" com cadastro no dia 2 é o
+ciclo do mesmo mês.
+
+**Lançar** — item sem par (anuidade, seguro, IOF, a compra esquecida) vira lançamento no cartão já
+conciliado (`POST /reconciliations/card/{id}/create-transaction`, categoria opcional): data e
+valor do item, a parcela na descrição, o câmbio do item; estorno e crédito entram como despesa
+com direção crédito (reduzem a fatura). Pagamento não se lança por aqui (`item-de-pagamento`): ele
+se registra em "Pagar fatura". Item de **valor zero** (anuidade isenta) entra como **Ignorado** e
+não gera pendência.
+
 Faturas importadas antes destas regras foram classificadas pela migração com as mesmas regras de
 tipo; final do cartão e câmbio ficam vazios nelas.
 

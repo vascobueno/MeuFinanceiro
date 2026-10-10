@@ -22,8 +22,19 @@ public record CreateTransactionRequest(
     decimal Amount,
     string? Notes,
     InstallmentRequest? Installment,
-    RecurringRequest? Recurring
+    RecurringRequest? Recurring,
+    ForeignPurchaseRequest? Foreign = null
 );
+
+/// <summary>
+/// Compra no exterior: valor e moeda da cobrança (US$ 21,22), a cotação (5,4970) e, se houver,
+/// a moeda de origem (EUR 19,50). O valor em reais continua em Amount.
+/// </summary>
+public record ForeignPurchaseRequest(decimal Amount, string Currency, decimal? ExchangeRate = null,
+    decimal? OriginalAmount = null, string? OriginalCurrency = null);
+
+public record ForeignPurchaseResponse(decimal Amount, string Currency, decimal? ExchangeRate,
+    decimal? OriginalAmount, string? OriginalCurrency);
 
 public record InstallmentRequest(InstallmentMode Mode, decimal Amount, int InstallmentCount, DateOnly FirstDueDate);
 
@@ -39,7 +50,9 @@ public record UpdateTransactionRequest(
     decimal Amount,
     TransactionDirection Direction,
     TransactionStatus Status,
-    string? Notes
+    string? Notes,
+    // Nulo tira os dados de compra no exterior; o cliente manda o que quer manter.
+    ForeignPurchaseRequest? Foreign = null
 );
 
 public record TransactionResponse(
@@ -68,7 +81,8 @@ public record TransactionResponse(
     string? Notes,
     /// <summary>Quantos anexos — só para a lista mostrar o clipe sem abrir cada lançamento.
     /// Numa parcela, inclui os anexos do plano.</summary>
-    int AttachmentCount = 0
+    int AttachmentCount = 0,
+    ForeignPurchaseResponse? Foreign = null
 );
 
 /// <summary>Filtros server-side de docs/06-lancamentos.md (período, descrição, categoria, conta, cartão, tipo, status, valor).</summary>

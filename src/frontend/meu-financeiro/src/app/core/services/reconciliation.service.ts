@@ -76,6 +76,14 @@ export class ReconciliationService {
     });
   }
 
+  /** "Lançar": cria no cartão o lançamento de um item sem par e já o concilia. */
+  createTransactionFromCardItem(reconciliationId: string, categoryId?: string | null): Observable<CardReconciliationItem> {
+    return this.http.post<CardReconciliationItem>(
+      `${this.baseUrl}/reconciliations/card/${reconciliationId}/create-transaction`,
+      { categoryId: categoryId ?? null },
+    );
+  }
+
   acceptCardReconciliation(id: string): Observable<CardReconciliationItem> {
     return this.http.post<CardReconciliationItem>(`${this.baseUrl}/reconciliations/card/${id}/accept`, {});
   }

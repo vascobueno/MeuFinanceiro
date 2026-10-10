@@ -44,7 +44,10 @@ public record ParsedCardInvoiceResponse(
     IReadOnlyList<InvoiceCardHeader>? Cards = null,
     decimal? TotalFromText = null,
     Guid? DetectedCreditCardId = null,
-    string? DetectedCreditCardName = null);
+    string? DetectedCreditCardName = null,
+    DateOnly? ClosingDateFromText = null,
+    DateOnly? DueDateFromText = null,
+    DateOnly? NextClosingDateFromText = null);
 
 /// <summary>
 /// OFX lido, pronto para a tela conferir e mandar para a importação comum.

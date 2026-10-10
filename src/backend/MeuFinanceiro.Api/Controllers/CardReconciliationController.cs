@@ -40,6 +40,11 @@ public class CardReconciliationController : ControllerBase
     public async Task<ActionResult<CardReconciliationResponse>> LinkManually(ManualCardReconciliationRequest request, CancellationToken ct)
         => Ok(await _service.LinkManuallyAsync(request, ct));
 
+    /// <summary>Cria no cartão o lançamento de um item sem par (anuidade, IOF…) e o concilia.</summary>
+    [HttpPost("reconciliations/card/{id:guid}/create-transaction")]
+    public async Task<ActionResult<CardReconciliationResponse>> CreateTransaction(Guid id, CreateFromInvoiceItemRequest? request, CancellationToken ct)
+        => Ok(await _service.CreateTransactionFromItemAsync(id, request ?? new CreateFromInvoiceItemRequest(), ct));
+
     [HttpPost("reconciliations/card/{id:guid}/undo")]
     public async Task<IActionResult> Undo(Guid id, CancellationToken ct)
     {

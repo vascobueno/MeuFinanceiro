@@ -769,6 +769,16 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<int>("Direction")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("ExchangeRate")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("ForeignAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ForeignCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<Guid>("GrupoId")
                         .HasColumnType("uuid");
 
@@ -780,6 +790,13 @@ namespace MeuFinanceiro.Infrastructure.Migrations
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");
+
+                    b.Property<decimal?>("OriginalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OriginalCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
 
                     b.Property<Guid?>("RecurringTransactionId")
                         .HasColumnType("uuid");
