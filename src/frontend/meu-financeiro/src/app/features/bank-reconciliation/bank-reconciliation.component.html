@@ -22,7 +22,7 @@
     <p class="mf-sub">
       Cole os movimentos como aparecem no extrato — <code>02/01 COMPRA CARTAO DEB MC 200652 18,00-</code> —, com a data só
       na primeira linha do dia e a descrição continuando na linha de baixo, se for o caso. Também vale uma linha por movimento
-      no formato <code>data;descrição;valor</code>. As linhas <code>SALDO EM</code> preenchem os saldos.
+      no formato <code>data;descrição;valor</code>. As linhas <code>SALDO EM</code> preenchem os saldos. Com o <b>arquivo OFX</b> do banco, conta, período e saldos vêm do próprio arquivo — a conta é reconhecida pelo banco, agência e conta do cadastro.
     </p>
 
     <div class="mf-import-grid">
@@ -48,10 +48,28 @@
       </div>
     </div>
 
-    <div class="mf-form-full">
-      <label class="mf-field-label">Movimentos</label>
-      <textarea pTextarea class="mf-field-input" rows="6" placeholder="2026-05-20;Aplicação CDB;INVESTMENT;-10000.00" [(ngModel)]="itemsRaw"></textarea>
+    <!-- OFX: o arquivo preenche conta, período e saldos; os movimentos não passam pelo texto. -->
+    <div class="mf-ofx-row">
+      <input #ofxInput type="file" accept=".ofx,.OFX,application/x-ofx" hidden (change)="onOfxSelected(ofxInput)" />
+      <button pButton type="button" size="small" [outlined]="true" [disabled]="importing()" (click)="ofxInput.click()">
+        <i class="pi pi-upload"></i>&nbsp;Arquivo OFX
+      </button>
+      @if (ofx(); as o) {
+        <span class="mf-ofx-file">
+          <b>{{ ofxFileName }}</b> — {{ o.items.length }} movimentos{{ o.alreadyImported > 0 ? ', ' + o.alreadyImported + ' já importados' : '' }}
+          <button type="button" class="mf-link-button" (click)="clearOfx()">remover</button>
+        </span>
+      } @else {
+        <span class="mf-sub">ou cole os movimentos abaixo</span>
+      }
     </div>
+
+    @if (!ofx()) {
+      <div class="mf-form-full">
+        <label class="mf-field-label">Movimentos</label>
+        <textarea pTextarea class="mf-field-input" rows="6" placeholder="2026-05-20;Aplicação CDB;INVESTMENT;-10000.00" [(ngModel)]="itemsRaw"></textarea>
+      </div>
+    }
 
     @if (parseErrors().length > 0) {
       <div class="mf-import-feedback-error" role="alert">

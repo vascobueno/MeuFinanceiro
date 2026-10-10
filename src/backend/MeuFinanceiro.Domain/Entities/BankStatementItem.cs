@@ -23,4 +23,10 @@ public class BankStatementItem : AuditableEntity
     /// ("02/01 LOJA") e ela é anterior à do lançamento. Nula quando é igual ou não veio.
     /// </summary>
     public DateOnly? EffectiveDate { get; set; }
+
+    /// <summary>
+    /// FITID do OFX: o identificador que o banco dá ao movimento e que se repete em cada download.
+    /// Com ele, um OFX que se sobrepõe a outro já importado só traz o que é novo.
+    /// </summary>
+    public string? ExternalId { get; set; }
 }

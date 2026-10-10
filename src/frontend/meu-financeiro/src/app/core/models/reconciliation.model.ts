@@ -6,6 +6,8 @@ export interface BankStatementItemRequest {
   amount: number;
   /** Data da compra no débito, quando anterior à do lançamento no extrato. */
   effectiveDate?: string;
+  /** FITID do OFX — o mesmo movimento em outro arquivo não entra de novo. */
+  externalId?: string;
 }
 
 export interface ImportBankStatementRequest {
@@ -34,6 +36,24 @@ export interface ParseBankStatementRequest {
 }
 
 /** O servidor lê o texto colado; os saldos vêm quando o texto trazia as linhas "SALDO EM". */
+/** OFX lido pelo servidor: conta reconhecida pelos dados bancários, período, saldos e movimentos. */
+export interface ParsedOfx {
+  accountId: string | null;
+  accountName: string | null;
+  /** O que o arquivo diz da conta ("banco 033, agência 0001, conta 12345-6"). */
+  accountFromFile: string;
+  matchingAccounts: number;
+  referenceStart: string | null;
+  referenceEnd: string | null;
+  openingBalance: number | null;
+  closingBalance: number | null;
+  items: BankStatementItemRequest[];
+  errors: ImportLineError[];
+  movementsSum: number;
+  /** Movimentos com FITID já importado nesta conta — a importação os pula. */
+  alreadyImported: number;
+}
+
 export interface ParsedBankStatement {
   items: BankStatementItemRequest[];
   errors: ImportLineError[];
@@ -63,6 +83,8 @@ export interface BankStatement {
   closingBalance: number;
   balanceValidated: boolean;
   itemCount: number;
+  /** Movimentos do arquivo que já estavam importados e ficaram de fora. */
+  skippedDuplicates?: number;
 }
 
 export interface BankReconciliationItem {

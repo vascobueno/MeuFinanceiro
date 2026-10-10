@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   ParseBankStatementRequest,
   ParsedBankStatement,
+  ParsedOfx,
   ParseCardInvoiceRequest,
   ParsedCardInvoice,
   BankReconciliationItem,
@@ -26,6 +27,13 @@ export class ReconciliationService {
   /** O servidor lê o texto colado do extrato — não grava nada. */
   parseBankStatement(request: ParseBankStatementRequest): Observable<ParsedBankStatement> {
     return this.http.post<ParsedBankStatement>(`${this.baseUrl}/bank-statements/parse`, request);
+  }
+
+  /** O servidor lê o OFX e reconhece a conta — não grava nada. */
+  parseOfx(file: File): Observable<ParsedOfx> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<ParsedOfx>(`${this.baseUrl}/bank-statements/parse-ofx`, form);
   }
 
   /** O servidor lê o texto colado da fatura — não grava nada. */

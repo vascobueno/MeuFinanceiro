@@ -57,6 +57,26 @@ com a descrição normalizada). Importar o mesmo conteúdo de novo é recusado c
 `extrato-duplicado`; índice único filtrado `(GrupoId, ContentHash)` garante isso no banco também.
 Extratos importados antes desta regra ficam com hash nulo e não são comparados.
 
+## Importação de OFX
+"Arquivo OFX" na tela de conciliação envia o arquivo para `POST /api/v1/bank-statements/parse-ofx`
+(`OfxStatementReader`), que lê OFX 1.x (SGML) e 2.x (XML) e não grava nada:
+
+- **Conta** — reconhecida por BANKID/BRANCHID/ACCTID contra banco, agência e conta do cadastro
+  (`OfxAccountMatcher`), só com dígitos e sem zeros à esquerda: ACCTID como número, número+dígito
+  ou agência+número+dígito; BANKID com 3 ou 4 dígitos; BRANCHID opcional. Só vale se **uma** conta
+  do grupo casar; senão a tela pede para escolher e diz o que o arquivo traz.
+- **Período e saldos** — DTSTART/DTEND; saldo final do LEDGERBAL. OFX não tem saldo inicial: ele
+  é o final menos os movimentos, então a conferência de saldo fecha por construção.
+- **Movimentos** — DTPOSTED, TRNAMT (ponto ou vírgula), MEMO e/ou NAME, CHECKNUM/REFNUM, tipo
+  pelo classificador e, na compra no débito, a data da compra do MEMO.
+- **FITID** — gravado em `BankStatementItem.ExternalId`. Na importação, movimentos com FITID já
+  importado **na mesma conta** ficam de fora (`skippedDuplicates`): dá para baixar períodos que
+  se sobrepõem. Se nada for novo, `extrato-sem-movimentos-novos`.
+
+Depois de lido, o formulário fica preenchido e editável; "Importar" usa o mesmo
+`/bank-statements/import` do extrato colado. Arquivo até 2 MB, decodificado como UTF-8 ou, se
+não for, Latin-1 (que coincide com o Windows-1252 dos bancos nas letras do português).
+
 ## Tela Extratos
 `/extratos` (menu: Contas › Extratos) lista o que a importação acima gravou: conta, período,
 saldo inicial e final, movimento do período (final − inicial), quantidade de itens e o arquivo de

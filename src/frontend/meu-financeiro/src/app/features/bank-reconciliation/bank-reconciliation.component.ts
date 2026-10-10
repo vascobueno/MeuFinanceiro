@@ -11,7 +11,7 @@ import { Table, SortIcon, SortableColumn } from 'primeng/table';
 import { AuthService } from '../../core/services/auth.service';
 import { ReconciliationService } from '../../core/services/reconciliation.service';
 import { AccountService } from '../../core/services/account.service';
-import { BankReconciliationItem, ImportBankStatementRequest, ImportLineError } from '../../core/models/reconciliation.model';
+import { BankReconciliationItem, ImportBankStatementRequest, ImportLineError, ParsedOfx } from '../../core/models/reconciliation.model';
 import { businessRuleOf } from '../../core/services/problem.util';
 import { Account } from '../../core/models/account.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
@@ -93,6 +93,9 @@ export class BankReconciliationComponent implements OnInit {
   /** Extrato que não fecha: a mensagem com a diferença, à espera de confirmação. */
   readonly unbalancedMessage = signal<string | null>(null);
   private pendingImport: ImportBankStatementRequest | null = null;
+  /** OFX lido e ainda não importado: os movimentos vêm daqui em vez do texto colado. */
+  readonly ofx = signal<ParsedOfx | null>(null);
+  ofxFileName = '';
 
   constructor(
     private readonly reconciliationService: ReconciliationService,
@@ -128,10 +131,84 @@ export class BankReconciliationComponent implements OnInit {
    * A leitura do texto é do servidor: antes era um `Number(valor)` aqui, e qualquer valor no
    * formato do extrato (`1.288,46-`) virava NaN e a importação era recusada sem explicação.
    */
+  /**
+   * O servidor lê o OFX e reconhece a conta pelos dados bancários do cadastro. A tela só preenche
+   * o formulário: conta, período e saldos ficam editáveis, e "Importar" manda os movimentos lidos.
+   */
+  onOfxSelected(input: HTMLInputElement): void {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    this.importResult.set(null);
+    this.parseErrors.set([]);
+    this.unbalancedMessage.set(null);
+    this.importing.set(true);
+    this.reconciliationService.parseOfx(file).subscribe({
+      next: (parsed) => {
+        this.importing.set(false);
+        if (parsed.errors.length > 0) {
+          this.parseErrors.set(parsed.errors);
+          return;
+        }
+        this.ofx.set(parsed);
+        this.ofxFileName = file.name;
+        if (parsed.referenceStart) this.referenceStart = this.fromIsoDate(parsed.referenceStart);
+        if (parsed.referenceEnd) this.referenceEnd = this.fromIsoDate(parsed.referenceEnd);
+        this.openingBalance = parsed.openingBalance;
+        this.closingBalance = parsed.closingBalance;
+
+        if (parsed.accountId) {
+          this.importAccountId = parsed.accountId;
+          this.importResult.set(
+            `Conta ${parsed.accountName} reconhecida (${parsed.accountFromFile}). O saldo inicial é o final menos os movimentos. Confira e importe.`,
+          );
+        } else {
+          this.importAccountId = null;
+          this.importResult.set(
+            parsed.matchingAccounts > 1
+              ? `Mais de uma conta cadastrada casa com ${parsed.accountFromFile}. Escolha a conta e importe.`
+              : `Nenhuma conta cadastrada com ${parsed.accountFromFile}. Escolha a conta — ou cadastre banco, agência e conta nela para o próximo arquivo ser reconhecido.`,
+          );
+        }
+      },
+      error: (err) => {
+        this.importing.set(false);
+        this.importResult.set(businessRuleOf(err)?.message ?? 'Não foi possível ler o arquivo OFX.');
+      },
+    });
+  }
+
+  clearOfx(): void {
+    this.ofx.set(null);
+    this.ofxFileName = '';
+    this.importResult.set(null);
+  }
+
   submitImport(): void {
     this.importResult.set(null);
     this.parseErrors.set([]);
     this.unbalancedMessage.set(null);
+
+    const ofx = this.ofx();
+    if (ofx) {
+      const start = this.toIsoDate(this.referenceStart);
+      const end = this.toIsoDate(this.referenceEnd);
+      if (!this.importAccountId || !start || !end || this.openingBalance == null || this.closingBalance == null) {
+        this.importResult.set('Preencha conta, período e saldos para importar o OFX.');
+        return;
+      }
+      this.sendImport({
+        accountId: this.importAccountId,
+        referenceStart: start,
+        referenceEnd: end,
+        openingBalance: this.openingBalance,
+        closingBalance: this.closingBalance,
+        originalFileName: this.ofxFileName,
+        items: ofx.items,
+      });
+      return;
+    }
 
     const referenceStart = this.toIsoDate(this.referenceStart);
     const referenceEnd = this.toIsoDate(this.referenceEnd);
@@ -201,12 +278,17 @@ export class BankReconciliationComponent implements OnInit {
       next: (statement) => {
         this.importing.set(false);
         this.pendingImport = null;
+        const skipped = statement.skippedDuplicates
+          ? ` ${statement.skippedDuplicates} movimentos já importados ficaram de fora.`
+          : '';
         this.importResult.set(
-          statement.balanceValidated
-            ? `Extrato importado (${statement.itemCount} itens). Saldo inicial + movimentos fecha com o saldo final. ✅`
-            : `Extrato importado (${statement.itemCount} itens) sem fechar com o saldo final, como confirmado. ⚠️`,
+          (statement.balanceValidated
+            ? `Extrato importado (${statement.itemCount} ${statement.itemCount === 1 ? 'item' : 'itens'}). Saldo inicial + movimentos fecha com o saldo final. ✅`
+            : `Extrato importado (${statement.itemCount} ${statement.itemCount === 1 ? 'item' : 'itens'}) sem fechar com o saldo final, como confirmado. ⚠️`) + skipped,
         );
         this.itemsRaw = '';
+        this.ofx.set(null);
+        this.ofxFileName = '';
         this.load();
       },
       error: (err) => {
@@ -258,6 +340,12 @@ export class BankReconciliationComponent implements OnInit {
       default:
         return 'mf-badge-neutral';
     }
+  }
+
+  /** "2023-01-31" como data local — new Date("2023-01-31") seria meia-noite UTC, dia anterior no Brasil. */
+  private fromIsoDate(value: string): Date {
+    const [y, mo, d] = value.split('-').map(Number);
+    return new Date(y, mo - 1, d);
   }
 
   private toIsoDate(value: Date | null): string | null {

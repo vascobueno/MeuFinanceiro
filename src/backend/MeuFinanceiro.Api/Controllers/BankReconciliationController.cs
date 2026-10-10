@@ -27,6 +27,22 @@ public class BankReconciliationController : ControllerBase
         Application.Reconciliation.Import.ParseBankStatementRequest request)
         => Ok(_service.Parse(request));
 
+    /// <summary>
+    /// Lê um extrato OFX e reconhece a conta pelos dados bancários, sem gravar nada. Até 2 MB:
+    /// um mês de extrato em OFX fica em dezenas de KB.
+    /// </summary>
+    [HttpPost("bank-statements/parse-ofx")]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public async Task<ActionResult<Application.Reconciliation.Import.ParsedOfxResponse>> ParseOfx(IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "Envie o arquivo OFX." });
+
+        using var memory = new MemoryStream();
+        await file.CopyToAsync(memory, ct);
+        return Ok(await _service.ParseOfxAsync(memory.ToArray(), ct));
+    }
+
     [HttpGet("reconciliations/bank")]
     public async Task<ActionResult<IReadOnlyList<BankReconciliationResponse>>> GetAll(
         [FromQuery] Guid? accountId, [FromQuery] string? status, CancellationToken ct)

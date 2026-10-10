@@ -3,8 +3,9 @@ namespace MeuFinanceiro.Application.Reconciliation;
 /// <summary>docs/09-conciliacao-conta-corrente.md — item normalizado do extrato bancário.</summary>
 /// <param name="EffectiveDate">Data da compra no débito, quando o extrato a traz e ela difere da do
 /// lançamento. A conciliação compara com ela — é a data em que o usuário registra a compra.</param>
+/// <param name="ExternalId">FITID do OFX — o mesmo movimento em outro arquivo não entra de novo.</param>
 public record BankStatementItemRequest(DateOnly Date, string Description, string? Document, string? ItemType, decimal Amount,
-    DateOnly? EffectiveDate = null);
+    DateOnly? EffectiveDate = null, string? ExternalId = null);
 
 public record ImportBankStatementRequest(
     Guid AccountId,
@@ -27,7 +28,9 @@ public record BankStatementResponse(
     decimal OpeningBalance,
     decimal ClosingBalance,
     bool BalanceValidated,
-    int ItemCount
+    int ItemCount,
+    /// <summary>Movimentos do arquivo que já estavam importados (mesmo FITID) e ficaram de fora.</summary>
+    int SkippedDuplicates = 0
 );
 
 public record BankReconciliationResponse(

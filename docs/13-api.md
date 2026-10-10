@@ -115,7 +115,8 @@ A importação fica em Conciliação bancária, abaixo.
 
 ## Bank reconciliation (Conciliação bancária)
 POST `/api/v1/bank-statements/parse` (texto → itens, erros por linha, saldos lidos, soma)
-POST `/api/v1/bank-statements/import` (`confirmUnbalanced`; 400 `extrato-nao-fecha` / `extrato-duplicado`)
+POST `/api/v1/bank-statements/parse-ofx` (multipart `file`; conta reconhecida, período, saldos, itens com `externalId`)
+POST `/api/v1/bank-statements/import` (`confirmUnbalanced`; 400 `extrato-nao-fecha` / `extrato-duplicado` / `extrato-sem-movimentos-novos`; `skippedDuplicates` na resposta)
 GET `/api/v1/reconciliations/bank`
 POST `/api/v1/reconciliations/bank/{id}/accept`
 POST `/api/v1/reconciliations/bank/manual`

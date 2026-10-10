@@ -60,6 +60,14 @@ public class BankReconciliationService : IBankReconciliationService
                 "Se a importação anterior estava errada, exclua-a na tela Extratos e importe de novo.");
         }
 
+        // OFX que se sobrepõe a um já importado: os movimentos com FITID conhecido nesta conta ficam
+        // de fora. O saldo foi conferido acima com o arquivo inteiro, que é o que o banco fechou.
+        var newItems = await WithoutKnownExternalIdsAsync(request, ct);
+        var skipped = request.Items.Count - newItems.Count;
+        if (request.Items.Count > 0 && newItems.Count == 0)
+            throw new BusinessRuleException("extrato-sem-movimentos-novos",
+                $"Os {request.Items.Count} movimentos deste arquivo já foram importados nesta conta. Nada a importar.");
+
         var statement = new BankStatement
         {
             GrupoId = _currentUser.GrupoId,
@@ -80,10 +88,10 @@ public class BankReconciliationService : IBankReconciliationService
         // recorte para o WHERE, o produto cartesiano do matching passa a ser sobre o período do
         // extrato em vez de sobre o histórico inteiro.
         var candidateTransactions = new List<FinancialTransaction>();
-        if (request.Items.Count > 0)
+        if (newItems.Count > 0)
         {
-            var windowStart = request.Items.Min(i => i.EffectiveDate is { } e && e < i.Date ? e : i.Date).AddDays(-SearchWindowDays[0]);
-            var windowEnd = request.Items.Max(i => i.Date).AddDays(SearchWindowDays[0]);
+            var windowStart = newItems.Min(i => i.EffectiveDate is { } e && e < i.Date ? e : i.Date).AddDays(-SearchWindowDays[0]);
+            var windowEnd = newItems.Max(i => i.Date).AddDays(SearchWindowDays[0]);
 
             candidateTransactions = await _db.FinancialTransactions
                 .Where(t => t.GrupoId == _currentUser.GrupoId && t.AccountId == request.AccountId && t.Status != TransactionStatus.Reconciled)
@@ -91,7 +99,7 @@ public class BankReconciliationService : IBankReconciliationService
                 .ToListAsync(ct);
         }
 
-        foreach (var itemRequest in request.Items)
+        foreach (var itemRequest in newItems)
         {
             var item = new BankStatementItem
             {
@@ -102,6 +110,7 @@ public class BankReconciliationService : IBankReconciliationService
                 // Tipo vazio ou desconhecido (cliente antigo, colagem estruturada com erro) é classificado aqui.
                 ItemType = StatementItemClassifier.Resolve(itemRequest.ItemType, itemRequest.Description, itemRequest.Amount),
                 EffectiveDate = itemRequest.EffectiveDate,
+                ExternalId = string.IsNullOrWhiteSpace(itemRequest.ExternalId) ? null : itemRequest.ExternalId.Trim(),
                 Amount = itemRequest.Amount
             };
             _db.BankStatementItems.Add(item);
@@ -143,7 +152,56 @@ public class BankReconciliationService : IBankReconciliationService
         await _db.SaveChangesAsync(ct);
 
         return new BankStatementResponse(statement.Id, account.Id, account.Name, statement.ReferenceStart,
-            statement.ReferenceEnd, statement.OpeningBalance, statement.ClosingBalance, balanceValidated, request.Items.Count);
+            statement.ReferenceEnd, statement.OpeningBalance, statement.ClosingBalance, balanceValidated, newItems.Count, skipped);
+    }
+
+    /// <summary>
+    /// Lê o OFX e reconhece a conta pelos dados bancários. Não grava nada: a tela confere e manda
+    /// os itens para <see cref="ImportAsync"/>, o mesmo caminho do extrato colado.
+    /// </summary>
+    public async Task<ParsedOfxResponse> ParseOfxAsync(byte[] content, CancellationToken ct = default)
+    {
+        var ofx = OfxStatementReader.Read(OfxStatementReader.Decode(content));
+
+        var candidates = await _db.Accounts.AsNoTracking()
+            .Where(a => a.GrupoId == _currentUser.GrupoId && a.AccountNumber != null)
+            .ToListAsync(ct);
+        var matches = candidates.Where(a => OfxAccountMatcher.Matches(a, ofx.BankId, ofx.BranchId, ofx.AccountId)).ToList();
+        var account = matches.Count == 1 ? matches[0] : null;
+
+        var sum = ofx.Items.Sum(i => i.Amount);
+        var start = ofx.Start ?? (ofx.Items.Count > 0 ? ofx.Items.Min(i => i.Date) : null);
+        var end = ofx.End ?? (ofx.Items.Count > 0 ? ofx.Items.Max(i => i.Date) : null);
+
+        var alreadyImported = 0;
+        if (account is not null)
+        {
+            var probe = new ImportBankStatementRequest(account.Id, default, default, 0, 0, null, ofx.Items);
+            alreadyImported = ofx.Items.Count - (await WithoutKnownExternalIdsAsync(probe, ct)).Count;
+        }
+
+        return new ParsedOfxResponse(
+            account?.Id, account?.Name,
+            OfxAccountMatcher.Describe(ofx.BankId, ofx.BranchId, ofx.AccountId),
+            matches.Count, start, end,
+            ofx.LedgerBalance is { } ledger ? ledger - sum : null, ofx.LedgerBalance,
+            ofx.Items, ofx.Errors, sum, alreadyImported);
+    }
+
+    private async Task<List<BankStatementItemRequest>> WithoutKnownExternalIdsAsync(ImportBankStatementRequest request, CancellationToken ct)
+    {
+        var ids = request.Items.Where(i => !string.IsNullOrWhiteSpace(i.ExternalId)).Select(i => i.ExternalId!.Trim()).Distinct().ToList();
+        if (ids.Count == 0) return request.Items.ToList();
+
+        var known = (await _db.BankStatementItems.AsNoTracking()
+                .Where(i => i.ExternalId != null && ids.Contains(i.ExternalId)
+                            && i.BankStatement!.AccountId == request.AccountId
+                            && i.BankStatement.GrupoId == _currentUser.GrupoId)
+                .Select(i => i.ExternalId!)
+                .ToListAsync(ct))
+            .ToHashSet();
+
+        return request.Items.Where(i => string.IsNullOrWhiteSpace(i.ExternalId) || !known.Contains(i.ExternalId.Trim())).ToList();
     }
 
     public async Task<IReadOnlyList<BankReconciliationResponse>> GetAllAsync(Guid? accountId, string? status, CancellationToken ct = default)

@@ -132,7 +132,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(a => a.Timestamp).IsDescending();
         });
 
-        builder.Entity<BankStatementItem>(e => e.HasIndex(i => i.Date));
+        builder.Entity<BankStatementItem>(e =>
+        {
+            e.HasIndex(i => i.Date);
+            e.Property(i => i.ExternalId).HasMaxLength(255);
+            e.HasIndex(i => i.ExternalId);
+        });
         builder.Entity<CardInvoiceItem>(e => e.HasIndex(i => i.Date));
 
         // Mesmo conteúdo não entra duas vezes no mesmo grupo. Filtrado em não-nulo: extratos e

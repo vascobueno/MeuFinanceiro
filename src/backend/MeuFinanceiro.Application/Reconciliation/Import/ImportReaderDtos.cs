@@ -24,3 +24,25 @@ public record ParsedCardInvoiceResponse(
     IReadOnlyList<CardInvoiceItemRequest> Items,
     IReadOnlyList<ImportLineError> Errors,
     decimal ItemsSum);
+
+/// <summary>
+/// OFX lido, pronto para a tela conferir e mandar para a importação comum.
+/// </summary>
+/// <param name="AccountId">A conta cadastrada cujos dados bancários casam com o arquivo — nula se
+/// nenhuma ou mais de uma casar.</param>
+/// <param name="AccountFromFile">O que o arquivo diz da conta ("banco 033, agência 0001, conta 12345-6").</param>
+/// <param name="OpeningBalance">OFX não traz saldo inicial: é o final menos os movimentos.</param>
+/// <param name="AlreadyImported">Movimentos com FITID já importado nesta conta — a importação os pula.</param>
+public record ParsedOfxResponse(
+    Guid? AccountId,
+    string? AccountName,
+    string AccountFromFile,
+    int MatchingAccounts,
+    DateOnly? ReferenceStart,
+    DateOnly? ReferenceEnd,
+    decimal? OpeningBalance,
+    decimal? ClosingBalance,
+    IReadOnlyList<BankStatementItemRequest> Items,
+    IReadOnlyList<ImportLineError> Errors,
+    decimal MovementsSum,
+    int AlreadyImported);

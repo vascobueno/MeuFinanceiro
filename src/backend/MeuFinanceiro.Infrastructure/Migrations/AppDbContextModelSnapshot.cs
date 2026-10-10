@@ -358,6 +358,10 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.Property<DateOnly?>("EffectiveDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("ItemType")
                         .IsRequired()
                         .HasColumnType("text");
@@ -379,6 +383,8 @@ namespace MeuFinanceiro.Infrastructure.Migrations
                     b.HasIndex("BankStatementId");
 
                     b.HasIndex("Date");
+
+                    b.HasIndex("ExternalId");
 
                     b.ToTable("BankStatementItems");
                 });
