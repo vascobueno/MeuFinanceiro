@@ -1,3 +1,5 @@
+import { IssuedCardRequest } from './issued-card.model';
+
 export interface CreditCard {
   id: string;
   name: string;
@@ -14,8 +16,10 @@ export interface CreateCardRequest {
   closingDay: number;
   dueDay: number;
   limit?: number;
+  /** Cartão do titular, criado junto com o grupo na mesma gravação. */
+  titular?: IssuedCardRequest | null;
 }
 
-export interface UpdateCardRequest extends CreateCardRequest {
+export interface UpdateCardRequest extends Omit<CreateCardRequest, 'titular'> {
   isActive: boolean;
 }

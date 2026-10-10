@@ -28,6 +28,9 @@ import { Transaction, TransactionFilter, TransactionOrigin } from '../../core/mo
 import { parseIsoDate, shiftMonthIso, toIsoDate } from '../../core/services/date.util';
 import { defaultId, validId } from '../../core/services/selection.util';
 import { nextSort } from '../../core/services/sort.util';
+import { IssuedCardService } from '../../core/services/issued-card.service';
+import { IssuedCard, IssuedCardKind, IssuedCardStatus } from '../../core/models/issued-card.model';
+import { maskedNumber, formatExpiry } from '../../core/services/card-number.util';
 
 /**
  * Lançamentos do cartão, com a fatura do ciclo no topo (docs/07).
@@ -79,6 +82,11 @@ export class CardTransactionsComponent implements OnInit {
   /** Campo comum porque é ligado por [(ngModel)]; ver o mesmo padrão na tela da conta. */
   selectedCardId: string | null = null;
 
+  readonly IssuedCardKind = IssuedCardKind;
+  readonly IssuedCardStatus = IssuedCardStatus;
+  /** Cartões da fatura da aba (sem os cancelados), para a faixa abaixo das abas. */
+  readonly groupCards = signal<IssuedCard[]>([]);
+
   /** Data de fechamento do ciclo exibido; null = ciclo atual. */
   private reference: string | null = null;
 
@@ -119,6 +127,7 @@ export class CardTransactionsComponent implements OnInit {
     private readonly accountService: AccountService,
     private readonly categoryService: CategoryService,
     private readonly cardPaymentService: CardPaymentService,
+    private readonly issuedCardService: IssuedCardService,
     private readonly confirmationService: ConfirmationService,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
@@ -161,6 +170,7 @@ export class CardTransactionsComponent implements OnInit {
 
   loadCycle(): void {
     if (!this.selectedCardId) return;
+    this.loadGroupCards(this.selectedCardId);
 
     this.cycleLoading.set(true);
     this.cardPaymentService.getCycle(this.selectedCardId, this.reference).subscribe({
@@ -175,6 +185,29 @@ export class CardTransactionsComponent implements OnInit {
         this.cycleLoading.set(false);
       },
     });
+  }
+
+  private loadGroupCards(cardId: string): void {
+    this.issuedCardService.getByGroup(cardId).subscribe({
+      // Resposta atrasada de outra aba não sobrescreve a atual.
+      next: (cards) => {
+        if (cardId === this.selectedCardId) this.groupCards.set(cards.filter((c) => c.status !== IssuedCardStatus.Cancelado));
+      },
+      error: () => this.groupCards.set([]),
+    });
+  }
+
+  cardKindLabel(kind: IssuedCardKind): string {
+    return kind === IssuedCardKind.Titular ? 'Titular' : kind === IssuedCardKind.Adicional ? 'Adicional' : 'Virtual';
+  }
+
+  cardChipTooltip(c: IssuedCard): string {
+    const parts = [maskedNumber(c.firstDigits, c.lastFour)];
+    if (c.holderName) parts.push(c.holderName);
+    const validade = formatExpiry(c.expiryMonth, c.expiryYear);
+    if (validade) parts.push(`validade ${validade}`);
+    if (c.accountName) parts.push(`débito em ${c.accountName}`);
+    return parts.join(' · ');
   }
 
   onSelectCard(id: string | number | undefined): void {

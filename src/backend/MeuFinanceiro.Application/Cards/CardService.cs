@@ -2,6 +2,7 @@ using MeuFinanceiro.Application.Common;
 using MeuFinanceiro.Application.Common.Exceptions;
 using MeuFinanceiro.Application.Common.Interfaces;
 using MeuFinanceiro.Domain.Entities;
+using MeuFinanceiro.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace MeuFinanceiro.Application.Cards;
@@ -47,11 +48,12 @@ public class CardService : ICardService
 
     public async Task<CardResponse> CreateAsync(CreateCardRequest request, CancellationToken ct = default)
     {
+        var brand = CardBrands.ParseForCreditGroup(request.Brand);
         var card = new CreditCard
         {
             GrupoId = _currentUser.GrupoId,
             Name = request.Name,
-            Brand = CardBrands.ParseForCreditGroup(request.Brand),
+            Brand = brand,
             ClosingDay = request.ClosingDay,
             DueDay = request.DueDay,
             Limit = request.Limit,
@@ -59,6 +61,15 @@ public class CardService : ICardService
         };
 
         _db.CreditCards.Add(card);
+
+        // Grupo e titular numa gravação só: um titular recusado não deixa um grupo vazio para trás.
+        if (request.Titular is { } titular)
+        {
+            var issued = new IssuedCardService(_db, _currentUser);
+            var account = await issued.ResolveAccountAsync(titular.AccountId, ct);
+            await issued.PrepareAsync(card, account, titular with { Kind = IssuedCardKind.Titular }, ct);
+        }
+
         await _db.SaveChangesAsync(ct);
         return ToResponse(card);
     }

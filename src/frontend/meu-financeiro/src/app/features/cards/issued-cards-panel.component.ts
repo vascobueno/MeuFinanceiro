@@ -35,11 +35,15 @@ type Mode = 'novo' | 'editar' | 'substituir';
   standalone: true,
   imports: [CommonModule, FormsModule, ButtonDirective, InputText, Select, Tooltip],
   template: `
-    <div class="mf-panel mf-issued-panel">
+    <div class="mf-panel mf-issued-panel" [class.mf-issued-embedded]="embedded">
       <div class="mf-panel-header">
-        <b>{{ title() }}</b>
-        @if (group?.brand) {
-          <span class="mf-sub">{{ brandLabel(group!.brand) }}</span>
+        @if (embedded) {
+          <span class="mf-sub">{{ cards().length === 1 ? '1 cartão' : cards().length + ' cartões' }}</span>
+        } @else {
+          <b>{{ title() }}</b>
+          @if (group?.brand) {
+            <span class="mf-sub">{{ brandLabel(group!.brand) }}</span>
+          }
         }
         @if (authService.canWrite() && !mode()) {
           <button pButton type="button" size="small" [text]="true" class="mf-push" (click)="openNew()">+ Adicionar cartão</button>
@@ -180,6 +184,8 @@ type Mode = 'novo' | 'editar' | 'substituir';
       .mf-issued-panel { margin-top: 1rem; background: var(--mf-card); border: 1px solid var(--mf-line); border-radius: var(--mf-radius); box-shadow: var(--mf-shadow); overflow: hidden; }
       .mf-issued-panel .mf-panel-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.125rem 1rem; min-height: 1.875rem; border-bottom: 1px solid var(--mf-line); }
       .mf-push { margin-left: auto; }
+      .mf-issued-embedded { margin-top: 0; border: none; border-radius: 0; box-shadow: none; }
+      .mf-issued-embedded .mf-panel-header { border-bottom: none; padding: 0; }
       .mf-issued-form { border: 1px solid var(--mf-line); border-radius: var(--mf-radius); padding: 0.75rem; margin: 0.5rem 0 0.75rem; }
       .mf-issued-form-title { font-weight: 600; margin-bottom: 0.5rem; }
       .mf-issued-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.75rem; align-items: end; }
@@ -209,6 +215,8 @@ export class IssuedCardsPanelComponent implements OnChanges {
   @Input() account: Account | null = null;
   /** Contas que podem receber o débito de um cartão do grupo. */
   @Input() accounts: Account[] = [];
+  /** Dentro do bloco do grupo no cadastro: sem moldura nem título próprios. */
+  @Input() embedded = false;
 
   readonly debitBrandOptions = [...BANDEIRAS_CREDITO, ...BANDEIRAS_DEBITO];
 

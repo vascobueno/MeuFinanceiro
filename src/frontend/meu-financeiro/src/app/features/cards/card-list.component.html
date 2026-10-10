@@ -10,7 +10,7 @@
 </div>
 
 <div class="mf-stat-grid">
-  <mf-stat-card label="Limite total" [value]="totalLimit() | currency: 'BRL'" [hint]="totalItems() + ' cartão' + (totalItems() === 1 ? '' : 'ões')"></mf-stat-card>
+  <mf-stat-card label="Limite total" [value]="totalLimit() | currency: 'BRL'" [hint]="totalItems() + (totalItems() === 1 ? ' cartão' : ' cartões')"></mf-stat-card>
   <mf-stat-card label="Faturas abertas" [value]="openInvoicesTotal() | currency: 'BRL'" hint="próximos vencimentos" hintTone="negative"></mf-stat-card>
   <mf-stat-card label="Limite disponível" [value]="availableLimit | currency: 'BRL'" hint="após faturas abertas" variant="hero"></mf-stat-card>
 </div>
@@ -49,10 +49,47 @@
         <label class="mf-field-label">Limite</label>
         <input pInputText pSize="small" class="mf-field-input" type="number" step="0.01" [(ngModel)]="newCard.limit" />
       </div>
-      <div class="mf-inline-form-actions">
-        <button pButton type="button" [disabled]="saving()" (click)="submit()">Salvar</button>
-        <button pButton [outlined]="true" type="button" (click)="closeForm()">Cancelar</button>
+    </div>
+
+    @if (!editingId()) {
+      <!-- O titular entra junto com o grupo, na mesma gravação. Opcional: os cartões também se
+           cadastram depois, no bloco do grupo. -->
+      <div class="mf-titular">
+        <div class="mf-titular-title">Cartão do titular <span class="mf-sub">(opcional — só os 4 últimos bastam)</span></div>
+        <div class="mf-inline-form-grid">
+          <div>
+            <label class="mf-field-label">Primeiros dígitos</label>
+            <input pInputText pSize="small" class="mf-field-input" inputmode="numeric" placeholder="até 6"
+                   [(ngModel)]="titular.firstDigits" (paste)="onTitularPaste($event)" (ngModelChange)="onTitularFirst($event)" />
+          </div>
+          <div>
+            <label class="mf-field-label">4 últimos</label>
+            <input pInputText pSize="small" class="mf-field-input" inputmode="numeric" placeholder="1234"
+                   [(ngModel)]="titular.lastFour" (paste)="onTitularPaste($event)" (ngModelChange)="onTitularLast($event)" />
+          </div>
+          <div>
+            <label class="mf-field-label">Validade</label>
+            <input pInputText pSize="small" class="mf-field-input" placeholder="MM/AA" maxlength="7" [(ngModel)]="titular.expiry" />
+          </div>
+          <div>
+            <label class="mf-field-label">Nome impresso</label>
+            <input pInputText pSize="small" class="mf-field-input" maxlength="60" [(ngModel)]="titular.holderName" />
+          </div>
+          <div>
+            <label class="mf-field-label">Débito na conta</label>
+            <p-select size="small" class="mf-field-input" [options]="accounts()" optionLabel="name" optionValue="id"
+                      [showClear]="true" placeholder="Só crédito" [(ngModel)]="titular.accountId" />
+          </div>
+        </div>
+        @if (titularNote()) {
+          <div class="mf-sub">{{ titularNote() }}</div>
+        }
       </div>
+    }
+
+    <div class="mf-inline-form-actions">
+      <button pButton type="button" [disabled]="saving()" (click)="submit()">Salvar</button>
+      <button pButton [outlined]="true" type="button" (click)="closeForm()">Cancelar</button>
     </div>
     @if (formError()) {
       <div class="mf-form-error">{{ formError() }}</div>
@@ -60,101 +97,51 @@
   </div>
 }
 
-<div class="mf-panel">
-  <div class="mf-panel-body">
-    <mf-list-state
-      [loading]="loading()"
-      [error]="error()"
-      [empty]="!loading() && !error() && cards().length === 0"
-      emptyMessage="Nenhum cartão cadastrado ainda."
-      [onRetry]="load.bind(this)"
-    ></mf-list-state>
+<!-- Um bloco por grupo de cartões (a fatura), com os cartões dele dentro: titular, adicionais e
+     virtuais aparecem juntos, que é o que eles são — partes da mesma fatura. -->
+<mf-list-state
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="!loading() && !error() && cards().length === 0"
+  emptyMessage="Nenhum cartão cadastrado ainda."
+  [onRetry]="load.bind(this)"
+></mf-list-state>
 
-    @if (!loading() && !error() && cards().length > 0) {
-      <!-- Sem [sortField]/[sortOrder]: alimentar esses inputs a partir de sortBy/sortDir
-           (que (onSort) também escreve) fecha um ciclo de reemissão infinita no p-table —
-           ver comentário completo em transaction-table.component.ts. -->
-      <p-table
-        [value]="cards()"
-        [customSort]="true"
-        (onSort)="onSort($event)"
-        styleClass="mf-cards-table"
-      >
-        <ng-template #header>
-          <tr>
-            <th pSortableColumn="name">Nome <p-sort-icon field="name" /></th>
-            <th pSortableColumn="brand">Bandeira <p-sort-icon field="brand" /></th>
-            <th pSortableColumn="closingDay">Fechamento <p-sort-icon field="closingDay" /></th>
-            <th pSortableColumn="dueDay">Vencimento <p-sort-icon field="dueDay" /></th>
-            <th pSortableColumn="limit" class="mf-col-end">Limite <p-sort-icon field="limit" /></th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </ng-template>
-        <ng-template #body let-card>
-          <tr>
-            <td>{{ card.name }}</td>
-            <td>{{ brandLabel(card.brand) || '—' }}</td>
-            <td>Dia {{ card.closingDay }}</td>
-            <td>Dia {{ card.dueDay }}</td>
-            <td class="mf-col-end">{{ card.limit != null ? (card.limit | currency: 'BRL') : '—' }}</td>
-            <td>
-              <span class="mf-badge" [ngClass]="card.isActive ? 'mf-badge-ok' : 'mf-badge-neutral'">
-                {{ card.isActive ? 'Ativo' : 'Inativo' }}
-              </span>
-            </td>
-            <td class="mf-col-end">
-              <button
-                type="button"
-                class="mf-row-edit-icon"
-                [class.mf-row-icon-active]="selectedGroup()?.id === card.id"
-                pTooltip="Cartões do grupo (titular, adicionais, virtuais)"
-                tooltipPosition="top"
-                [attr.aria-label]="'Cartões de ' + card.name"
-                (click)="toggleGroup(card)"
-              >
-                <i class="pi pi-credit-card"></i>
-              </button>
-              @if (authService.canWrite()) {
-                <button
-                  type="button"
-                  class="mf-row-edit-icon"
-                  pTooltip="Editar"
-                  tooltipPosition="top"
-                  [attr.aria-label]="'Editar'"
-                  (click)="edit(card)"
-                >
-                  <i class="pi pi-pencil"></i>
-                </button>
-                <button
-                  type="button"
-                  class="mf-row-delete-icon"
-                  pTooltip="Excluir"
-                  tooltipPosition="top"
-                  [attr.aria-label]="'Excluir'"
-                  (click)="confirmDelete(card)"
-                >
-                  <i class="pi pi-trash"></i>
-                </button>
-              }
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
-    }
+@if (!loading() && !error() && cards().length > 0) {
+  @for (card of cards(); track card.id) {
+    <div class="mf-group-block" [class.mf-group-inactive]="!card.isActive">
+      <div class="mf-group-head">
+        <b class="mf-group-name">{{ card.name }}</b>
+        @if (card.brand) {
+          <span class="mf-group-chip">{{ brandLabel(card.brand) }}</span>
+        }
+        <span class="mf-sub">Fecha dia {{ card.closingDay }} · vence dia {{ card.dueDay }}</span>
+        <span class="mf-sub">Limite {{ card.limit != null ? (card.limit | currency: 'BRL') : '—' }}</span>
+        <span class="mf-badge" [ngClass]="card.isActive ? 'mf-badge-ok' : 'mf-badge-neutral'">
+          {{ card.isActive ? 'Ativo' : 'Inativo' }}
+        </span>
+        <span class="mf-group-actions">
+          @if (authService.canWrite()) {
+            <button type="button" class="mf-row-edit-icon" pTooltip="Editar grupo" tooltipPosition="top"
+                    [attr.aria-label]="'Editar ' + card.name" (click)="edit(card)">
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button type="button" class="mf-row-delete-icon" pTooltip="Excluir grupo" tooltipPosition="top"
+                    [attr.aria-label]="'Excluir ' + card.name" (click)="confirmDelete(card)">
+              <i class="pi pi-trash"></i>
+            </button>
+          }
+        </span>
+      </div>
+      <mf-issued-cards-panel [group]="card" [accounts]="accounts()" [embedded]="true"></mf-issued-cards-panel>
+    </div>
+  }
 
-    @if (!loading() && !error() && cards().length > 0) {
-      <mf-pagination
-        class="mf-pagination-block"
-        [page]="page()"
-        [totalPages]="totalPages()"
-        [totalItems]="totalItems()"
-        (pageChange)="onPageChange($event)"
-      ></mf-pagination>
-    }
-  </div>
-</div>
-
-@if (selectedGroup(); as group) {
-  <mf-issued-cards-panel [group]="group" [accounts]="accounts()"></mf-issued-cards-panel>
+  <mf-pagination
+    class="mf-pagination-block"
+    [page]="page()"
+    [totalPages]="totalPages()"
+    [totalItems]="totalItems()"
+    (pageChange)="onPageChange($event)"
+  ></mf-pagination>
 }

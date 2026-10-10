@@ -23,7 +23,7 @@
 
 .mf-inline-form-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr) auto;
+  grid-template-columns: repeat(5, 1fr);
   gap: 1rem;
   align-items: end;
 }
@@ -31,6 +31,7 @@
 .mf-inline-form-actions {
   display: flex;
   gap: 0.5rem;
+  margin-top: 0.85rem;
 }
 
 .mf-form-error {
@@ -97,4 +98,56 @@
 // O ícone do grupo aberto fica marcado, para dizer de quem são os cartões lá embaixo.
 .mf-row-icon-active {
   color: var(--mf-red);
+}
+
+// Um bloco por grupo de cartões: cabeçalho com os dados da fatura, os cartões logo abaixo.
+.mf-group-block {
+  background: var(--mf-card);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius);
+  box-shadow: var(--mf-shadow);
+  padding: 0.5rem 1rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mf-group-inactive {
+  opacity: 0.7;
+}
+
+.mf-group-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--mf-line);
+  margin-bottom: 0.4rem;
+}
+
+.mf-group-name {
+  font-size: 1rem;
+}
+
+.mf-group-chip {
+  border: 1px solid var(--mf-line);
+  border-radius: 999px;
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+}
+
+.mf-group-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mf-titular {
+  border-top: 1px dashed var(--mf-line);
+  margin-top: 0.85rem;
+  padding-top: 0.6rem;
+}
+
+.mf-titular-title {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
 }

@@ -379,3 +379,38 @@ $mf-field-height: 28px;
   flex-wrap: wrap;
   min-height: $mf-field-height;
 }
+
+// Faixa dos cartões da fatura, logo abaixo das abas.
+.mf-card-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0.25rem;
+}
+
+.mf-card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--mf-line);
+  border-radius: 999px;
+  padding: 0.05rem 0.6rem;
+  font-size: 0.8rem;
+  background: var(--mf-card);
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-card-chip-off {
+  opacity: 0.6;
+}
+
+.mf-card-chip-state {
+  color: var(--mf-muted);
+  font-size: 0.72rem;
+}
+
+.mf-card-strip-link {
+  font-size: 0.8rem;
+  margin-left: 0.3rem;
+}

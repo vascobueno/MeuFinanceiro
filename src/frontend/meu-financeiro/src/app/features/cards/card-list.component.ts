@@ -6,9 +6,7 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { MfIconComponent } from '../../shared/icons/mf-icon.component';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
-import { Table, SortIcon, SortableColumn } from 'primeng/table';
 import { Tooltip } from 'primeng/tooltip';
-import { SortEvent } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
 import { CardService } from '../../core/services/card.service';
 import { AccountService } from '../../core/services/account.service';
@@ -19,11 +17,12 @@ import { CardInvoiceStatus } from '../../core/models/invoice.model';
 import { ListStateComponent } from '../../shared/components/list-state.component';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
-import { nextSort } from '../../core/services/sort.util';
+import { onlyDigits, parseExpiry, splitCardNumber } from '../../core/services/card-number.util';
 import { businessRuleOf } from '../../core/services/problem.util';
 import { Select } from 'primeng/select';
 import { BANDEIRAS_CREDITO, bandeiraLabel, sugerirBandeiraPeloNome } from '../../core/data/bandeiras';
 import { IssuedCardsPanelComponent } from './issued-cards-panel.component';
+import { IssuedCardKind } from '../../core/models/issued-card.model';
 
 /** Tela de cartões (RF003), espelhando docs/screens/cartoes/mockup.html. */
 @Component({
@@ -37,9 +36,6 @@ import { IssuedCardsPanelComponent } from './issued-cards-panel.component';
     MfIconComponent,
     ButtonDirective,
     InputText,
-    Table,
-    SortIcon,
-    SortableColumn,
     ListStateComponent,
     PaginationComponent,
     StatCardComponent,
@@ -57,8 +53,6 @@ export class CardListComponent implements OnInit {
   readonly page = signal(1);
   readonly totalPages = signal(0);
   readonly totalItems = signal(0);
-  sortBy?: string;
-  sortDir: 'asc' | 'desc' = 'asc';
 
   // KPIs (docs/screens/cartoes): busca à parte, sem paginação.
   readonly totalLimit = signal(0);
@@ -71,8 +65,9 @@ export class CardListComponent implements OnInit {
   readonly newCard: CreateCardRequest = { name: '', brand: undefined, closingDay: 1, dueDay: 10, limit: undefined };
   readonly brandOptions = [...BANDEIRAS_CREDITO];
   readonly brandLabel = bandeiraLabel;
-  /** Grupo cujos cartões (titular, adicionais, virtuais) estão abertos abaixo da lista. */
-  readonly selectedGroup = signal<CreditCard | null>(null);
+  /** Cartão do titular criado junto com o grupo (opcional). Nunca guarda o número inteiro. */
+  titular = { firstDigits: '', lastFour: '', expiry: '', holderName: '', accountId: null as string | null };
+  readonly titularNote = signal<string | null>(null);
   /** Contas que podem receber o débito de um cartão do grupo (cartão múltiplo). */
   readonly accounts = signal<Account[]>([]);
   private editingIsActive = true;
@@ -108,7 +103,7 @@ export class CardListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    this.cardService.getAll({ page: this.page(), pageSize: 10, sortBy: this.sortBy, sortDir: this.sortDir }).subscribe({
+    this.cardService.getAll({ page: this.page(), pageSize: 10, sortBy: 'name', sortDir: 'asc' }).subscribe({
       next: (result) => {
         this.cards.set(result.items);
         this.totalPages.set(result.totalPages);
@@ -122,21 +117,14 @@ export class CardListComponent implements OnInit {
     });
   }
 
-  onSort(event: SortEvent): void {
-    // A direção vem de nextSort, e não do `order` do evento: a tabela é recriada a cada carga
-    // e o p-table emite sempre ascendente (core/services/sort.util.ts).
-    const proxima = nextSort({ sortBy: this.sortBy, sortDir: this.sortDir }, event.field, 'name');
-    this.sortBy = proxima.sortBy;
-    this.sortDir = proxima.sortDir;
-    this.load();
-  }
-
   onPageChange(page: number): void {
     this.page.set(page);
     this.load();
   }
 
   openForm(): void {
+    this.titular = { firstDigits: '', lastFour: '', expiry: '', holderName: '', accountId: null };
+    this.titularNote.set(null);
     this.editingId.set(null);
     this.newCard.name = '';
     this.newCard.brand = undefined;
@@ -174,9 +162,35 @@ export class CardListComponent implements OnInit {
     this.formError.set(null);
 
     const editingId = this.editingId();
+
+    // Titular só na criação, e só se o final foi informado; o resto é opcional.
+    let titular: CreateCardRequest['titular'] = null;
+    if (!editingId && this.titular.lastFour) {
+      const expiry = parseExpiry(this.titular.expiry);
+      if (expiry === 'invalid') {
+        this.saving.set(false);
+        this.formError.set('Validade do titular inválida: use MM/AA.');
+        return;
+      }
+      if (this.titular.lastFour.length !== 4) {
+        this.saving.set(false);
+        this.formError.set('Informe os 4 últimos dígitos do cartão do titular — ou deixe em branco.');
+        return;
+      }
+      titular = {
+        kind: IssuedCardKind.Titular,
+        lastFour: this.titular.lastFour,
+        firstDigits: this.titular.firstDigits || null,
+        expiryMonth: expiry?.month ?? null,
+        expiryYear: expiry?.year ?? null,
+        holderName: this.titular.holderName.trim() || null,
+        accountId: this.titular.accountId,
+      };
+    }
+
     const request$ = editingId
       ? this.cardService.update(editingId, { ...this.newCard, isActive: this.editingIsActive })
-      : this.cardService.create(this.newCard);
+      : this.cardService.create({ ...this.newCard, titular });
 
     request$.subscribe({
       next: () => {
@@ -198,14 +212,36 @@ export class CardListComponent implements OnInit {
     });
   }
 
+  /** Número inteiro colado no titular: ficam 6 + 4, o meio é descartado (card-number.util). */
+  onTitularPaste(event: ClipboardEvent): void {
+    const parts = splitCardNumber(event.clipboardData?.getData('text'));
+    if (!parts) return;
+    event.preventDefault();
+    this.applyTitularParts(parts);
+  }
+
+  onTitularFirst(value: string): void {
+    const parts = splitCardNumber(value);
+    if (parts) this.applyTitularParts(parts);
+    else this.titular.firstDigits = onlyDigits(value, 6);
+  }
+
+  onTitularLast(value: string): void {
+    const parts = splitCardNumber(value);
+    if (parts) this.applyTitularParts(parts);
+    else this.titular.lastFour = onlyDigits(value, 4);
+  }
+
+  private applyTitularParts(parts: { firstDigits: string; lastFour: string }): void {
+    this.titular.firstDigits = parts.firstDigits;
+    this.titular.lastFour = parts.lastFour;
+    this.titularNote.set('Número completo dividido: ficam só os 6 primeiros e os 4 últimos. O meio não é guardado.');
+  }
+
   /** Só preenche a bandeira se ela ainda estiver em branco — nunca troca a escolhida. */
   suggestBrandFromName(): void {
     if (this.newCard.brand) return;
     this.newCard.brand = sugerirBandeiraPeloNome(this.newCard.name) ?? undefined;
-  }
-
-  toggleGroup(card: CreditCard): void {
-    this.selectedGroup.set(this.selectedGroup()?.id === card.id ? null : card);
   }
 
   confirmDelete(card: CreditCard): void {

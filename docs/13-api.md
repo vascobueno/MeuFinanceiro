@@ -120,6 +120,7 @@ DELETE `/api/v1/issued-cards/{id}`
 
 `brand` de `/api/v1/cards` é o nome da bandeira (`Mastercard`, `AmericanExpress`…); na entrada
 valem também "Master" e "Amex". 400 `bandeira-invalida` / `bandeira-de-debito`.
+`POST /api/v1/cards` aceita `titular` (mesmo corpo do cartão): grupo e titular numa gravação só.
 
 ## Card invoices (Faturas)
 GET `/api/v1/card-invoices` (paginação, filtros, ordenação; `balanceValidated` por fatura)

@@ -16,6 +16,31 @@
       }
     </p-tablist>
   </p-tabs>
+
+  <!-- Os cartões que caem nesta fatura: titular, adicionais e virtuais. Cancelados ficam de fora;
+       substituídos e vencidos aparecem apagados, porque ainda trazem compras e parcelas. -->
+  @if (groupCards().length > 0) {
+    <div class="mf-card-strip" aria-label="Cartões desta fatura">
+      @for (c of groupCards(); track c.id) {
+        <span class="mf-card-chip" [class.mf-card-chip-off]="c.status !== IssuedCardStatus.Ativo || c.isExpired"
+              [pTooltip]="cardChipTooltip(c)" tooltipPosition="bottom">
+          <i class="pi" [ngClass]="c.kind === IssuedCardKind.Online ? 'pi-globe' : 'pi-credit-card'"></i>
+          {{ cardKindLabel(c.kind) }} <b>{{ c.lastFour }}</b>
+          @if (c.status === IssuedCardStatus.Substituido) {
+            <span class="mf-card-chip-state">substituído</span>
+          } @else if (c.isExpired) {
+            <span class="mf-card-chip-state">vencido</span>
+          }
+        </span>
+      }
+      <a class="mf-card-strip-link" routerLink="/cartoes">Gerenciar cartões</a>
+    </div>
+  } @else if (selectedCardId) {
+    <div class="mf-card-strip">
+      <span class="mf-sub">Nenhum cartão cadastrado nesta fatura.</span>
+      <a class="mf-card-strip-link" routerLink="/cartoes">Cadastrar os cartões</a>
+    </div>
+  }
 } @else {
   <!-- Sem cartão não há aba, fatura nem ciclo: oferece o cadastro em vez de uma tela vazia. -->
   <div class="mf-origin-empty">

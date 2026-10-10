@@ -78,6 +78,17 @@ public class IssuedCardService : IIssuedCardService
 
     private async Task<IssuedCardResponse> CreateCoreAsync(CreditCard? group, Account? account, IssuedCardRequest request, CancellationToken ct)
     {
+        var card = await PrepareAsync(group, account, request, ct);
+        await _db.SaveChangesAsync(ct);
+        return ToResponse(card);
+    }
+
+    /// <summary>
+    /// Valida e acrescenta o cartão ao contexto, sem gravar — quem chama grava. É o que permite
+    /// criar o grupo e o titular numa gravação só (CardService.CreateAsync).
+    /// </summary>
+    internal async Task<IssuedCard> PrepareAsync(CreditCard? group, Account? account, IssuedCardRequest request, CancellationToken ct)
+    {
         var data = Normalize(request);
         var brand = BrandFor(group, request.Brand);
         await EnsureUniqueActiveFinalAsync(data.LastFour, exceptId: null, ct);
@@ -94,9 +105,12 @@ public class IssuedCardService : IIssuedCardService
         };
         Apply(card, data);
         _db.IssuedCards.Add(card);
-        await _db.SaveChangesAsync(ct);
-        return ToResponse(card);
+        return card;
     }
+
+    /// <summary>A conta do débito, se informada — do mesmo grupo de usuários.</summary>
+    internal async Task<Account?> ResolveAccountAsync(Guid? accountId, CancellationToken ct) =>
+        accountId is { } id ? await FindAccountAsync(id, ct) : null;
 
     /// <summary>
     /// Edita os dados do cartão e a função de débito: mudar <c>AccountId</c> liga o débito a outra

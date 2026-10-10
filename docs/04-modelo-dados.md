@@ -83,6 +83,12 @@ o grupo de crédito os recusa (`bandeira-de-debito`). A API aceita os apelidos a
 - **Excluir um lado** — excluir o grupo apaga os cartões só de crédito e deixa o múltiplo como
   só de débito, com a bandeira do grupo; excluir a conta apaga os só de débito e deixa o múltiplo
   como só de crédito. As FKs são Restrict e o serviço faz isso explicitamente.
+- **Grupo e titular juntos** — `POST /cards` aceita `titular`: grupo e cartão do titular numa
+  gravação só. Titular recusado (final repetido, número inteiro, conta de outro grupo) não deixa
+  um grupo vazio para trás.
+- **Na tela** — o cadastro de cartões mostra um bloco por grupo, com os cartões dele dentro; em
+  Lançamentos do cartão, uma faixa abaixo das abas mostra os cartões daquela fatura (cancelados
+  ficam de fora; substituídos e vencidos aparecem apagados, porque ainda trazem compras).
 - **Sugestão de cartão de débito** (`CardBrands.PickDebitCard`) — para uma compra no débito de
   bandeira conhecida, só quando há exatamente um cartão ativo dessa família com débito na conta.
   Usada na ligação de lançamentos a cartões (etapa 11).
