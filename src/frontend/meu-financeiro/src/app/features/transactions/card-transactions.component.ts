@@ -210,11 +210,21 @@ export class CardTransactionsComponent implements OnInit {
     return parts.join(' · ');
   }
 
+  /** Opções do filtro Cartão: os cartões do grupo, com os substituídos (compras de antes da troca). */
+  get cardFilterOptions(): Array<{ label: string; value: string }> {
+    return this.groupCards().map((c) => ({
+      label: `${this.cardKindLabel(c.kind)} •••• ${c.lastFour}${c.status === IssuedCardStatus.Substituido ? ' (substituído)' : ''}`,
+      value: c.id,
+    }));
+  }
+
   onSelectCard(id: string | number | undefined): void {
     const cardId = String(id ?? '');
     if (!cardId || cardId === this.selectedCardId) return;
 
     this.selectedCardId = cardId;
+    // O filtro de cartão é do grupo anterior.
+    this.filter.issuedCardId = null;
     // replaceUrl: trocar de aba não é passo de histórico (mesma razão da tela da conta).
     this.router.navigate([], {
       relativeTo: this.route,

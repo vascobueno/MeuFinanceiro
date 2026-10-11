@@ -157,10 +157,21 @@ crédito; o cartão com débito na conta no lançamento da conta. Tem de ser do 
 (403) e combinar com a origem: `cartao-de-outra-fatura` / `cartao-sem-debito-na-conta`. As
 parcelas herdam; transferência e recorrência não levam. No formulário, "Cartão usado" só aparece
 quando a origem tem cartões cadastrados (cancelados ficam de fora; substituídos aparecem, porque a
-compra pode ser de antes da troca); a grade ganha a coluna "Cartão" quando algum lançamento diz
-qual foi. Na edição, mandar sem `issuedCardId` tira a indicação.
+compra pode ser de antes da troca). Num lançamento novo do cartão, se o grupo tem um único cartão
+ativo, o campo já vem com ele. Na edição, mandar sem `issuedCardId` tira a indicação.
+
+Na grade, "Gastos do ciclo" (tela do cartão) mostra a coluna "Cartão" **sempre**: "Titular ••••
+4021", "Adic. •••• 4022", "Virtual •••• 4023"; sem cartão gravado, o final da seção da fatura com
+que o lançamento foi conciliado (`invoiceCardLastFour`, em itálico, só conciliação aceita) ou
+"Não informado". Nos lançamentos da conta ela só aparece quando algum lançamento diz qual foi. A
+caixa Filtros da tela do cartão ganha "Cartão" (`issuedCardId`), com os cartões do grupo.
 
 Preenchido também pela conciliação, só quando o lançamento não tinha: aceitar ou "Lançar" o item
 da fatura leva o cartão da seção; aceitar a compra no débito do extrato leva o cartão de débito da
 conta **se** a descrição trouxer a bandeira ("DEB MC" = Mastercard) e houver exatamente um cartão
 ativo dela com débito na conta (`CardBrands.PickDebitCard`). Com dois, não chuta.
+
+Cartão cadastrado depois da fatura (ou com o final corrigido, ou na substituição): os itens do
+grupo com aquele final que estavam sem cartão passam a apontar para ele, e os lançamentos
+conciliados (aceitos) com esses itens também — só os que não tinham cartão. Sugestão não aceita e
+itens de outro grupo não são tocados.

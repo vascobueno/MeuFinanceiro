@@ -50,6 +50,7 @@ public class TransactionService : ITransactionService
         if (filter.CategoryId is not null) query = query.Where(t => t.CategoryId == filter.CategoryId);
         if (filter.AccountId is not null) query = query.Where(t => t.AccountId == filter.AccountId);
         if (filter.CreditCardId is not null) query = query.Where(t => t.CreditCardId == filter.CreditCardId);
+        if (filter.IssuedCardId is not null) query = query.Where(t => t.IssuedCardId == filter.IssuedCardId);
         // Origin responde "de qualquer conta" / "de qualquer cartão" — os filtros por id acima
         // só respondem "desta conta" / "deste cartão".
         if (filter.Origin == TransactionOrigin.Account) query = query.Where(t => t.AccountId != null);
@@ -78,9 +79,11 @@ public class TransactionService : ITransactionService
         var results = await query.Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToListAsync(ct);
 
         var attachmentCounts = await CountAttachmentsAsync(results, ct);
+        var invoiceFinals = await InvoiceFinalsAsync(results, ct);
 
         return PagedResult<TransactionResponse>.Create(
-            results.Select(t => ToResponse(t, attachmentCount: attachmentCounts.GetValueOrDefault(t.Id))).ToList(),
+            results.Select(t => ToResponse(t, attachmentCount: attachmentCounts.GetValueOrDefault(t.Id))
+                with { InvoiceCardLastFour = invoiceFinals.GetValueOrDefault(t.Id) }).ToList(),
             filter.Page, filter.PageSize, totalItems);
     }
 
@@ -405,6 +408,23 @@ public class TransactionService : ITransactionService
     }
 
     // installmentCount/installmentPlanId vêm por parâmetro no caminho de criação: ali as entidades
+    /// <summary>
+    /// Para o lançamento de cartão sem o cartão usado: o final da seção da fatura com que ele foi
+    /// conciliado. Só conciliação aceita — a sugestão pode ser de outra compra. Só da página.
+    /// </summary>
+    private async Task<Dictionary<Guid, string>> InvoiceFinalsAsync(List<FinancialTransaction> page, CancellationToken ct)
+    {
+        var ids = page.Where(t => t.IssuedCardId is null && t.CreditCardId is not null).Select(t => t.Id).ToList();
+        if (ids.Count == 0) return new();
+        var rows = await _db.Reconciliations.AsNoTracking()
+            .Where(r => r.GrupoId == _currentUser.GrupoId && r.AcceptedAt != null
+                        && r.FinancialTransactionId != null && ids.Contains(r.FinancialTransactionId.Value)
+                        && r.CardInvoiceItem != null && r.CardInvoiceItem.CardLastFour != null)
+            .Select(r => new { Id = r.FinancialTransactionId!.Value, Final = r.CardInvoiceItem!.CardLastFour! })
+            .ToListAsync(ct);
+        return rows.GroupBy(r => r.Id).ToDictionary(g => g.Key, g => g.First().Final);
+    }
+
     // acabaram de ser montadas em memória e a navegação t.Installment ainda não está carregada,
     // então ler o plano por ela devolveria null exatamente quando a tela precisa do id.
     private static TransactionResponse ToResponse(FinancialTransaction t, int? installmentCount = null, Guid? installmentPlanId = null, int attachmentCount = 0) => new(

@@ -51,6 +51,22 @@ import { DateRange, DateRangeComponent } from './date-range.component';
             />
           </div>
 
+          <!-- Só na tela do cartão, com os cartões do grupo: titular, adicionais e virtuais. -->
+          @if (cardOptions.length > 0) {
+            <div class="mf-filter-field">
+              <label class="mf-field-label">Cartão</label>
+              <p-select
+                size="small"
+                class="mf-field-input"
+                [options]="cardFilterOptions"
+                optionLabel="label"
+                optionValue="value"
+                [(ngModel)]="filter.issuedCardId"
+                (onChange)="changed.emit()"
+              />
+            </div>
+          }
+
           <div class="mf-filter-field mf-filter-field-tipo">
             <label class="mf-field-label">Tipo</label>
             <p-select
@@ -148,6 +164,8 @@ export class TransactionFiltersComponent {
   /** Objeto mutado diretamente, como as telas já faziam — o pai relê depois de `changed`. */
   @Input({ required: true }) filter!: TransactionFilter;
   @Input() categories: Category[] = [];
+  /** Os cartões do grupo; vazio esconde o filtro (tela da conta, grupo sem cartão cadastrado). */
+  @Input() cardOptions: Array<{ label: string; value: string }> = [];
 
   @Output() changed = new EventEmitter<void>();
 
@@ -177,6 +195,10 @@ export class TransactionFiltersComponent {
    */
   get categoryOptions(): Array<{ id: string | null; name: string }> {
     return [{ id: null, name: 'Todas' }, ...this.categories];
+  }
+
+  get cardFilterOptions(): Array<{ label: string; value: string | null }> {
+    return [{ label: 'Todos', value: null }, ...this.cardOptions];
   }
 
   onDateRangeChange(range: DateRange): void {

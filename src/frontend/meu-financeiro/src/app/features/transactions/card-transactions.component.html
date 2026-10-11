@@ -256,6 +256,7 @@
 <mf-transaction-filters
   [filter]="filter"
   [categories]="categories()"
+  [cardOptions]="cardFilterOptions"
   (changed)="applyFilters()"
 ></mf-transaction-filters>
 
@@ -303,6 +304,7 @@
       [error]="error()"
       [canWrite]="authService.canWrite()"
       emptyMessage="Nenhum gasto neste ciclo."
+      [alwaysShowCard]="true"
       [onRetry]="loadTransactions.bind(this)"
       (sort)="onSort($event)"
       (remove)="removeTransaction($event)"

@@ -416,6 +416,11 @@ export class TransactionFormComponent implements OnInit {
         );
         // Trocou de conta ou de cartão: o cartão escolhido antes não vale mais.
         if (this.issuedCardId && !usable.some((c) => c.id === this.issuedCardId)) this.issuedCardId = null;
+        // Lançamento novo num grupo de um cartão ativo só: é ele. Com dois ou mais, o usuário escolhe.
+        const active = usable.filter((c) => c.status === IssuedCardStatus.Ativo);
+        if (!this.editingId() && this.originKind === 'card' && !this.issuedCardId && active.length === 1) {
+          this.issuedCardId = active[0].id;
+        }
       },
       error: () => this.issuedCardOptions.set([]),
     });

@@ -114,6 +114,8 @@ export interface Transaction {
   issuedCardLastFour?: string | null;
   /** 1 titular, 2 adicional, 3 virtual. */
   issuedCardKind?: number | null;
+  /** Sem cartão cadastrado: o final da seção da fatura com que foi conciliado. Só na listagem. */
+  invoiceCardLastFour?: string | null;
 }
 
 /** De onde o lançamento saiu — as duas telas de Lançamentos (docs/06). */
@@ -133,6 +135,8 @@ export interface TransactionFilter {
   categoryId?: string | null;
   accountId?: string | null;
   creditCardId?: string | null;
+  /** O cartão usado (titular, adicional, virtual) — filtro da tela do cartão. */
+  issuedCardId?: string | null;
   /** "de qualquer conta" / "de qualquer cartão" — os filtros por id acima são "desta/deste". */
   origin?: TransactionOrigin | null;
   type?: TransactionType | null;

@@ -9,6 +9,7 @@ import { Transaction } from '../../core/models/transaction.model';
 import { ListStateComponent } from './list-state.component';
 import { StatusBadgeComponent } from './status-badge.component';
 import { formatForeign } from '../../core/services/foreign.util';
+import { issuedCardCell } from './issued-card-label.util';
 
 /**
  * Tabela de lançamentos, compartilhada pelas telas de conta e de cartão.
@@ -57,7 +58,7 @@ import { formatForeign } from '../../core/services/foreign.util';
             <th pSortableColumn="transactionDate">Data <p-sort-icon field="transactionDate" /></th>
             <th pSortableColumn="description">Descrição <p-sort-icon field="description" /></th>
             <th>Categoria</th>
-            @if (hasIssuedCards) {
+            @if (showCardColumn) {
               <th>Cartão</th>
             }
             <th pSortableColumn="amount" class="mf-col-end">Valor <p-sort-icon field="amount" /></th>
@@ -104,8 +105,10 @@ import { formatForeign } from '../../core/services/foreign.util';
               }
             </td>
             <td>{{ transaction.categoryName || '—' }}</td>
-            @if (hasIssuedCards) {
-              <td class="mf-tabular">{{ issuedCardLabel(transaction) }}</td>
+            @if (showCardColumn) {
+              @let card = cardCell(transaction);
+              <td class="mf-tabular" [class.mf-card-unknown]="card.source === 'nenhum'" [class.mf-card-from-invoice]="card.source === 'fatura'"
+                  [attr.title]="card.hint">{{ card.text }}</td>
             }
             <td class="mf-col-end">{{ transaction.amount | currency: 'BRL' }}</td>
             <td><mf-status-badge [status]="transaction.status"></mf-status-badge></td>
@@ -145,6 +148,14 @@ import { formatForeign } from '../../core/services/foreign.util';
 .mf-clickable-row {
         cursor: pointer;
       }
+      /* Cartão: "Não informado" em cinza; o final da fatura em itálico, com a dica no title. */
+      .mf-card-unknown {
+        color: var(--mf-muted);
+      }
+      .mf-card-from-invoice {
+        font-style: italic;
+        cursor: help;
+      }
       .mf-col-end {
         text-align: right;
       }
@@ -182,21 +193,19 @@ export class TransactionTableComponent {
   @Input() canWrite = false;
   @Input() emptyMessage = 'Nenhum lançamento encontrado para os filtros selecionados.';
   @Input() onRetry?: () => void;
+  /** Na tela do cartão a coluna Cartão fica sempre: é o que diz de qual cartão do grupo foi a compra. */
+  @Input() alwaysShowCard = false;
 
   @Output() sort = new EventEmitter<{ field?: string; order?: number }>();
   /** Emitido só depois da confirmação. */
   @Output() remove = new EventEmitter<Transaction>();
 
-  /** A coluna Cartão só aparece quando algum lançamento da lista diz qual cartão foi. */
-  get hasIssuedCards(): boolean {
-    return this.transactions.some((t) => !!t.issuedCardLastFour);
+  /** Fora da tela do cartão, a coluna só aparece quando algum lançamento da lista diz qual cartão foi. */
+  get showCardColumn(): boolean {
+    return this.alwaysShowCard || this.transactions.some((t) => !!t.issuedCardLastFour || !!t.invoiceCardLastFour);
   }
 
-  issuedCardLabel(transaction: Transaction): string {
-    if (!transaction.issuedCardLastFour) return '—';
-    const kind = transaction.issuedCardKind === 3 ? 'Virtual ' : transaction.issuedCardKind === 2 ? 'Adic. ' : '';
-    return `${kind}•••• ${transaction.issuedCardLastFour}`;
-  }
+  readonly cardCell = issuedCardCell;
 
   /** "US$ 21,22 × 5,4970" sob a descrição da compra no exterior. */
   foreignLine(transaction: Transaction): string {

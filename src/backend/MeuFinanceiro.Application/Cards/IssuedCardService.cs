@@ -79,8 +79,35 @@ public class IssuedCardService : IIssuedCardService
     private async Task<IssuedCardResponse> CreateCoreAsync(CreditCard? group, Account? account, IssuedCardRequest request, CancellationToken ct)
     {
         var card = await PrepareAsync(group, account, request, ct);
+        await LinkInvoiceHistoryAsync(card, ct);
         await _db.SaveChangesAsync(ct);
         return ToResponse(card);
+    }
+
+    /// <summary>
+    /// O cartão cadastrado depois da fatura: os itens do grupo com este final, que ficaram sem
+    /// cartão, passam a apontar para ele — e os lançamentos conciliados (aceitos) com esses itens
+    /// também. Só preenche o que está vazio: o cartão escolhido pelo usuário não é trocado.
+    /// </summary>
+    private async Task LinkInvoiceHistoryAsync(IssuedCard card, CancellationToken ct)
+    {
+        if (card.CreditCardId is not { } groupId || card.Status != IssuedCardStatus.Ativo) return;
+
+        var items = await _db.CardInvoiceItems
+            .Where(i => i.CardInvoice!.GrupoId == _currentUser.GrupoId && i.CardInvoice.CreditCardId == groupId
+                        && i.CardLastFour == card.LastFour && i.IssuedCardId == null)
+            .ToListAsync(ct);
+        if (items.Count == 0) return;
+        foreach (var item in items) item.IssuedCard = card;
+
+        var itemIds = items.Select(i => i.Id).ToList();
+        var transactions = await _db.Reconciliations
+            .Where(r => r.GrupoId == _currentUser.GrupoId && r.AcceptedAt != null
+                        && r.CardInvoiceItemId != null && itemIds.Contains(r.CardInvoiceItemId.Value)
+                        && r.FinancialTransaction != null && r.FinancialTransaction.IssuedCardId == null)
+            .Select(r => r.FinancialTransaction!)
+            .ToListAsync(ct);
+        foreach (var t in transactions) t.IssuedCard = card;
     }
 
     /// <summary>
@@ -136,6 +163,8 @@ public class IssuedCardService : IIssuedCardService
         card.Brand = BrandFor(card.CreditCard, request.Brand);
         card.UpdatedAt = DateTime.UtcNow;
         card.UpdatedBy = _currentUser.UserId;
+        // Corrigir o final digitado errado também liga as compras da fatura com o final certo.
+        await LinkInvoiceHistoryAsync(card, ct);
         await _db.SaveChangesAsync(ct);
         return ToResponse(card);
     }
@@ -176,6 +205,7 @@ public class IssuedCardService : IIssuedCardService
         Apply(replacement, data);
         _db.IssuedCards.Add(replacement);
         old.ReplacedById = replacement.Id;
+        await LinkInvoiceHistoryAsync(replacement, ct);
         await _db.SaveChangesAsync(ct);
 
         return ToResponse(replacement);

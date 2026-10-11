@@ -216,4 +216,108 @@ public class TransactionIssuedCardTests : IClassFixture<CustomWebApplicationFact
         var lancamento = await DebitoConciliadoAsync(client, conta);
         lancamento.GetProperty("issuedCardId").ValueKind.Should().Be(JsonValueKind.Null);
     }
+
+    private static async Task<Guid> SoGrupoAsync(HttpClient client) =>
+        (await JsonAsync(await client.PostAsJsonAsync("/api/v1/cards",
+            new { name = $"Grupo {Guid.NewGuid():N}"[..20], brand = "Mastercard", closingDay = 2, dueDay = 10 }))).GetProperty("id").GetGuid();
+
+    /// <summary>Fatura com uma seção "final {final}" e duas compras; devolve as conciliações.</summary>
+    private static async Task<List<JsonElement>> FaturaAsync(HttpClient client, Guid grupo, string final)
+    {
+        var lido = await JsonAsync(await client.PostAsJsonAsync("/api/v1/card-invoices/parse", new
+        {
+            text = $"PORTADOR FICTICIO - 5480 XXXX XXXX {final}\n06/08 LOJA FICTICIA A 58,50\n07/08 LOJA FICTICIA B 20,00",
+            closingDate = "2026-09-02",
+        }));
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/card-invoices/import", new
+        {
+            creditCardId = grupo, closingDate = "2026-09-02", dueDate = "2026-09-10", totalAmount = 78.50m, items = lido.GetProperty("items"),
+        }));
+        return (await JsonAsync(await client.GetAsync($"/api/v1/reconciliations/card?creditCardId={grupo}"))).EnumerateArray().ToList();
+    }
+
+    private static async Task<Dictionary<string, JsonElement>> LancamentosAsync(HttpClient client, string filtro) =>
+        (await JsonAsync(await client.GetAsync($"/api/v1/transactions?{filtro}"))).GetProperty("items").EnumerateArray()
+            .ToDictionary(t => t.GetProperty("description").GetString()!);
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Cartao_cadastrado_depois_da_fatura_preenche_itens_e_lancamentos_aceitos_sem_trocar_o_escolhido()
+    {
+        var client = await NovoUsuarioAsync();
+        var grupo = await SoGrupoAsync(client);
+        var escolhido = (await JsonAsync(await client.PostAsJsonAsync($"/api/v1/cards/{grupo}/issued-cards",
+            new { kind = 2, lastFour = "4032" }))).GetProperty("id").GetGuid();
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", new
+        {
+            transactionDate = "2026-08-06", description = "Loja Ficticia A", creditCardId = grupo, type = 2, direction = 1, amount = 58.50m,
+        }));
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", new
+        {
+            transactionDate = "2026-08-07", description = "Loja Ficticia B", creditCardId = grupo, type = 2, direction = 1, amount = 20m,
+            issuedCardId = escolhido,
+        }));
+
+        foreach (var r in await FaturaAsync(client, grupo, "4031"))
+            await JsonAsync(await client.PostAsync($"/api/v1/reconciliations/card/{r.GetProperty("id").GetGuid()}/accept", null));
+
+        // Antes do cadastro: sem cartão, mas a listagem mostra o final lido da fatura.
+        var antes = await LancamentosAsync(client, $"creditCardId={grupo}");
+        antes["Loja Ficticia A"].GetProperty("issuedCardId").ValueKind.Should().Be(JsonValueKind.Null);
+        antes["Loja Ficticia A"].GetProperty("invoiceCardLastFour").GetString().Should().Be("4031");
+        antes["Loja Ficticia B"].GetProperty("invoiceCardLastFour").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var novo = (await JsonAsync(await client.PostAsJsonAsync($"/api/v1/cards/{grupo}/issued-cards",
+            new { kind = 1, lastFour = "4031" }))).GetProperty("id").GetGuid();
+
+        var depois = await LancamentosAsync(client, $"creditCardId={grupo}");
+        depois["Loja Ficticia A"].GetProperty("issuedCardId").GetGuid().Should().Be(novo);
+        depois["Loja Ficticia B"].GetProperty("issuedCardId").GetGuid().Should().Be(escolhido);
+        (await JsonAsync(await client.GetAsync($"/api/v1/reconciliations/card?creditCardId={grupo}"))).EnumerateArray()
+            .Should().OnlyContain(r => r.GetProperty("itemIssuedCardId").GetGuid() == novo);
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Sugestao_nao_aceita_e_outro_grupo_nao_ganham_o_cartao()
+    {
+        var client = await NovoUsuarioAsync();
+        var grupo = await SoGrupoAsync(client);
+        var outroGrupo = await SoGrupoAsync(client);
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", new
+        {
+            transactionDate = "2026-08-06", description = "Loja Ficticia A", creditCardId = grupo, type = 2, direction = 1, amount = 58.50m,
+        }));
+        (await FaturaAsync(client, grupo, "4031")).Should().Contain(r => r.GetProperty("financialTransactionId").ValueKind == JsonValueKind.String);
+        await FaturaAsync(client, outroGrupo, "4031");
+
+        // Sem aceite, a sugestão não mostra o final da fatura.
+        (await LancamentosAsync(client, $"creditCardId={grupo}"))["Loja Ficticia A"]
+            .GetProperty("invoiceCardLastFour").ValueKind.Should().Be(JsonValueKind.Null);
+
+        await JsonAsync(await client.PostAsJsonAsync($"/api/v1/cards/{grupo}/issued-cards", new { kind = 1, lastFour = "4031" }));
+
+        (await LancamentosAsync(client, $"creditCardId={grupo}"))["Loja Ficticia A"]
+            .GetProperty("issuedCardId").ValueKind.Should().Be(JsonValueKind.Null);
+        (await JsonAsync(await client.GetAsync($"/api/v1/reconciliations/card?creditCardId={outroGrupo}"))).EnumerateArray()
+            .Should().OnlyContain(r => r.GetProperty("itemIssuedCardId").ValueKind == JsonValueKind.Null);
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Filtro_pelo_cartao_usado()
+    {
+        var client = await NovoUsuarioAsync();
+        var (grupo, titular) = await GrupoAsync(client, "4021");
+        var adicional = (await JsonAsync(await client.PostAsJsonAsync($"/api/v1/cards/{grupo}/issued-cards",
+            new { kind = 2, lastFour = "4022" }))).GetProperty("id").GetGuid();
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", NoCartao(grupo, titular)));
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", NoCartao(grupo, adicional)));
+        await JsonAsync(await client.PostAsJsonAsync("/api/v1/transactions", NoCartao(grupo, null)));
+
+        var lista = (await JsonAsync(await client.GetAsync($"/api/v1/transactions?creditCardId={grupo}&issuedCardId={adicional}")))
+            .GetProperty("items").EnumerateArray().ToList();
+        lista.Should().ContainSingle().Which.GetProperty("issuedCardId").GetGuid().Should().Be(adicional);
+    }
+
 }

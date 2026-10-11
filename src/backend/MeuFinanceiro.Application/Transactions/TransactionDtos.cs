@@ -88,7 +88,10 @@ public record TransactionResponse(
     ForeignPurchaseResponse? Foreign = null,
     Guid? IssuedCardId = null,
     string? IssuedCardLastFour = null,
-    IssuedCardKind? IssuedCardKind = null
+    IssuedCardKind? IssuedCardKind = null,
+    /// <summary>Sem cartão cadastrado no lançamento: o final da seção da fatura com que ele foi
+    /// conciliado (aceito). Só na listagem.</summary>
+    string? InvoiceCardLastFour = null
 );
 
 /// <summary>Filtros server-side de docs/06-lancamentos.md (período, descrição, categoria, conta, cartão, tipo, status, valor).</summary>
@@ -99,6 +102,8 @@ public class TransactionFilter : Common.PagedRequest
     public Guid? CategoryId { get; set; }
     public Guid? AccountId { get; set; }
     public Guid? CreditCardId { get; set; }
+    /// <summary>O cartão usado (titular, adicional, virtual) — o filtro da tela do cartão.</summary>
+    public Guid? IssuedCardId { get; set; }
     /// <summary>Conta OU cartão, sem precisar dizer qual — as duas telas de Lançamentos.</summary>
     public TransactionOrigin? Origin { get; set; }
     public TransactionType? Type { get; set; }
