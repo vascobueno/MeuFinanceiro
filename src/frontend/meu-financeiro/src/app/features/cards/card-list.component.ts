@@ -274,8 +274,8 @@ export class CardListComponent implements OnInit {
 
   confirmDelete(card: CreditCard): void {
     this.confirmationService.confirm({
-      header: 'Excluir cartão',
-      message: `Deseja realmente excluir '${card.name}'?`,
+      header: 'Excluir grupo de cartões',
+      message: `Deseja realmente excluir o grupo '${card.name}'?`,
       acceptLabel: 'Excluir',
       rejectLabel: 'Cancelar',
       accept: () => this.delete(card),
@@ -286,7 +286,7 @@ export class CardListComponent implements OnInit {
     this.cardService.delete(card.id).subscribe({
       next: () => this.load(),
       error: () => {
-        this.error.set('Não foi possível excluir. Cartões com lançamentos devem ser desativados.');
+        this.error.set('Não foi possível excluir. Grupos com lançamentos devem ser desativados.');
       },
     });
   }

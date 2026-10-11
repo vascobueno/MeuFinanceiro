@@ -5,19 +5,19 @@
     <h2 class="mf-page-title"><mf-icon name="mf-cards" class="mf-page-title-icon"></mf-icon>Cartões</h2>
   </div>
   @if (authService.canWrite()) {
-    <button pButton type="button" (click)="openForm()">+ Novo cartão</button>
+    <button pButton type="button" (click)="openForm()">+ Novo grupo de cartões</button>
   }
 </div>
 
 <div class="mf-stat-grid">
-  <mf-stat-card label="Limite total" [value]="totalLimit() | currency: 'BRL'" [hint]="totalItems() + (totalItems() === 1 ? ' cartão' : ' cartões')"></mf-stat-card>
+  <mf-stat-card label="Limite total" [value]="totalLimit() | currency: 'BRL'" [hint]="totalItems() + (totalItems() === 1 ? ' grupo' : ' grupos')"></mf-stat-card>
   <mf-stat-card label="Faturas abertas" [value]="openInvoicesTotal() | currency: 'BRL'" hint="próximos vencimentos" hintTone="negative"></mf-stat-card>
   <mf-stat-card label="Limite disponível" [value]="availableLimit | currency: 'BRL'" hint="após faturas abertas" variant="hero"></mf-stat-card>
 </div>
 
 @if (showForm()) {
   <div class="mf-card mf-inline-form">
-    <h6>{{ editingId() ? 'Editar cartão' : 'Novo cartão' }}</h6>
+    <h6>{{ editingId() ? 'Editar grupo de cartões' : 'Novo grupo de cartões' }}</h6>
     <div class="mf-inline-form-grid">
       <div>
         <label class="mf-field-label">Nome</label>
@@ -103,7 +103,7 @@
   [loading]="loading()"
   [error]="error()"
   [empty]="!loading() && !error() && cards().length === 0"
-  emptyMessage="Nenhum cartão cadastrado ainda."
+  emptyMessage="Nenhum grupo de cartões cadastrado ainda."
   [onRetry]="load.bind(this)"
 ></mf-list-state>
 
@@ -123,11 +123,15 @@
     <div class="mf-group-block" [class.mf-group-inactive]="!card.isActive">
       <div class="mf-group-head">
         <b class="mf-group-name">{{ card.name }}</b>
+        <!-- As mesmas pills de "Saldo" nos lançamentos da conta (styles/_finance.scss). -->
         @if (card.brand) {
-          <span class="mf-group-chip">{{ brandLabel(card.brand) }}</span>
+          <span class="mf-panel-metric"><span class="mf-metric-label">Bandeira</span><b>{{ brandLabel(card.brand) }}</b></span>
         }
-        <span class="mf-sub">Fecha dia {{ card.closingDay }} · vence dia {{ card.dueDay }}</span>
-        <span class="mf-sub">Limite {{ card.limit != null ? (card.limit | currency: 'BRL') : '—' }}</span>
+        <span class="mf-panel-metric"><span class="mf-metric-label">Fecha dia</span><b>{{ card.closingDay }}</b></span>
+        <span class="mf-panel-metric"><span class="mf-metric-label">Vence dia</span><b>{{ card.dueDay }}</b></span>
+        <span class="mf-panel-metric">
+          <span class="mf-metric-label">Limite</span><b>{{ card.limit != null ? (card.limit | currency: 'BRL') : '—' }}</b>
+        </span>
         <span class="mf-badge" [ngClass]="card.isActive ? 'mf-badge-ok' : 'mf-badge-neutral'">
           {{ card.isActive ? 'Ativo' : 'Inativo' }}
         </span>
