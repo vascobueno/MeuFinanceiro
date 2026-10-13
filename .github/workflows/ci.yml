@@ -26,6 +26,11 @@ jobs:
       - name: Unit tests
         run: dotnet test tests/backend/MeuFinanceiro.Domain.UnitTests --no-build --configuration Release --filter "Category=Unit"
 
+      # Os testes de integração sobem um PostgreSQL 18 em container (Testcontainers, docs/20);
+      # baixar a imagem antes deixa o tempo do download à parte, e não escondido no 1º teste.
+      - name: Imagem do PostgreSQL dos testes
+        run: docker pull postgres:18
+
       - name: Integration tests
         run: dotnet test tests/backend/MeuFinanceiro.Application.IntegrationTests --no-build --configuration Release --filter "Category=Integration"
 

@@ -222,11 +222,11 @@ vantagem real e específica para finanças.
 | --- | --- | --- |
 | Linguagem do backend | Manter C# (.NET 10) | TypeScript com NestJS, Kotlin ou Python com Django, nessa ordem |
 | Publicação | ReadyToRun com self-contained e arquivo único, se for instalar em outra máquina | Native AOT só com Minimal APIs e EF Core validado |
-| Testes | Testcontainers para .NET, rodando contra PostgreSQL de verdade | — |
+| Testes | **Adotado:** Testcontainers para .NET, rodando contra PostgreSQL de verdade (docs/20) | — |
 | Framework do frontend | Manter Angular | Vue com PrimeVue (migração mais suave), React (mercado) ou Blazor (só C#) |
 | Biblioteca de UI | Manter PrimeNG | PrimeNG sem estilo com Tailwind, ou Taiga UI pelos componentes financeiros |
 | Aprender outra linguagem | Reescrever uma parte isolada (leitura de OFX ou de fatura em texto) e comparar com os mesmos dados de teste | — |
 
-A sugestão de Testcontainers vem de uma limitação conhecida da suíte atual (docs/20): o EF Core
-InMemory ignora índices únicos, chaves estrangeiras e transações, e testes contra PostgreSQL de
-verdade pegariam esses casos.
+A sugestão de Testcontainers veio de uma limitação da suíte de então: o EF Core InMemory
+ignorava índices únicos, chaves estrangeiras e transações. Foi adotada — os testes de integração
+rodam contra PostgreSQL em container e o InMemory saiu do projeto (docs/20).

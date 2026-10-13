@@ -3,7 +3,9 @@
 ## Pré-requisitos
 - .NET 10 SDK
 - Node.js 22.22.3+, 24.15.0+ ou 26+ (faixa oficial do Angular 22 — ver `src/frontend/meu-financeiro/package.json`). **Atenção:** Node 24.11.x (comum em instalações recentes) NÃO é suficiente para o Angular 22 — é preciso 24.15.0 ou mais recente.
-- Docker Desktop (ou engine compatível)
+- Docker Desktop (ou engine compatível) — também para rodar os testes de integração, que sobem o
+  próprio PostgreSQL em container (docs/20). Com o Docker parado, `dotnet test` dos testes de
+  integração falha com "Docker não encontrado ou parado"; os testes de domínio não precisam dele.
 
 ## Passo a passo
 

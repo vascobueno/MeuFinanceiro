@@ -10,9 +10,10 @@ feature -> Pull Request -> CI -> develop/staging -> aprovação -> main/producti
 Dois jobs, ambos em `ubuntu-latest`, disparados em push/PR para `main`/`develop`:
 
 - **backend**: `dotnet restore` -> `dotnet build --configuration Release` -> testes unitários
-  (`tests/backend/MeuFinanceiro.Domain.UnitTests`, filtro `Category=Unit`) -> testes de
-  integração (`tests/backend/MeuFinanceiro.Application.IntegrationTests`, filtro
-  `Category=Integration`) -> `dotnet list package --vulnerable --include-transitive` (reporta
+  (`tests/backend/MeuFinanceiro.Domain.UnitTests`, filtro `Category=Unit`) -> `docker pull
+  postgres:18` -> testes de integração (`tests/backend/MeuFinanceiro.Application.IntegrationTests`,
+  filtro `Category=Integration`, contra PostgreSQL em container — docs/20; o Docker já vem no
+  `ubuntu-latest`) -> `dotnet list package --vulnerable --include-transitive` (reporta
   no log; não falha o build sozinho — ver nota abaixo).
 - **frontend**: `npm ci` -> `npm audit --audit-level=high` (falha o build se achar
   vulnerabilidade alta/crítica) -> `npm test -- --watch=false --browsers=ChromeHeadless` ->
