@@ -12,7 +12,8 @@ Dois jobs, ambos em `ubuntu-latest`, disparados em push/PR para `main`/`develop`
 - **backend**: `dotnet restore` -> `dotnet build --configuration Release` -> testes unitários
   (`tests/backend/MeuFinanceiro.Domain.UnitTests`, filtro `Category=Unit`) -> `docker pull
   postgres:18` -> testes de integração (`tests/backend/MeuFinanceiro.Application.IntegrationTests`,
-  filtro `Category=Integration`, contra PostgreSQL em container — docs/20; o Docker já vem no
+  filtro `Category!=Manual` — inclui os testes puros `Category=Unit` deste projeto (leitores
+  de fatura, OFX e PDF), que o passo anterior não alcança —, contra PostgreSQL em container — docs/20; o Docker já vem no
   `ubuntu-latest`) -> `dotnet list package --vulnerable --include-transitive` (reporta
   no log; não falha o build sozinho — ver nota abaixo).
 - **frontend**: `npm ci` -> `npm audit --audit-level=high` (falha o build se achar

@@ -32,7 +32,10 @@ jobs:
         run: docker pull postgres:18
 
       - name: Integration tests
-        run: dotnet test tests/backend/MeuFinanceiro.Application.IntegrationTests --no-build --configuration Release --filter "Category=Integration"
+        # Category!=Manual, e não Category=Integration: este projeto também tem testes puros
+        # (Category=Unit — leitores de fatura, OFX e PDF), que o passo de cima não alcança.
+        # Manual = os que dependem de serviço de verdade (MinIO).
+        run: dotnet test tests/backend/MeuFinanceiro.Application.IntegrationTests --no-build --configuration Release --filter "Category!=Manual"
 
       - name: Verificar dependências vulneráveis (.NET)
         run: dotnet list src/backend/MeuFinanceiro.Api package --vulnerable --include-transitive

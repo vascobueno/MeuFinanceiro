@@ -26,8 +26,7 @@ public static class PostgresTestDatabase
 
     private static async Task<PostgreSqlContainer> StartAsync()
     {
-        var container = new PostgreSqlBuilder()
-            .WithImage("postgres:18") // a mesma do docker-compose.yml
+        var container = new PostgreSqlBuilder("postgres:18") // a mesma do docker-compose.yml
             // As classes rodam em paralelo, cada uma com o próprio banco e pool: o padrão de 100
             // conexões não chega.
             .WithCommand("-c", "max_connections=300")
