@@ -251,7 +251,7 @@ public class BankReconciliationService : IBankReconciliationService
         // Os itens são carregados e removidos explicitamente, em vez de confiar no cascade do
         // banco: sem eles rastreados, o EF não sabe que as conciliações dependem dos itens e
         // pode apagar o extrato primeiro — e aí o cascade dos itens esbarra na chave estrangeira
-        // das conciliações (erro 23503 no PostgreSQL; o banco em memória dos testes não acusa).
+        // das conciliações (erro 23503 no PostgreSQL).
         var items = await _db.BankStatementItems.Where(i => i.BankStatementId == statementId).ToListAsync(ct);
 
         _db.Reconciliations.RemoveRange(reconciliations);

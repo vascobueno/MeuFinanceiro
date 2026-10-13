@@ -90,23 +90,13 @@ public class AuthService : IAuthService
         // falha ao criar o Grupo depois de UserManager.CreateAsync ter sucesso deixaria um
         // usuário órfão. CreateExecutionStrategy é necessário porque o Npgsql pode ter retry-
         // on-failure habilitado, que exige que a transação seja aberta dentro da strategy.
-        // IsRelational() só é falso no provider InMemory usado pelos testes de integração, que
-        // não suporta transação nenhuma — nesse caso as duas operações rodam sem transação
-        // (é exatamente o que a suíte de testes já espera).
-        if (_db.Database.IsRelational())
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            var strategy = _db.Database.CreateExecutionStrategy();
-            await strategy.ExecuteAsync(async () =>
-            {
-                await using var transaction = await _db.Database.BeginTransactionAsync(ct);
-                await CreateUserAndGrupoAsync();
-                await transaction.CommitAsync(ct);
-            });
-        }
-        else
-        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(ct);
             await CreateUserAndGrupoAsync();
-        }
+            await transaction.CommitAsync(ct);
+        });
 
         await SendEmailConfirmationAsync(user, ct);
 

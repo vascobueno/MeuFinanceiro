@@ -134,7 +134,7 @@ public class AccountService : IAccountService
     /// <summary>
     /// A mesma agência e conta não podem ser cadastradas duas vezes no grupo — senão o extrato
     /// (e o OFX) não saberia em qual delas entrar. Também há índice único; a checagem aqui dá a
-    /// mensagem e cobre o banco em memória dos testes, que ignora índices únicos.
+    /// mensagem de regra, em vez do erro de violação do índice.
     /// </summary>
     private async Task EnsureNotDuplicateAsync(BankDetails details, Guid? exceptId, CancellationToken ct)
     {
