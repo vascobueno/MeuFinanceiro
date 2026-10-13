@@ -6,6 +6,8 @@ config`). Gerado a partir dos manifestos reais do repositório (`package.json`, 
 `docker-compose.yml`, `.github/workflows/ci.yml`) — se este arquivo divergir do código, o
 código é a fonte de verdade; avise em vez de presumir que o código está errado.
 
+Alternativas a esta pilha, e por que não foram adotadas: `docs/25-alternativas-tecnologicas.md`.
+
 ## Frontend (`src/frontend/meu-financeiro`)
 
 ```text

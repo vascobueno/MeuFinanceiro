@@ -14,6 +14,8 @@ Sistema financeiro pessoal para lançamentos, recorrências, parcelamentos, conc
 - GitHub Actions para CI (ver `docs/18-ci-cd.md`)
 
 Lista completa de bibliotecas/pacotes com versão exata: `docs/33-versions.md`.
+Alternativas avaliadas (outras linguagens, Native AOT, frameworks de frontend e de UI) e por que
+a pilha atual foi mantida: `docs/25-alternativas-tecnologicas.md`.
 
 ## Regra central
 O Excel é usado somente para a migração inicial. Depois da migração, o sistema passa a ser a fonte oficial dos lançamentos.

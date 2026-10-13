@@ -39,6 +39,7 @@ funcionalidade nova, leia o que for relevante:
 ```text
 docs/00-visao-geral.md          domínios e arquitetura geral
 docs/01-requisitos-funcionais.md lista de RFs
+docs/02-requisitos-nao-funcionais.md requisitos não funcionais
 docs/03-arquitetura.md          camadas backend + pastas frontend
 docs/04-modelo-dados.md         entidades e índices
 docs/05 a docs/11               regras de negócio por área (lançamentos, recorrência,
@@ -46,10 +47,17 @@ docs/05 a docs/11               regras de negócio por área (lançamentos, reco
 docs/12-seguranca.md            modelo de autorização (grupo, perfis, administrator)
 docs/13-api.md                  endpoints por área
 docs/14-angular.md              organização do frontend
+docs/15-database.md             banco de dados (PostgreSQL, migrations)
+docs/16-importacao-inicial.md   importação inicial do Excel
 docs/17-auditoria.md            auditoria de acessos e alterações
+docs/18-ci-cd.md                pipeline de CI (GitHub Actions)
+docs/19-deploy.md               deploy de produção (container/VPS, sem Azure)
 docs/20-testes.md               o que já é testado e como
 docs/21-telas.md                todas as rotas/telas existentes
 docs/22-status-projeto.md       o que está pronto e o que falta
+docs/23-configuracao-local.md   ambiente local passo a passo
+docs/24-reducao-banco-dados.md  pesquisa: arquivamento de dados antigos
+docs/25-alternativas-tecnologicas.md pesquisa: outras linguagens, Native AOT, frontend e UI
 docs/33-versions.md             inventário completo de tecnologias/bibliotecas com versão
 ```
 
