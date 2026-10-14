@@ -34,7 +34,7 @@
     "@angular/cli": "^22.2.1",
     "@angular/compiler-cli": "^22.2.1",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/jasmine": "~6.0.0",
+    "@types/jasmine": "~7.0.0",
     "jasmine-core": "~7.0.2",
     "karma": "~6.4.4",
     "karma-chrome-launcher": "~3.2.0",
